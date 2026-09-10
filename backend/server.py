@@ -145,67 +145,8 @@ from pymongo import ReturnDocument
 # EXPO_PUSH_API, VAPID_*, send_push_to_users/all, send_push_to_courier_markets,
 # _send_web_push_one, send_web_push_to_all/user  (dosya başında import ediliyor)
 
-# ── Web Push abonelik kayıt/sil endpointleri ─────────────────────────────────
-
-@app.post("/api/push/web-subscribe")
-async def web_push_subscribe(data: dict, user=Depends(get_current_user_optional), request: Request = None):
-    """Tarayıcıdan gelen PushSubscription nesnesini saklar."""
-    endpoint = (data.get("endpoint") or "").strip()
-    keys = data.get("keys") or {}
-    if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
-        raise HTTPException(status_code=400, detail="Eksik abonelik bilgisi")
-    doc = {
-        "endpoint": endpoint,
-        "keys": {"p256dh": keys["p256dh"], "auth": keys["auth"]},
-        "user_id": (user or {}).get("user_id"),
-        "ts": now_utc(),
-    }
-    await db.web_push_subs.update_one(
-        {"endpoint": endpoint},
-        {"$set": doc},
-        upsert=True,
-    )
-    return {"ok": True}
-
-
-@app.delete("/api/push/web-subscribe")
-async def web_push_unsubscribe(data: dict, user=Depends(get_current_user_optional)):
-    """Tarayıcıdan gelen aboneliği siler."""
-    endpoint = (data.get("endpoint") or "").strip()
-    if endpoint:
-        await db.web_push_subs.delete_one({"endpoint": endpoint})
-    return {"ok": True}
-
-
-@app.get("/api/push/vapid-public-key")
-async def get_vapid_public_key():
-    """Frontend'e VAPID public key'i döner."""
-    return {"key": VAPID_PUBLIC_KEY}
-
-
-# ── Yönetici oturum kalp atışı (frontend heartbeat) ──────────────────────────
-@app.get("/api/auth/admin/heartbeat")
-async def admin_heartbeat(user=Depends(get_current_user)):
-    """Her 90 sn'de frontend tarafından çağrılır.
-    Oturum geçerliyse {ok:true} döner; geçersiz/2FA'sız ise get_current_user 401 fırlatır.
-    Böylece çalınmış/geçersiz oturumlar frontend'de anında fark edilir."""
-    if not user or user.get("role") not in ("admin", "yonetici"):
-        raise HTTPException(status_code=403, detail="Yönetici yetkisi gerekli")
-    return {"ok": True, "user_id": user.get("user_id"), "ts": now_utc().isoformat()}
-
-
-# ── Admin: toplu web push gönder ─────────────────────────────────────────────
-
-@api_router.post("/admin/push/web-send")
-async def admin_web_push_send(payload: dict, admin=Depends(get_current_admin)):
-    """Admin: tüm web push abonelerine anlık bildirim gönderir."""
-    _yonetici_only(admin)
-    title = str(payload.get("title") or "Afro Gıda").strip()
-    body  = str(payload.get("body")  or "").strip()
-    if not body:
-        raise HTTPException(status_code=400, detail="Mesaj boş olamaz")
-    n = await send_web_push_to_all(title, body, payload.get("data"))
-    return {"sent": n}
+# Bildirim endpoint'leri (web-subscribe, vapid-key, heartbeat, push-token,
+# admin push send/stats/web-send) -> routers/push.py
 
 
 # Kurye/tedarikçi rol yardımcıları + get_current_courier + get_optional_user
@@ -3053,31 +2994,9 @@ async def admin_upload_image(file: UploadFile = File(...), staff=Depends(get_cur
     return {"url": f"/uploads/{fname}"}
 
 
+from routers.push import router as _push_router
 app.include_router(api_router)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PUSH TOKEN KAYIT ENDPOINT
-# Uygulama açılınca native taraf Expo push token'ını bu endpoint'e gönderir.
-# ─────────────────────────────────────────────────────────────────────────────
-@app.post("/api/push-token")
-async def register_push_token(data: dict, user=Depends(get_current_user)):
-    token = str(data.get("push_token") or "").strip()
-    if not token or not token.startswith("ExponentPushToken"):
-        raise HTTPException(status_code=400, detail="Geçerli bir ExponentPushToken gerekli")
-    platform = str(data.get("platform") or "android").strip()
-    await db.push_tokens.update_one(
-        {"user_id": user["user_id"]},
-        {"$set": {
-            "user_id": user["user_id"],
-            "push_token": token,
-            "platform": platform,
-            "updated_at": now_utc(),
-        }},
-        upsert=True,
-    )
-    return {"ok": True}
-
-
+app.include_router(_push_router)
 
 
 
@@ -5358,56 +5277,7 @@ async def afro_get_logs(
     return {"logs": logs, "total": total, "page": page, "per_page": per_page, "total_pages": (total + per_page - 1) // per_page}
 
 
-# ─────────────────────────────────────────────────────────────
-#  PUSH BİLDİRİMİ GÖNDER (Admin)
-# ─────────────────────────────────────────────────────────────
-
-@app.post("/api/admin/push/send")
-async def admin_send_push(request: Request, current_admin: dict = Depends(get_current_admin)):
-    """
-    Admin'in tarayıcıdan push bildirimi göndermesini sağlar.
-    Hedef: 'all' → tüm kayıtlı tokenlar, 'users' → belirtilen user_id listesi.
-    """
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Geçersiz JSON")
-
-    title = str(body.get("title", "")).strip()[:100]
-    msg   = str(body.get("body",  "")).strip()[:300]
-    target = str(body.get("target", "all"))          # 'all' | 'users'
-    user_ids = body.get("user_ids", [])               # hedef 'users' ise
-    url_path = str(body.get("url", "")).strip()[:200]  # isteğe bağlı deep-link
-
-    if not title or not msg:
-        raise HTTPException(status_code=422, detail="Başlık ve mesaj zorunludur")
-
-    data_payload = {}
-    if url_path:
-        data_payload["url"] = url_path
-
-    if target == "users" and user_ids:
-        sent = await send_push_to_users(list(user_ids), title, msg, data=data_payload)
-    else:
-        sent = await send_push_to_all(title, msg, data=data_payload)
-
-    await _insert_log("log_admin", {
-        "action": "push_send",
-        "admin_id": current_admin.get("user_id"),
-        "title": title, "body": msg, "target": target,
-        "sent_count": sent
-    }, request)
-
-    return {"ok": True, "sent": sent}
-
-
-@app.get("/api/admin/push/stats")
-async def admin_push_stats(current_admin: dict = Depends(get_current_admin)):
-    """Kayıtlı push token sayısı ve platform dağılımını döner."""
-    total = await db.push_tokens.count_documents({"push_token": {"$exists": True, "$ne": ""}})
-    android = await db.push_tokens.count_documents({"platform": "android"})
-    ios = await db.push_tokens.count_documents({"platform": "ios"})
-    return {"total": total, "android": android, "ios": ios}
+# Admin push gönder / stats -> routers/push.py
 
 
     return {"ok": True}

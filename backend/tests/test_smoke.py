@@ -40,6 +40,15 @@ def test_admin_endpoint_allows_admin(client, make_user):
     assert isinstance(r.json(), list)
 
 
+def test_vapid_key_public(client):
+    r = client.get("/api/push/vapid-public-key")
+    assert r.status_code == 200 and "key" in r.json()
+
+
+def test_push_token_requires_auth(client):
+    assert client.post("/api/push-token", json={"push_token": "x"}).status_code == 401
+
+
 def test_auth_me(client, make_user):
     uid, headers = make_user(role="member", name="Ayşe")
     r = client.get("/api/auth/me", headers=headers)
