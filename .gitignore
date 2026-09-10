@@ -15,6 +15,10 @@ map-picker-backup.html
 
 # Dependencies / build
 node_modules/
+# ...ama Expo web export'unun ikon/font asset'leri "assets/node_modules/" altında
+# yaşıyor ve dağıtılması ZORUNLU (yoksa ikonlar boş kare çıkar) — istisna:
+!frontend/assets/node_modules/
+!frontend/assets/node_modules/**
 venv/
 __pycache__/
 *.pyc
