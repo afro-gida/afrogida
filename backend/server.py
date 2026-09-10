@@ -23,7 +23,7 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 
-from core.util import now_utc, to_aware, new_id
+from core.util import now_utc, to_aware, new_id, _clean_text, _afro_norm
 from core.config import (
     ROOT_DIR, EMERGENT_SESSION_API, SESSION_DURATION_DAYS, ORDERED_CATEGORIES,
     PRODUCT_SEED_VERSION, WELCOME_DISCOUNT_AMOUNT, WELCOME_MIN_AMOUNT, CATALOG_CACHE_TTL,
@@ -1292,10 +1292,7 @@ async def auth_logout(authorization: Optional[str] = Header(None), request: Requ
 
 
 # ---------------- Customer profile / address compatibility routes ----------------
-def _clean_text(value) -> str:
-    return str(value or "").strip()
-
-
+# _clean_text -> core/util.py
 
 
 # SMS yardımcıları (_normalize_sms_phone, send_sms_verimor, _generate_sms_code,
@@ -1538,12 +1535,7 @@ async def compat_set_default_address(address_id: str, current_user: dict = Depen
 
 
 # ---------------- Product Routes ----------------
-def _afro_norm(s):
-    """Boşlukları kırp + küçük harfe indir (pazar/tedarikçi adı eşleştirmek için)."""
-    try:
-        return (s or "").strip().casefold()
-    except Exception:
-        return ""
+# _afro_norm -> core/util.py
 
 
 @api_router.get("/products", response_model=List[Product])

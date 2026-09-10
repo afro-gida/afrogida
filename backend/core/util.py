@@ -15,3 +15,15 @@ def to_aware(dt: datetime) -> datetime:
 
 def new_id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+def _clean_text(value) -> str:
+    return str(value or "").strip()
+
+
+def _afro_norm(s) -> str:
+    """Boşlukları kırp + küçük harfe indir (pazar/tedarikçi adı eşleştirmek için)."""
+    try:
+        return (s or "").strip().casefold()
+    except Exception:
+        return ""
