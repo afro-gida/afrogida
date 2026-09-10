@@ -27,3 +27,12 @@ def _afro_norm(s) -> str:
         return (s or "").strip().casefold()
     except Exception:
         return ""
+
+
+def _norm_limit(value, default: int = 1) -> int:
+    """Kullanım hakkı (limit) değerini pozitif tam sayıya normalize eder."""
+    try:
+        n = int(float(value))
+    except (TypeError, ValueError):
+        n = default
+    return n if n >= 1 else 1
