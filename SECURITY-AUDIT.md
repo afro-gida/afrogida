@@ -40,14 +40,14 @@ ikincil savunma katmanıyla sınırlanmış durumda.
 
 | # | Önem | Konu | Konum |
 |---|---|---|---|
-| 1 | **YÜKSEK** | Sabit varsayılan admin parolası `admin` / `pazar2026` | `server.py:4708` |
+| 1 | ~~YÜKSEK~~ **ÇÖZÜLDÜ (2026-09-10)** | Sabit varsayılan admin parolası `admin` / `pazar2026` — seed bloğu kaldırıldı, 3 kopya hesap silindi (`maintenance/deleted-seeded-admins-2026-09-10.json`), `username` unique+sparse indeks eklendi, backend restart edildi | `server.py:4696` |
 | 2 | **ORTA** | Pazarı atanmamış kurye, pazar kısıtını atlar (tüm sipariş + gerçek müşteri telefonu) | `server.py:5330`, `:5359` |
 | 3 | **ORTA** | Kimliksiz ReDoS: `GET /api/products?search=` — kaçışsız `$regex`, uzunluk sınırı yok | `server.py:2165` |
 | 4 | **DÜŞÜK** | `rate_limit` hata durumunda **fail-open** (0 döner = izin ver) | `server.py:328` |
 | 5 | **DÜŞÜK** | Üretim CORS varsayılanı `http://localhost*` + `capacitor://localhost` içeriyor; regex her subdomain'e izin veriyor | `server.py:4630` |
 | 6 | **DÜŞÜK** | Parola sıfırlamada `check_lockout`/`register_failure` ve IP bazlı limit yok; admin sıfırlaması sabit 2FA telefonunu değil hesap telefonunu kullanıyor | `server.py:7679` |
 | 7 | **DÜŞÜK** | OTP kodları tuzsuz SHA-256 ile saklanıyor (admin 2FA `_hmac_hex` kullanıyor) | `server.py:7019` |
-| 8 | **DÜŞÜK** | Eski düz-metin oturum token'ı desteği hâlâ kodda (`_session_query` + non-sparse indeks) | `server.py:523`, `:4666` |
+| 8 | **DÜŞÜK** (migrasyon tamam) | Eski düz-metin oturum token'ı desteği hâlâ kodda — DB'de 0 kayıt kaldı (migrasyon çalışmış); `_session_query` fallback + indeks temizlenebilir | `server.py:523`, `:4666` |
 | 9 | **DÜŞÜK** | `update_product` admin yolunda `payload.dict()` (exclude_unset değil) → kısmi güncelleme gönderilmeyen alanları Pydantic varsayılanına sıfırlar | `server.py:2298` |
 | 10 | BİLGİ | `admin_verify_delivery_code` (admin yolu) deneme sayacı yok (kurye yolunda var) | `server.py:5218` |
 | 11 | BİLGİ | Hesap sayımı (enumeration): kayıtlı numara 409, kayıtsız giriş 404 | `server.py:7012`, `:1460` |
@@ -193,7 +193,8 @@ sıfırlayabilir). Güvenlikten çok veri bütünlüğü.
 
 ## Önerilen sıra
 
-1. **Bugün:** Bulgu 1 (admin parolası) — üretimde değiştir.
+1. ~~**Bugün:** Bulgu 1 (admin parolası)~~ — **2026-09-10 tamamlandı** (seed kaldırıldı,
+   hesaplar silindi, indeks eklendi, restart edildi ve doğrulandı).
 2. **Bu hafta:** Bulgu 2 (kurye default-deny), Bulgu 3 (`re.escape`), Bulgu 5
    (üretim CORS env doğrula).
 3. **Modülerizasyon sırasında:** Bulgu 4, 6, 7, 8, 9 — yeni `security/` ve
