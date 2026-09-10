@@ -106,28 +106,7 @@ systemctl is-active afro-backend-staging
 curl -s -o /dev/null -w "   staging backend :8001 -> HTTP %{http_code}\n" http://127.0.0.1:8001/api/
 
 echo "== 8/8  nginx (HTTP-only; certbot ayrı) =="
-# certbot öncesi TLS satırları olmadan geçici config
-sudo tee /etc/nginx/sites-available/afrogida-staging >/dev/null <<'NGINX'
-server {
-    server_name staging.afrogida.com.tr;
-    listen 80;
-    location ~ /\.well-known/acme-challenge/ { auth_basic off; allow all; root /var/www/html; }
-    auth_basic "Afro Gida - Staging";
-    auth_basic_user_file /etc/nginx/afrogida-staging.htpasswd;
-    add_header X-Robots-Tag "noindex, nofollow" always;
-    root /opt/afrogida-staging/frontend;
-    index index.html;
-    location = /robots.txt { add_header Content-Type text/plain; return 200 "User-agent: *\nDisallow: /\n"; }
-    location / { try_files $uri $uri/ /index.html; add_header Cache-Control "no-store"; }
-    location /api/ {
-        proxy_pass http://127.0.0.1:8001/api/;
-        proxy_http_version 1.1; proxy_set_header Connection ""; proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    location /uploads/ { proxy_pass http://127.0.0.1:8001/uploads/; proxy_set_header Host $host; }
-    location = /api/payments/paytr/callback { auth_basic off; proxy_pass http://127.0.0.1:8001; proxy_set_header Host $host; }
-}
-NGINX
+sudo cp "$STAGE/infra/staging/nginx-staging-http.conf" /etc/nginx/sites-available/afrogida-staging
 sudo ln -sfn /etc/nginx/sites-available/afrogida-staging /etc/nginx/sites-enabled/afrogida-staging
 sudo nginx -t && sudo systemctl reload nginx
 
