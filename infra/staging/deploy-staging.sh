@@ -22,6 +22,14 @@ if [ -f "$STAGE/backend/requirements.txt" ]; then
     "$STAGE_BACKEND/venv/bin/pip" install -q -r "$STAGE/backend/requirements.txt"
 fi
 
+if [ -d "$STAGE/backend/tests" ]; then
+    echo ">> pytest"
+    "$STAGE_BACKEND/venv/bin/pip" install -q -r "$STAGE/backend/requirements-test.txt"
+    ( cd "$STAGE/backend" && MONGO_URL="mongodb://localhost:27017" \
+        "$STAGE_BACKEND/venv/bin/python" -m pytest -q ) \
+        || { echo "!! TESTS FAILED"; exit 1; }
+fi
+
 # backend: checkout zaten /opt/afrogida-staging/backend — ayrıca sync gerekmez,
 # ama .env / venv / uploads git reset'te korunur (git'te değiller).
 sudo systemctl restart afro-backend-staging

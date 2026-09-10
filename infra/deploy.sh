@@ -65,6 +65,15 @@ if [ -f "$REPO/backend/requirements.txt" ]; then
     sudo "$LIVE_BACKEND/venv/bin/pip" install -q -r "$REPO/backend/requirements.txt"
 fi
 
+# pytest gate — staging venv (mongod var), izole afrogida_test DB
+if [ -d "$REPO/backend/tests" ] && [ -x /opt/afrogida-staging/backend/venv/bin/python ]; then
+    echo ">> backend: pytest"
+    /opt/afrogida-staging/backend/venv/bin/pip install -q -r "$REPO/backend/requirements-test.txt"
+    ( cd "$REPO/backend" && MONGO_URL="mongodb://localhost:27017" \
+        /opt/afrogida-staging/backend/venv/bin/python -m pytest -q ) \
+        || { echo "!! TESTS FAILED - deploy iptal (checkout değişmedi)"; git reset --hard "$OLD_SHA"; exit 1; }
+fi
+
 echo ">> backend: full backup -> $BACKUP"
 sudo mkdir -p "$BACKUP_DIR"
 sudo tar czf "$BACKUP" -C "$LIVE_BACKEND" \
