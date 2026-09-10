@@ -77,11 +77,13 @@ if ! command -v mongodump >/dev/null; then
     sudo apt-get update -qq
     sudo apt-get install -y -q mongodb-database-tools || sudo apt-get install -y -q mongo-tools
 fi
+MONGO_URL=$(grep -oP '(?<=^MONGO_URL=).*' "$STAGE_BACKEND/.env" | tr -d '\r')
 TMP=$(mktemp -d)
-mongodump --quiet --db "$PROD_DB" --out "$TMP"
-mongorestore --quiet --drop --nsFrom "${PROD_DB}.*" --nsTo "${STAGE_DB}.*" "$TMP/$PROD_DB"
+mongosh "$MONGO_URL" --quiet --eval "db.getSiblingDB('$STAGE_DB').dropDatabase()"
+mongodump --uri="$MONGO_URL" --db="$PROD_DB" --out="$TMP" --quiet
+mongorestore --uri="$MONGO_URL" --db="$STAGE_DB" --quiet "$TMP/$PROD_DB"
 rm -rf "$TMP"
-echo "   $STAGE_DB koleksiyon sayısı: $(mongosh --quiet --eval "db.getSiblingDB('$STAGE_DB').getCollectionNames().length")"
+echo "   $STAGE_DB -> $(mongosh "$MONGO_URL" --quiet --eval "const s=db.getSiblingDB('$STAGE_DB'); print(s.getCollectionNames().length+' koleksiyon, '+s.users.countDocuments()+' kullanıcı, '+s.products.countDocuments()+' ürün')")"
 
 echo "== 6/8  basic-auth kullanıcısı =="
 if [ ! -f "$HTPASSWD" ]; then
