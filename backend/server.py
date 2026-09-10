@@ -4692,23 +4692,12 @@ async def startup():
     asyncio.create_task(_admin_watchdog_loop())
     logger.info("[GÜVENLİK] Admin watchdog başlatıldı (2 dk'da bir tarama)")
     await db.products.create_index("id", unique=True)
+    # Aynı kullanıcı adının çok işçili başlatmada birden çok kez oluşmasını engelle.
+    await _safe_index(db.users, "username", unique=True, sparse=True)
 
-    # Seed admin
-    admin = await db.users.find_one({"role": "admin"})
-    if not admin:
-        await db.users.insert_one({
-            "user_id": new_id("admin"),
-            "name": "Pazar Yöneticisi",
-            "email": None,
-            "phone": None,
-            "picture": None,
-            "role": "admin",
-            "auth_type": "admin",
-            "username": "admin",
-            "password_hash": hash_password("pazar2026"),
-            "created_at": now_utc(),
-        })
-        logger.info("Seeded admin account")
+    # NOT: Sabit parolalı "admin" / "pazar2026" seed hesabı GÜVENLİK nedeniyle
+    # kaldırıldı (2026-09-10 denetimi, bulgu #1). Yönetici hesabı artık yalnızca
+    # elle (DB'de) oluşturulur; canlıda `yonetici` rollü gerçek bir hesap mevcut.
 
     # Seed / migrate products to the fixed category structure (runs once per version)
     meta = await db.meta.find_one({"key": "product_seed"})
