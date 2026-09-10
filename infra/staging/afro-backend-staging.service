@@ -1,0 +1,17 @@
+[Unit]
+Description=Afro Gida Backend (STAGING)
+After=network.target mongod.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/afrogida-staging/backend
+EnvironmentFile=/opt/afrogida-staging/backend/.env
+Environment="PATH=/opt/afrogida-staging/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/opt/afrogida-staging/backend/venv/bin/python3 -m uvicorn server:app --host 127.0.0.1 --port 8001 --workers 2 --timeout-keep-alive 30
+Restart=always
+RestartSec=5
+StandardOutput=append:/opt/afrogida-staging/backend/backend.log
+StandardError=append:/opt/afrogida-staging/backend/backend.log
+
+[Install]
+WantedBy=multi-user.target
