@@ -23,6 +23,8 @@ PROD_DB=test_database
 STAGE_DB=afrogida_staging
 
 echo "== 1/8  repo checkout =="
+sudo mkdir -p "$STAGE"
+sudo chown "$(id -un):$(id -gn)" "$STAGE"
 if [ ! -d "$STAGE/.git" ]; then
     git clone -q github-afrogida:afro-gida/afrogida.git "$STAGE"
 else
