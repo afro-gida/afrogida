@@ -37,6 +37,10 @@ from core.crypto import (
     _hmac_hex, hash_token, order_signature, verify_order_signature,
 )
 from core.db import client, db  # .env core.config import'unda yüklendi
+from core.logs import (
+    _mask_phone, _extract_request_meta, _client_ip, _insert_log, _log_sms_send,
+    _check_brute_force, _check_otp_abuse, _log_payment_restriction, _record_visit,
+)
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
@@ -223,113 +227,9 @@ async def clear_failures(key: str):
         pass
 
 
-def _client_ip(request) -> str:
-    return _extract_request_meta(request)["ip_address"]
-
-# ============================================================
-# /AFRO GÜVENLİK KATMANI
-# ============================================================
-
-
-
-
-# ============================================================
-# LOG SİSTEMİ — Yardımcı Fonksiyonlar (11 koleksiyon)
-# ============================================================
-
-def _extract_request_meta(request) -> dict:
-    """Request'ten IP adresi ve User-Agent bilgisini çıkarır."""
-    if request is None:
-        return {"ip_address": "unknown", "user_agent": "unknown"}
-    ip = ""
-    try:
-        ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-        if not ip:
-            ip = request.headers.get("x-real-ip", "")
-        if not ip and request.client:
-            ip = request.client.host
-    except Exception:
-        pass
-    return {
-        "ip_address": ip or "unknown",
-        "user_agent": request.headers.get("user-agent", "unknown") if request else "unknown",
-    }
-
-
-async def _insert_log(collection_name: str, doc: dict, request=None) -> None:
-    """Tüm log koleksiyonlarına güvenli INSERT. Hata ana işlemi ASLA durdurmaz."""
-    try:
-        if "created_at" not in doc:
-            doc["created_at"] = now_utc()
-        if request is not None:
-            meta = _extract_request_meta(request)
-            doc.setdefault("ip_address", meta["ip_address"])
-            doc.setdefault("user_agent", meta["user_agent"])
-        doc.setdefault("ip_address", "unknown")
-        doc.setdefault("user_agent", "unknown")
-        await db[collection_name].insert_one(doc)
-    except Exception as exc:
-        logger.error(f"[LOG] {collection_name} INSERT hatası: {exc}")
-
-
-async def _log_sms_send(user_id, phone, sms_type, template, success, request=None, error_msg=None):
-    """SMS gönderimi sonrası log kaydı."""
-    await _insert_log("log_sms", {
-        "user_id": user_id or None,
-        "phone_masked": _mask_phone(phone),
-        "sms_type": sms_type,
-        "provider": "Verimor",
-        "provider_message_id": None,
-        "status": "sent" if success else "failed",
-        "template_used": template,
-        "error_message": error_msg,
-    }, request)
-
-
-async def _check_brute_force(phone: str, request=None):
-    """Son 5 dakikada 5+ başarısız giriş → güvenlik logu."""
-    try:
-        five_min_ago = now_utc() - timedelta(minutes=5)
-        count = await db.log_auth.count_documents({
-            "phone_masked": _mask_phone(phone),
-            "action": "login_failed",
-            "created_at": {"$gte": five_min_ago},
-        })
-        if count >= 5:
-            ip = _extract_request_meta(request)["ip_address"]
-            await _insert_log("log_security", {
-                "event_type": "brute_force_detected",
-                "source_ip": ip,
-                "user_id": None,
-                "details": {"failed_attempts": count, "time_window_minutes": 5, "phone_attempted": _mask_phone(phone)},
-                "severity": "high",
-                "resolved": False,
-            }, request)
-    except Exception:
-        pass
-
-
-async def _check_otp_abuse(phone: str, request=None):
-    """Son 1 saatte 10+ OTP isteği → güvenlik logu."""
-    try:
-        one_hour_ago = now_utc() - timedelta(hours=1)
-        count = await db.log_sms.count_documents({
-            "phone_masked": _mask_phone(phone),
-            "sms_type": {"$in": ["otp_register", "otp_login"]},
-            "created_at": {"$gte": one_hour_ago},
-        })
-        if count >= 10:
-            ip = _extract_request_meta(request)["ip_address"]
-            await _insert_log("log_security", {
-                "event_type": "otp_abuse_detected",
-                "source_ip": ip,
-                "user_id": None,
-                "details": {"otp_requests": count, "time_window_hours": 1, "phone_attempted": _mask_phone(phone)},
-                "severity": "high",
-                "resolved": False,
-            }, request)
-    except Exception:
-        pass
+# _extract_request_meta / _client_ip / _mask_phone / _insert_log / _log_sms_send /
+# _check_brute_force / _check_otp_abuse / _log_payment_restriction / _record_visit
+# -> core/logs.py (dosya başında import ediliyor)
 
 
 def hash_password(password: str) -> str:
@@ -1534,29 +1434,6 @@ def _send_no_show_sms(user: dict, order: dict, level: int, until: Optional[datet
     except Exception as exc:
         logger.error("[NO-SHOW SMS] Gönderim hatası: %s", exc)
         return False
-
-
-async def _log_payment_restriction(action: str, user_id: str, details: str,
-                                   order_id: Optional[str] = None,
-                                   admin_id: Optional[str] = None,
-                                   admin_note: Optional[str] = None,
-                                   sms_sent: Optional[bool] = None):
-    """payment_restriction log kaydı (yasal ispat için)."""
-    try:
-        await db.payment_restriction_logs.insert_one({
-            "id": new_id("prlog"),
-            "log_type": "payment_restriction",
-            "action": action,  # undelivered_warning | cash_blocked | cash_unblocked | exception_applied
-            "user_id": user_id,
-            "order_id": order_id,
-            "details": details,
-            "admin_id": admin_id,
-            "admin_note": admin_note,
-            "sms_sent": sms_sent,
-            "created_at": now_utc(),
-        })
-    except Exception as exc:
-        logger.error("[NO-SHOW LOG] Kayıt hatası: %s", exc)
 
 
 def _evaluate_no_show_restriction(user: dict) -> dict:
@@ -5931,35 +5808,10 @@ async def compat_admin_agreement_logs(limit: int = 200, current_admin: dict = De
 # --- END AFRO COMPAT LOG ENDPOINTS ---
 
 
-async def _record_visit(request_data: dict | None = None, current_user: dict | None = None):
-    """Ziyaret kaydı - sadece member/musteri rolündeki kullanıcılar için kaydedilir."""
-    # Sadece müşteri ziyaretlerini kaydet (admin/yonetici/esnaf hariç)
-    if current_user:
-        role = current_user.get("role")
-        if role not in ["member", "musteri"]:
-            return {"success": True, "skipped": True, "reason": "non_member_role"}
-    
-    today = now_utc().date().isoformat()
-    doc = {
-        "id": new_id("visit"),
-        "date": today,
-        "created_at": now_utc(),
-        "user_id": current_user.get("user_id") if current_user else None,
-        "role": current_user.get("role") if current_user else None,
-        "payload": request_data or {},
-    }
-    await db.daily_visits.insert_one(doc)
-    return {"success": True, "date": today}
+# _record_visit / _mask_phone -> core/logs.py
 
 
 # ---------------- Payment / order compatibility endpoints ----------------
-def _mask_phone(phone: str | None) -> str | None:
-    phone = str(phone or "")
-    if len(phone) < 6:
-        return phone or None
-    return phone[:4] + "****" + phone[-2:]
-
-
 def _normalize_delivery_type(data: dict) -> str:
     raw = str(data.get("delivery_type") or data.get("delivery_method") or "").strip().lower()
     if raw in ("pickup", "gel-al", "gel_al", "gelal", "pay_at_counter"):
