@@ -40,9 +40,51 @@ Verimor SMS/OTP, web push bildirimleri, MongoDB.
 - `ssh ubuntu@54.38.26.227` — session anahtarı kuruldu (scratchpad `projem_key`).
   Kalıcı kullanım için anahtarı `~/.ssh`'ye taşımak gerek.
 
-## Açık kararlar
-1. **Mobil uygulama yolu** — kaynak kod olmadığı için:
-   a. Mevcut siteyi native kabuğa sarmak (Capacitor / TWA) — hızlı.
-   b. Frontend'i Expo ile sıfırdan/yeniden kurmak, backend'i aynen kullanmak — temiz ama uzun.
-2. Bundle-elle-düzenleme düzeninden çıkış (kaynak koda dönüş).
-3. Backend `server.py`'yi modüllere bölmek.
+## Kod inceleme bulguları (2026-09-10)
+
+### Backend — `backend/server.py` (6888 satır, tek dosya)
+- FastAPI + `motor` (async Mongo) + bcrypt + httpx. ~150 endpoint.
+- Roller: **müşteri, tedarikçi (esnaf), kurye, admin/staff (yönetici)**.
+- Modüller (mantıksal): auth (Google/telefon/OTP/2FA), ürün+kategori+kampanya,
+  kupon (hoş geldin kuponu otomatik), market/pazar, sipariş + PayTR ödeme + iade,
+  teslimat kodu doğrulama, tedarikçi satış/hakediş/ödeme, kurye atama/rota,
+  şikayet/sorun, yasal sözleşme "gate"i, SMS (Verimor), web push (VAPID),
+  kapsamlı denetim logları (`/api/admin/logs/*`).
+- Güvenlik: Fernet alan şifreleme, HMAC sipariş imzası, token'lar DB'de hash'li,
+  brute-force/OTP-abuse kontrolü, admin oturum watchdog.
+- Sağlıklı ve API-merkezli → **olduğu gibi yeniden kullanılabilir.**
+- `frontend/server_remote.py` = eski/küçük sürüm (1826 satır), önemsiz artefakt.
+
+### Frontend — kritik durum
+- Kaynak yok; elde 3.2 MB minified `entry-*.js` + elle yazılmış `index.html`.
+- `index.html` içinde:
+  - ~2000 satır elle yazılmış CSS override ("KULLANICI İSTEĞİ..." — koyu tema
+    renk düzeltmeleri, duvar kağıdı, sepet/navpill/Android safe-area yamaları).
+  - **15 `<script>` bloğu** — derlenmiş uygulamayı dışarıdan monkey-patch'leyen
+    `fetch` interceptor'ları ve DOM hack'leri: pazar-bazlı ürün filtresi,
+    web push kaydı, admin 2FA akışı, admin kimlik izleme, ürün seçim bottom-sheet,
+    numpad, "Pazar" FAB butonu, alert onay düzeltmesi, vb.
+- Her değişiklik yüksek riskli. Bu düzen **sürdürülemez.**
+
+## Öneri (Claude)
+**Frontend'i Expo ile yeniden kur, backend'i aynen kullan — aşamalı.**
+- Uygulama zaten React Native (Expo Router). Doğal biçimi native app.
+  WebView kabuğu = react-native-web build'ini tarayıcıda göstermek: mevcut
+  kırılganlık + WebView tuhaflıkları + App Store 4.2 red riski.
+- Backend ürünün ~%70'i ve sağlam; API üzerinden tamamen yeniden kullanılır.
+- Aşamalar:
+  - **Faz 0:** yerel ortam, prod'u dondur, API + tüm ekran/akışları çalışan
+    uygulamadan çıkararak belgele.
+  - **Faz 1:** temiz Expo projesi; müşteri akışı (gözat → sepet → ödeme/PayTR →
+    sipariş takibi). Önce web'e (mevcut frontend'in yerine), sonra TestFlight /
+    Play internal.
+  - **Faz 2:** tedarikçi paneli, kurye app'i, admin (admin web-only kalabilir).
+- Acil "mağazada app" gerekiyorsa: PWA kurulumu zaten ~%90 hazır (manifest+sw.js);
+  Android için TWA. iOS ince kabukları reddettiği için iOS gerçekçi olarak
+  yeniden kurulumu bekler.
+
+## Diğer açık işler
+1. Bundle-elle-düzenleme düzeninden çıkış (kaynak koda dönüş).
+2. Backend `server.py`'yi modüllere bölmek (opsiyonel; çalışıyor).
+3. Sunucuda git yok — deploy'u repo'dan yapacak akış kurmak.
+4. `/root/afro-proje-yedek/...` isimlendirmesini düzeltmek.
