@@ -329,6 +329,12 @@ async def get_current_staff(user=Depends(get_current_user)):
     return user
 
 
+def _yonetici_only(user: dict):
+    """Bir `get_current_admin` sonucunu daha da daraltır: sadece admin/yonetici."""
+    if user.get("role") not in ("admin", "yonetici"):
+        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+
+
 async def get_current_courier(user=Depends(get_current_user)):
     """Kurye VEYA yönetici erişebilir (yönetici test/denetim için)."""
     if user.get("role") not in ("admin", "yonetici", "kurye"):

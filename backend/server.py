@@ -56,7 +56,16 @@ from core.security import (
     get_current_admin, get_current_supplier, get_current_staff, get_current_courier,
     get_optional_user, SUPPLIER_ROLES, is_supplier_role, get_user_supplier_group,
     COURIER_ROLES, is_courier_role, get_user_courier_markets, get_user_courier_market,
-    _afro_market_eq,
+    _afro_market_eq, _yonetici_only,
+)
+from models import (
+    GoogleSessionInput, PhoneLoginInput, RegisterInput, LoginInput, AdminLoginInput,
+    Admin2FAVerifyInput, UserOut, AuthResponse,
+    ProductInput, Product, Campaign, CampaignInput, Coupon, CouponInput, RedeemInput,
+    Market, MarketInput,
+    MemberOut, MemberUpdateInput, StaffAssignInput, StaffAssignByIdInput, CourierAssignInput,
+    SupplierInput, Supplier, AfroSupplierPayMark, AfroSupplierPayConfirm,
+    AfroSupplierContractInput,
 )
 
 app = FastAPI()
@@ -370,217 +379,7 @@ async def send_push_to_courier_markets(market_names: list, title: str, body: str
 # -> core/security.py
 
 
-# ---------------- Models ----------------
-class GoogleSessionInput(BaseModel):
-    session_id: str
-
-
-class PhoneLoginInput(BaseModel):
-    phone: str
-    name: str
-
-
-class RegisterInput(BaseModel):
-    name: str
-    phone: str
-    password: Optional[str] = None
-    otp_code: Optional[str] = None
-    marketing_consent: Optional[bool] = None
-
-
-class LoginInput(BaseModel):
-    phone: str
-    password: Optional[str] = None
-
-
-class AdminLoginInput(BaseModel):
-    username: str
-    password: str
-
-
-class Admin2FAVerifyInput(BaseModel):
-    challenge_id: str
-    code: str
-
-
-class UserOut(BaseModel):
-    user_id: str
-    name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    picture: Optional[str] = None
-    role: str = "member"
-    auth_type: str
-    created_at: datetime
-    addresses: List[dict] = Field(default_factory=list)
-    marketing_consent: Optional[bool] = None
-
-
-class AuthResponse(BaseModel):
-    token: str
-    user: UserOut
-
-
-class ProductInput(BaseModel):
-    name: str
-    category: str
-    subcategory: Optional[str] = "Diğer"
-    supplier_group: Optional[str] = "Zeytinci"
-    price: Optional[float] = None
-    gel_al_price: Optional[float] = 0
-    eve_servis_price: Optional[float] = None
-    # --- Tedarikçi çift fiyat sistemi (Faz 1) ---
-    supplier_price: Optional[float] = 0          # tedarikçinin girdiği tezgah fiyatı
-    sale_price: Optional[float] = None           # müşteriye satış fiyatı (= supplier_price + profit_margin_amount)
-    profit_margin_amount: Optional[float] = 0    # adminin belirlediği kâr tutarı
-    price_updated_at: Optional[datetime] = None
-    price_updated_by: Optional[str] = None       # "supplier" | "admin" | "migration"
-    supplier_price_locked_until: Optional[datetime] = None  # fiyat kilidi bitiş zamanı
-    unit: str = "Kg"
-    image_url: Optional[str] = None
-    description: Optional[str] = None
-    in_stock: bool = True
-    active: bool = True
-    hidden: bool = False
-    selectable: bool = False
-    quality: Optional[str] = None
-    spicy_type: Optional[str] = None
-    active_gel_al: bool = True
-    active_eve_servis: bool = True
-    campaign_discount_percent: Optional[float] = 0
-    campaign_min_qty: Optional[float] = 0
-    # Ürün özelleştirme (boyut/şekil/kalınlık gibi seçenek grupları + not kutusu)
-    # customization_options ör: [{"title":"Boyut","choices":[{"label":"Küçük","price_delta":0},{"label":"Büyük","price_delta":5}]}]
-    customization_options: Optional[List[dict]] = None
-    customization_note_enabled: Optional[bool] = False
-    customization_note_label: Optional[str] = None
-
-    # Form boş sayısal alanları "" (boş string) olarak gönderebiliyor;
-    # bunları None'a çevir ki float doğrulaması patlamasın (422 hatası).
-    @field_validator(
-        "price", "gel_al_price", "eve_servis_price",
-        "campaign_discount_percent", "campaign_min_qty",
-        "supplier_price", "sale_price", "profit_margin_amount",
-        mode="before",
-    )
-    @classmethod
-    def _empty_str_to_none(cls, v):
-        if isinstance(v, str):
-            s = v.strip().replace(",", ".")
-            if s == "":
-                return None
-            try:
-                return float(s)
-            except (ValueError, TypeError):
-                return None
-        return v
-
-
-class Product(ProductInput):
-    id: str = Field(default_factory=lambda: new_id("prod"))
-    created_at: datetime = Field(default_factory=now_utc)
-    updated_at: datetime = Field(default_factory=now_utc)
-
-
-class Campaign(BaseModel):
-    id: str = Field(default_factory=lambda: new_id("camp"))
-    title: str
-    description: str
-    image_url: Optional[str] = None
-    discount_text: Optional[str] = None
-    members_only: bool = True
-    active: bool = True
-    valid_until: Optional[str] = None
-    created_at: datetime = Field(default_factory=now_utc)
-
-
-class CampaignInput(BaseModel):
-    title: str
-    description: str
-    image_url: Optional[str] = None
-    discount_text: Optional[str] = None
-    members_only: bool = True
-    active: bool = True
-    valid_until: Optional[str] = None
-
-
-class Coupon(BaseModel):
-    id: str = Field(default_factory=lambda: new_id("coup"))
-    code: str
-    title: str
-    description: Optional[str] = None
-    discount_percent: int = 10
-    discount_amount: Optional[float] = None  # fixed TL discount; takes priority over percent when set
-    min_amount: float = 0
-    members_only: bool = True
-    assigned_user_ids: List[str] = Field(default_factory=list)
-    # Per-user assignment records: [{user_id, limit, used_count, last_used_at}]
-    # Kullanım hakkı (limit) artık kupon oluştururken değil, kupon verilirken belirlenir.
-    assignments: List[dict] = Field(default_factory=list)
-    per_user_limit: int = 1  # geriye dönük uyum / atama sırasında varsayılan
-    single_use: bool = False
-    used: bool = False
-    used_at: Optional[datetime] = None
-    auto_issued: bool = False  # True for the automatic welcome coupon
-    active: bool = True
-    valid_until: Optional[str] = None
-    created_at: datetime = Field(default_factory=now_utc)
-
-
-class CouponInput(BaseModel):
-    code: str
-    title: str
-    description: Optional[str] = None
-    discount_percent: int = 10
-    discount_amount: Optional[float] = None
-    min_amount: float = 0
-    members_only: bool = True
-    assigned_user_ids: List[str] = Field(default_factory=list)
-    single_use: bool = False
-    active: bool = True
-    valid_until: Optional[str] = None
-
-
-class RedeemInput(BaseModel):
-    code: str
-    user_id: Optional[str] = None
-
-
-class Market(BaseModel):
-    id: str = Field(default_factory=lambda: new_id("market"))
-    name: str
-    day: str
-    image_url: Optional[str] = None
-    location: Optional[str] = None
-    location_url: Optional[str] = None
-    google_maps_url: Optional[str] = None
-    note: Optional[str] = None
-    active: bool = True
-    is_open: bool = False
-    orders_enabled: bool = False
-    delivery_enabled: bool = False
-    online_payment_enabled: bool = False
-    active_eve_servis: bool = False
-    active_gel_al: bool = True
-    delivery_neighborhoods: List[str] = []
-    created_at: datetime = Field(default_factory=now_utc)
-
-
-class MarketInput(BaseModel):
-    name: str
-    day: str
-    image_url: Optional[str] = None
-    location: Optional[str] = None
-    location_url: Optional[str] = None
-    google_maps_url: Optional[str] = None
-    note: Optional[str] = None
-    active: bool = True
-    orders_enabled: bool = False
-    delivery_enabled: bool = False
-    online_payment_enabled: bool = False
-    active_eve_servis: bool = False
-    active_gel_al: bool = True
-    delivery_neighborhoods: List[str] = []
+# Pydantic modelleri -> models.py (dosya başında import ediliyor)
 
 
 # ---------------- Auth Routes ----------------
@@ -1889,18 +1688,6 @@ async def root():
 
 
 # ---------------- Member (customer) management ----------------
-class MemberOut(BaseModel):
-    user_id: str
-    name: str = ""
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    picture: Optional[str] = None
-    auth_type: Optional[str] = None
-    role: Optional[str] = None
-    supplier_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-
-
 @api_router.get("/admin/members", response_model=List[MemberOut])
 async def admin_list_members(search: Optional[str] = None, admin=Depends(get_current_admin)):
     query: dict = {"role": {"$in": ["musteri", "member"]}}
@@ -2087,14 +1874,6 @@ async def admin_get_member_logs(user_id: str, limit: int = 300, admin=Depends(ge
     return _compat_json_clean({"total": len(timeline), "counts": counts, "logs": timeline})
 
 
-class MemberUpdateInput(BaseModel):
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    is_restricted: Optional[bool] = None
-    restriction_reason: Optional[str] = None
-    restriction_until: Optional[str] = None
-
-
 @api_router.put("/admin/members/{user_id}")
 async def admin_update_member(
     user_id: str, payload: MemberUpdateInput, admin=Depends(get_current_admin), request: Request = None
@@ -2271,13 +2050,7 @@ async def admin_no_show_exception(user_id: str, data: dict, admin=Depends(get_cu
 
 
 # ---------------- Esnaf (tedarikçi hesabı) yönetimi ----------------
-class StaffAssignInput(BaseModel):
-    supplier_group: Optional[str] = None
-
-
-def _yonetici_only(user: dict):
-    if user.get("role") not in ("admin", "yonetici"):
-        raise HTTPException(status_code=403, detail="Bu işlem için yönetici yetkisi gerekli")
+# StaffAssignInput -> models.py ; _yonetici_only -> core/security.py
 
 
 @api_router.get("/admin/staff")
@@ -3029,12 +2802,6 @@ async def admin_supplier_payments(date: Optional[str] = None,
             "total_net": round(tot_net, 2)}
 
 
-class AfroSupplierPayMark(BaseModel):
-    supplier_group: str
-    date: str
-    note: Optional[str] = None
-
-
 @app.post("/api/admin/supplier-payments/mark-paid")
 async def admin_supplier_payment_mark_paid(payload: AfroSupplierPayMark,
                                            current_admin: dict = Depends(get_current_admin), request: Request = None):
@@ -3113,11 +2880,6 @@ async def admin_supplier_payment_mark_unpaid(payload: AfroSupplierPayMark,
     )
     await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name",""), "action": "supplier_payment_unmarked", "target_type": "payment", "target_id": f"{key}_{payload.date}", "change_details": {"field": "payment_status", "old_value": "paid", "new_value": "pending"}, "admin_note": ""}, request)
     return {"success": True, "status": "pending"}
-
-
-class AfroSupplierPayConfirm(BaseModel):
-    date: str
-    code: str
 
 
 @app.post("/api/supplier/my-payments/confirm")
@@ -3298,11 +3060,6 @@ async def admin_assign_staff(user_id: str, payload: StaffAssignInput, admin=Depe
     return await _assign_staff_by_identifier(user_id, payload.supplier_group)
 
 
-class StaffAssignByIdInput(BaseModel):
-    identifier: str
-    supplier_group: Optional[str] = None
-
-
 @api_router.post("/admin/staff/assign")
 async def admin_assign_staff_post(payload: StaffAssignByIdInput, admin=Depends(get_current_admin)):
     _yonetici_only(admin)
@@ -3339,12 +3096,6 @@ async def _assign_courier_by_identifier(identifier: str, courier_markets_list: O
         {"user_id": user["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0}
     )
     return {"success": True, "user": _public_user_doc(updated)}
-
-
-class CourierAssignInput(BaseModel):
-    identifier: str
-    courier_markets: Optional[List[str]] = None  # yeni çok-pazar
-    courier_market: Optional[str] = None  # geriye uyumluluk (tek pazar)
 
 
 @api_router.post("/admin/courier/assign")
@@ -3800,18 +3551,7 @@ async def shutdown_db_client():
 # SUPPLIER ENDPOINTS — eklenecek blok
 # ============================================================
 
-class SupplierInput(BaseModel):
-    name: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    market_ids: Optional[List[str]] = []
-    notes: Optional[str] = None
-    is_active: Optional[bool] = True
-
-class Supplier(SupplierInput):
-    id: str
-    created_at: Optional[str] = None
+# SupplierInput / Supplier -> models.py
 
 # ---------- Admin: Tedarikçi listesi ----------
 @app.get("/api/admin/suppliers")
@@ -6119,12 +5859,6 @@ async def afro_get_supplier_contract():
 
 
 # ---- Admin: aktif sözleşmeyi ayarla (yeni PDF + sürüm) ----
-class AfroSupplierContractInput(BaseModel):
-    url: str
-    version: str
-    title: Optional[str] = "Tedarikçi Sözleşmesi"
-
-
 @app.post("/api/admin/supplier-contract")
 async def afro_set_supplier_contract(payload: AfroSupplierContractInput, current_admin: dict = Depends(get_current_admin)):
     _yonetici_only(current_admin)
