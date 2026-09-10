@@ -111,7 +111,7 @@ sudo tee /etc/nginx/sites-available/afrogida-staging >/dev/null <<'NGINX'
 server {
     server_name staging.afrogida.com.tr;
     listen 80;
-    location ~ /\.well-known/acme-challenge/ { allow all; root /var/www/html; }
+    location ~ /\.well-known/acme-challenge/ { auth_basic off; allow all; root /var/www/html; }
     auth_basic "Afro Gida - Staging";
     auth_basic_user_file /etc/nginx/afrogida-staging.htpasswd;
     add_header X-Robots-Tag "noindex, nofollow" always;
