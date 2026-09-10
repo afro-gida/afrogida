@@ -76,6 +76,7 @@ from services.payments import (
     _paytr_keys_status, _clean_paytr_oid, _init_paytr_token, _paytr_refund,
     paytr_callback_expected_hash,
 )
+from services.catalog import DEFAULT_CATALOG_CONFIG, _read_catalog_config, _write_catalog_config
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
@@ -88,9 +89,7 @@ logger = logging.getLogger(__name__)
 # Sabitler -> core/config.py (EMERGENT_SESSION_API, SESSION_DURATION_DAYS,
 # ORDERED_CATEGORIES, PRODUCT_SEED_VERSION, WELCOME_*, CATALOG_CACHE_TTL)
 
-# catalog_config bellek içi önbellek (TTL -> core/config.CATALOG_CACHE_TTL)
-_CATALOG_CACHE = None
-_CATALOG_CACHE_TS = 0
+# catalog_config önbellek -> services/catalog.py
 
 # ---------------- Helpers ----------------
 # now_utc / to_aware / new_id -> core/util.py
@@ -3466,38 +3465,8 @@ async def get_suppliers():
 
 
 # ---------- Catalog Config ----------
-DEFAULT_CATALOG_CONFIG = {
-    "categories": ["Sebze", "Meyve", "Yeşillik", "Kök Sebzeler", "Zeytin Ürünleri"],
-    "subcategories": {
-        "Sebze": ["Domates", "Biber", "Salatalık", "Kabak", "Patlıcan", "Diğer"],
-        "Meyve": ["Elma-Armut", "Muz", "Narenciye", "Üzüm", "Mevsim Meyveleri"],
-        "Yeşillik": ["Marul", "Maydanoz", "Roka", "Dereotu-Nane", "Diğer"],
-        "Kök Sebzeler": ["Patates", "Soğan", "Havuç", "Turp", "Diğer"],
-        "Zeytin Ürünleri": ["Zeytin", "Zeytinyağı", "Ezme", "Diğer"],
-    },
-    "suppliers": ["Zeytinci"],
-    "supplier_markets": {},
-}
-
-async def _read_catalog_config():
-    global _CATALOG_CACHE, _CATALOG_CACHE_TS
-    now = datetime.now(timezone.utc).timestamp()
-    # Cache hit: return immediately (60s TTL)
-    if _CATALOG_CACHE and (now - _CATALOG_CACHE_TS) < CATALOG_CACHE_TTL:
-        return _CATALOG_CACHE
-    # Cache miss/expired: fetch from DB
-    config = await db.catalog_config.find_one({}, {"_id": 0})
-    _CATALOG_CACHE = config if config else DEFAULT_CATALOG_CONFIG
-    _CATALOG_CACHE_TS = now
-    return _CATALOG_CACHE
-
-async def _write_catalog_config(data: dict):
-    global _CATALOG_CACHE, _CATALOG_CACHE_TS
-    await db.catalog_config.update_one({}, {"$set": data}, upsert=True)
-    # Invalidate cache so next read fetches fresh data
-    _CATALOG_CACHE = None
-    _CATALOG_CACHE_TS = 0
-    return await _read_catalog_config()
+# DEFAULT_CATALOG_CONFIG, _read_catalog_config, _write_catalog_config
+# -> services/catalog.py (dosya başında import ediliyor)
 
 @app.get("/api/catalog-config")
 async def get_catalog_config():
