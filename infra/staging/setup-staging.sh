@@ -34,7 +34,10 @@ git -C "$STAGE" log --oneline -1
 
 echo "== 2/8  python venv + deps =="
 if [ ! -x "$STAGE_BACKEND/venv/bin/python3" ]; then
-    python3 -m venv "$STAGE_BACKEND/venv"
+    python3 -m venv "$STAGE_BACKEND/venv" 2>/dev/null || {
+        echo "   python3-venv kuruluyor..."; sudo apt-get update -qq && sudo apt-get install -y -q python3-venv
+        python3 -m venv "$STAGE_BACKEND/venv"
+    }
 fi
 "$STAGE_BACKEND/venv/bin/pip" install -q --upgrade pip
 "$STAGE_BACKEND/venv/bin/pip" install -q -r "$STAGE/backend/requirements.txt"
@@ -71,7 +74,8 @@ sudo chown -R "$(id -u):$(id -g)" "$STAGE_BACKEND/uploads"
 echo "== 5/8  MongoDB $PROD_DB -> $STAGE_DB kopyası =="
 if ! command -v mongodump >/dev/null; then
     echo "   mongodb-database-tools kuruluyor..."
-    sudo apt-get install -y -q mongodb-database-tools
+    sudo apt-get update -qq
+    sudo apt-get install -y -q mongodb-database-tools || sudo apt-get install -y -q mongo-tools
 fi
 TMP=$(mktemp -d)
 mongodump --quiet --db "$PROD_DB" --out "$TMP"
