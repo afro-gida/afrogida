@@ -23,6 +23,8 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 
+from core.util import now_utc, to_aware, new_id
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -56,18 +58,7 @@ _CATALOG_CACHE_TS = 0
 CATALOG_CACHE_TTL = 60  # seconds
 
 # ---------------- Helpers ----------------
-def now_utc() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def to_aware(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
-
-
-def new_id(prefix: str) -> str:
-    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+# now_utc / to_aware / new_id -> core/util.py (yukarıda import edildi)
 
 
 # ============================================================
