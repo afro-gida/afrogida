@@ -36,13 +36,7 @@ from core.crypto import (
     Fernet, InvalidToken, _afro_fernet, _AFRO_FERNET, enc_str, dec_str, is_encrypted,
     _hmac_hex, hash_token, order_signature, verify_order_signature,
 )
-
-# .env core.config import'unda yüklendi
-
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+from core.db import client, db  # .env core.config import'unda yüklendi
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
