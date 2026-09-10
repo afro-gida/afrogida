@@ -18,11 +18,18 @@ VPS (54.38.26.227, OVH, Ubuntu 22.04) altyapı ve deploy.
 
 ## Deploy
 
+Sunucuda:
 ```bash
 afrogida-deploy              # backend (server.py) + restart + health check + otomatik rollback
 afrogida-deploy --frontend   # ayrıca frontend/ -> /var/www/afro-proje senkronu
 afrogida-deploy --force      # origin/main == HEAD olsa bile deploy et
 ```
+
+Windows makinesinden (repoyu push ettikten sonra):
+```
+powershell -ExecutionPolicy Bypass -File infra\deploy-remote.ps1 [-Frontend] [-Force]
+```
+`afrogida-vps` ssh alias'ını (`~/.ssh/config`) ve `~/.ssh/afrogida_vps` anahtarını kullanır.
 
 Health check `http://127.0.0.1:8000/api/` 200 dönmezse: server.py eski haline döner,
 servis restart edilir, checkout bir önceki commit'e sarılır, exit 1.
