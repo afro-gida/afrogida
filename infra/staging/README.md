@@ -41,6 +41,14 @@ mongorestore --quiet --drop --nsFrom 'test_database.*' --nsTo 'afrogida_staging.
 rm -rf /tmp/d
 ```
 
+## Giriş
+
+İlk açılışta `/_stg_login`'e yönlenirsin → **tek** basic-auth istemi
+(`afro` / parola `_archive/staging-credentials.txt`) → 90 gün geçerli çerez kurulur,
+bir daha sormaz. Frontend bundle'ındaki sabit `https://afrogida.com.tr` adresi
+nginx `sub_filter` ile boşaltılır → staging frontend, **staging backend'ine** (:8001)
+konuşur (prod'a değil).
+
 ## Notlar
 
 - `.env` prod'dan kopyalanır; `DB_NAME`, `PAYTR_TEST_MODE`, `AFRO_ALLOWED_ORIGINS`,

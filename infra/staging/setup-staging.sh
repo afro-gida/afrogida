@@ -105,8 +105,14 @@ sleep 3
 systemctl is-active afro-backend-staging
 curl -s -o /dev/null -w "   staging backend :8001 -> HTTP %{http_code}\n" http://127.0.0.1:8001/api/
 
-echo "== 8/8  nginx (HTTP-only; certbot ayrı) =="
-sudo cp "$STAGE/infra/staging/nginx-staging-http.conf" /etc/nginx/sites-available/afrogida-staging
+echo "== 8/8  nginx =="
+if [ -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
+    # TLS var -> çerez geçitli tam config
+    sudo cp "$STAGE/infra/staging/nginx-staging.conf" /etc/nginx/sites-available/afrogida-staging
+else
+    # certbot öncesi -> geçici HTTP config
+    sudo cp "$STAGE/infra/staging/nginx-staging-http.conf" /etc/nginx/sites-available/afrogida-staging
+fi
 sudo ln -sfn /etc/nginx/sites-available/afrogida-staging /etc/nginx/sites-enabled/afrogida-staging
 sudo nginx -t && sudo systemctl reload nginx
 
