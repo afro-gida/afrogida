@@ -67,6 +67,11 @@ from models import (
     SupplierInput, Supplier, AfroSupplierPayMark, AfroSupplierPayConfirm,
     AfroSupplierContractInput,
 )
+from services.push import (
+    EXPO_PUSH_API, VAPID_PUBLIC_KEY, VAPID_PRIVATE_PEM, VAPID_CONTACT,
+    send_push_to_users, send_push_to_all, send_push_to_courier_markets,
+    _send_web_push_one, send_web_push_to_all, send_web_push_to_user,
+)
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
@@ -148,153 +153,11 @@ def _customer_order_view(o):
 # -> core/security.py  (dosya başında import ediliyor)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# EXPO PUSH BİLDİRİM YÖNETİCİSİ
-# Expo Push API üzerinden iOS + Android bildirimlerini gönderir.
-# Token'lar push_tokens koleksiyonunda {user_id, push_token, platform, updated_at} olarak saklanır.
-# ─────────────────────────────────────────────────────────────────────────────
-EXPO_PUSH_API = "https://exp.host/--/api/v2/push/send"
-# ── Web Push (VAPID) ──────────────────────────────────────────────────────────
-VAPID_PUBLIC_KEY   = os.getenv("VAPID_PUBLIC_KEY", "")
-VAPID_PRIVATE_PEM  = os.getenv("VAPID_PRIVATE_PEM", "").replace("\\n", "\n")
-VAPID_CONTACT      = os.getenv("VAPID_CONTACT", "mailto:info@afrogida.com.tr")
-# ─────────────────────────────────────────────────────────────────────────────
+# Bildirim gönderimi (Expo + Web Push VAPID) -> services/push.py
+# EXPO_PUSH_API, VAPID_*, send_push_to_users/all, send_push_to_courier_markets,
+# _send_web_push_one, send_web_push_to_all/user  (dosya başında import ediliyor)
 
-
-async def send_push_to_users(user_ids: list, title: str, body: str, data: dict = None, badge: int = 1) -> int:
-    """
-    Verilen user_id listesindeki kullanıcılara Expo push bildirimi gönderir.
-    Başarıyla gönderilen mesaj sayısını döner.
-    """
-    if not user_ids:
-        return 0
-    # Kullanıcıların push token'larını çek
-    tokens_cursor = db.push_tokens.find(
-        {"user_id": {"$in": list(user_ids)}, "push_token": {"$exists": True, "$ne": ""}},
-        {"_id": 0, "push_token": 1}
-    )
-    tokens = [doc["push_token"] async for doc in tokens_cursor]
-    if not tokens:
-        return 0
-
-    messages = [
-        {
-            "to": token,
-            "title": title,
-            "body": body,
-            "data": data or {},
-            "sound": "default",
-            "badge": badge,
-            "priority": "high",
-        }
-        for token in tokens
-        if token and token.startswith("ExponentPushToken")
-    ]
-    if not messages:
-        return 0
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                EXPO_PUSH_API,
-                json=messages,
-                headers={"Accept": "application/json", "Content-Type": "application/json"},
-            )
-            resp.raise_for_status()
-        return len(messages)
-    except Exception as e:
-        logging.warning(f"[push] Expo push gönderme hatası: {e}")
-        return 0
-
-
-async def send_push_to_all(title: str, body: str, data: dict = None) -> int:
-    """Tüm kayıtlı push token'larına bildirim gönderir (kampanya vb.)."""
-    tokens_cursor = db.push_tokens.find(
-        {"push_token": {"$exists": True, "$ne": ""}},
-        {"_id": 0, "push_token": 1}
-    )
-    tokens = [doc["push_token"] async for doc in tokens_cursor]
-    if not tokens:
-        return 0
-    messages = [
-        {"to": t, "title": title, "body": body, "data": data or {}, "sound": "default", "priority": "high"}
-        for t in tokens if t and t.startswith("ExponentPushToken")
-    ]
-    if not messages:
-        return 0
-    try:
-        # Expo Push API max 100 mesaj/istek kabul eder → chunk'la
-        sent = 0
-        async with httpx.AsyncClient(timeout=20) as client:
-            for i in range(0, len(messages), 100):
-                chunk = messages[i:i+100]
-                resp = await client.post(
-                    EXPO_PUSH_API, json=chunk,
-                    headers={"Accept": "application/json", "Content-Type": "application/json"},
-                )
-                resp.raise_for_status()
-                sent += len(chunk)
-        return sent
-    except Exception as e:
-        logging.warning(f"[push] Toplu push hatası: {e}")
-        return 0
-
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-# WEB PUSH — Safari iOS 16.4+ / tüm masaüstü tarayıcılar (VAPID)
-# Koleksiyon: web_push_subs  {user_id?, endpoint, keys:{p256dh,auth}, ts}
-# ═════════════════════════════════════════════════════════════════════════════
-
-async def _send_web_push_one(sub: dict, title: str, body: str, data: dict = None) -> bool:
-    """Tek aboneye web push gönderir. Başarısızlıkta aboneliği siler (410/404)."""
-    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_PEM:
-        return False
-    import json as _json
-    payload = _json.dumps({"title": title, "body": body, "data": data or {}, "icon": "/afro-logo.png", "badge": "/afro-logo.png"})
-    sub_info = {"endpoint": sub["endpoint"], "keys": sub.get("keys", {})}
-    try:
-        webpush(
-            subscription_info=sub_info,
-            data=payload,
-            vapid_private_key=VAPID_PRIVATE_PEM,
-            vapid_claims={"sub": VAPID_CONTACT},
-        )
-        return True
-    except WebPushException as e:
-        code = (e.response.status_code if e.response is not None else 0)
-        if code in (404, 410):
-            await db.web_push_subs.delete_one({"endpoint": sub["endpoint"]})
-            logger.debug("[webpush] abonelik sona erdi, silindi: %s", sub["endpoint"][:60])
-        else:
-            logger.warning("[webpush] gönderim hatası %s: %s", code, str(e)[:120])
-        return False
-    except Exception as e:
-        logger.warning("[webpush] webpush hatası: %s", str(e)[:120])
-        return False
-
-
-async def send_web_push_to_all(title: str, body: str, data: dict = None) -> int:
-    """Tüm web push abonelerine bildirim gönderir."""
-    subs = [doc async for doc in db.web_push_subs.find({}, {"_id": 0})]
-    ok = 0
-    for sub in subs:
-        if await _send_web_push_one(sub, title, body, data):
-            ok += 1
-    return ok
-
-
-async def send_web_push_to_user(user_id: str, title: str, body: str, data: dict = None) -> int:
-    """Belirli kullanıcının tüm web push aboneliklerine bildirim gönderir."""
-    subs = [doc async for doc in db.web_push_subs.find({"user_id": user_id}, {"_id": 0})]
-    ok = 0
-    for sub in subs:
-        if await _send_web_push_one(sub, title, body, data):
-            ok += 1
-    return ok
-
-
-# ── Abonelik kayıt/sil endpointleri ──────────────────────────────────────────
+# ── Web Push abonelik kayıt/sil endpointleri ─────────────────────────────────
 
 @app.post("/api/push/web-subscribe")
 async def web_push_subscribe(data: dict, user=Depends(get_current_user_optional), request: Request = None):
@@ -355,24 +218,6 @@ async def admin_web_push_send(payload: dict, admin=Depends(get_current_admin)):
         raise HTTPException(status_code=400, detail="Mesaj boş olamaz")
     n = await send_web_push_to_all(title, body, payload.get("data"))
     return {"sent": n}
-
-
-async def send_push_to_courier_markets(market_names: list, title: str, body: str, data: dict = None) -> int:
-    """Belirli pazarlara atanmış kuryelere bildirim gönderir."""
-    if not market_names:
-        return 0
-    couriers = await db.users.find(
-        {
-            "role": "kurye",
-            "$or": [
-                {"courier_markets": {"$in": market_names}},
-                {"courier_market": {"$in": market_names}},
-            ]
-        },
-        {"_id": 0, "user_id": 1}
-    ).to_list(200)
-    courier_ids = [c["user_id"] for c in couriers if c.get("user_id")]
-    return await send_push_to_users(courier_ids, title, body, data)
 
 
 # Kurye/tedarikçi rol yardımcıları + get_current_courier + get_optional_user
