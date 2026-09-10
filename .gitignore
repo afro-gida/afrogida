@@ -32,3 +32,8 @@ Thumbs.db
 
 # Uploaded user content (pulled for reference; large & churny)
 backend/uploads/
+
+# Local dev venv (Windows)
+.venv/
+backend/uploads/
+
