@@ -72,6 +72,10 @@ from services.push import (
     send_push_to_users, send_push_to_all, send_push_to_courier_markets,
     _send_web_push_one, send_web_push_to_all, send_web_push_to_user,
 )
+from services.payments import (
+    _paytr_keys_status, _clean_paytr_oid, _init_paytr_token, _paytr_refund,
+    paytr_callback_expected_hash,
+)
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
@@ -5181,113 +5185,8 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
     return order
 
 
-def _paytr_keys_status() -> dict:
-    return {
-        "merchant_id": bool(os.getenv("PAYTR_MERCHANT_ID") or os.getenv("merchant_id")),
-        "merchant_key": bool(os.getenv("PAYTR_MERCHANT_KEY") or os.getenv("merchant_key")),
-        "merchant_salt": bool(os.getenv("PAYTR_MERCHANT_SALT") or os.getenv("merchant_salt")),
-    }
-
-
-def _clean_paytr_oid(value: str) -> str:
-    cleaned = "".join(ch for ch in str(value or "") if ch.isalnum())
-    return (cleaned[:64] if cleaned else uuid.uuid4().hex[:16])
-
-
-async def _init_paytr_token(order: dict, request: Request, user_email: str | None = None) -> dict:
-    merchant_id = os.getenv("PAYTR_MERCHANT_ID") or os.getenv("merchant_id")
-    merchant_key = os.getenv("PAYTR_MERCHANT_KEY") or os.getenv("merchant_key")
-    merchant_salt = os.getenv("PAYTR_MERCHANT_SALT") or os.getenv("merchant_salt")
-    if not merchant_id or not merchant_key or not merchant_salt:
-        return {"success": False, "configured": False, "message": "PayTR merchant_id / merchant_key / merchant_salt ayarları eksik"}
-
-    email = user_email or f"{order.get('user_id')}@afrogida.local"
-    user_ip = request.client.host if request and request.client else "127.0.0.1"
-    merchant_oid = _clean_paytr_oid(order.get("merchant_oid") or order.get("tx_id") or new_id("tx"))
-    order["merchant_oid"] = merchant_oid
-    payment_amount = str(int(round(float(order.get("amount", 0)) * 100)))
-    basket = [[i.get("name") or "Ürün", f"{float(i.get('line_total') or i.get('total_price') or 0):.2f}", int(max(1, round(float(i.get("qty") or i.get("quantity") or 1))))] for i in order.get("items", [])]
-    user_basket = base64.b64encode(json.dumps(basket, ensure_ascii=False).encode()).decode()
-    no_installment = "0"
-    max_installment = "0"
-    currency = "TL"
-    test_mode = os.getenv("PAYTR_TEST_MODE", "1")
-    hash_str = merchant_id + user_ip + merchant_oid + email + payment_amount + user_basket + no_installment + max_installment + currency + test_mode + merchant_salt
-    paytr_token = base64.b64encode(hmac.new(merchant_key.encode(), hash_str.encode(), hashlib.sha256).digest()).decode()
-    payload = {
-        "merchant_id": merchant_id,
-        "user_ip": user_ip,
-        "merchant_oid": merchant_oid,
-        "email": email,
-        "payment_amount": payment_amount,
-        "paytr_token": paytr_token,
-        "user_basket": user_basket,
-        "debug_on": os.getenv("PAYTR_DEBUG_ON", "1"),
-        "no_installment": no_installment,
-        "max_installment": max_installment,
-        "user_name": order.get("user_name") or "Afro Gıda Müşteri",
-        "user_address": (dec_str(order.get("address")) or "Bursa")[:300],
-        "user_phone": str(order.get("user_phone") or ""),
-        "merchant_ok_url": os.getenv("PAYTR_OK_URL", "https://afrogida.com.tr/my-orders"),
-        "merchant_fail_url": os.getenv("PAYTR_FAIL_URL", "https://afrogida.com.tr/cart"),
-        "timeout_limit": os.getenv("PAYTR_TIMEOUT_LIMIT", "30"),
-        "currency": currency,
-        "test_mode": test_mode,
-        "lang": "tr",
-    }
-    async with httpx.AsyncClient(timeout=20) as http:
-        resp = await http.post("https://www.paytr.com/odeme/api/get-token", data=payload)
-    try:
-        result = resp.json()
-    except Exception:
-        return {"success": False, "configured": True, "message": "PayTR yanıtı okunamadı", "status_code": resp.status_code}
-    if result.get("status") == "success" and result.get("token"):
-        return {"success": True, "configured": True, "merchant_oid": merchant_oid, "token": result["token"], "payment_url": f"https://www.paytr.com/odeme/guvenli/{result['token']}"}
-    return {"success": False, "configured": True, "merchant_oid": merchant_oid, "message": result.get("reason") or "PayTR token alınamadı", "paytr_response": result}
-
-
-async def _paytr_refund(merchant_oid: str, return_amount: float) -> dict:
-    """PayTR karta iade (para iadesi) isteği gönderir.
-
-    PayTR iade API'si artımlıdır: her çağrı, siparişin kalan iade edilebilir
-    tutarından `return_amount` kadarını müşterinin kartına iade eder. Aynı
-    sipariş için birden çok kısmi iade yapılabilir (toplam ödeme tutarına kadar).
-    İade GERİ ALINAMAZ.
-
-    Dönüş: {"success": bool, "configured": bool, "amount": float, "message": str,
-            "paytr_response": {...}}
-    """
-    merchant_id = os.getenv("PAYTR_MERCHANT_ID") or os.getenv("merchant_id")
-    merchant_key = os.getenv("PAYTR_MERCHANT_KEY") or os.getenv("merchant_key")
-    merchant_salt = os.getenv("PAYTR_MERCHANT_SALT") or os.getenv("merchant_salt")
-    if not merchant_id or not merchant_key or not merchant_salt:
-        return {"success": False, "configured": False, "message": "PayTR merchant_id / merchant_key / merchant_salt ayarları eksik"}
-    if not merchant_oid:
-        return {"success": False, "configured": True, "message": "Bu siparişte PayTR merchant_oid yok (online ödeme değil)"}
-    amount_str = f"{float(return_amount):.2f}"
-    # PayTR iade token: base64(hmac_sha256(key, merchant_id + merchant_oid + return_amount + merchant_salt))
-    hash_str = str(merchant_id) + str(merchant_oid) + amount_str + str(merchant_salt)
-    token = base64.b64encode(hmac.new(merchant_key.encode(), hash_str.encode(), hashlib.sha256).digest()).decode()
-    payload = {
-        "merchant_id": merchant_id,
-        "merchant_oid": merchant_oid,
-        "return_amount": amount_str,
-        "paytr_token": token,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=20) as http:
-            resp = await http.post("https://www.paytr.com/odeme/iade", data=payload)
-        result = resp.json()
-    except Exception as e:
-        return {"success": False, "configured": True, "message": f"PayTR iade isteği başarısız: {e}"}
-    if result.get("status") == "success":
-        return {"success": True, "configured": True, "amount": float(return_amount), "paytr_response": result}
-    return {
-        "success": False,
-        "configured": True,
-        "message": result.get("err_msg") or result.get("reason") or "PayTR iade reddedildi",
-        "paytr_response": result,
-    }
+# PayTR entegrasyonu (_paytr_keys_status, _clean_paytr_oid, _init_paytr_token,
+# _paytr_refund, paytr_callback_expected_hash) -> services/payments.py
 
 
 async def _consume_coupon_for_order(order: dict, request: Request = None):
@@ -5467,15 +5366,12 @@ async def paytr_callback(request: Request):
     total_amount = form_data.get("total_amount")
     hash_val = form_data.get("hash")
 
-    merchant_key = os.getenv("PAYTR_MERCHANT_KEY") or os.getenv("merchant_key")
-    merchant_salt = os.getenv("PAYTR_MERCHANT_SALT") or os.getenv("merchant_salt")
-    if not merchant_key or not merchant_salt:
+    expected = paytr_callback_expected_hash(merchant_oid, status, total_amount)
+    if expected is None:
         return PlainTextResponse("PAYTR_CONFIG_MISSING")
     if not merchant_oid or not status or not total_amount or not hash_val:
         return PlainTextResponse("PAYTR_MISSING_FIELDS")
 
-    hash_str = f"{merchant_oid}{merchant_salt}{status}{total_amount}"
-    expected = base64.b64encode(hmac.new(merchant_key.encode(), hash_str.encode(), hashlib.sha256).digest()).decode()
     if hash_val != expected:
         await _insert_log("log_security", {"event_type": "unauthorized_access", "source_ip": _extract_request_meta(request)["ip_address"], "user_id": None, "details": {"reason": "PayTR hash doğrulama başarısız", "merchant_oid": merchant_oid}, "severity": "critical", "resolved": False}, request)
         return PlainTextResponse("PAYTR_HASH_MISMATCH")
