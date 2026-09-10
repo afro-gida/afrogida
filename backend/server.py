@@ -41,6 +41,10 @@ from core.logs import (
     _mask_phone, _extract_request_meta, _client_ip, _insert_log, _log_sms_send,
     _check_brute_force, _check_otp_abuse, _log_payment_restriction, _record_visit,
 )
+from services.sms import (
+    _tr_ascii, _normalize_sms_phone, _generate_sms_code, send_sms_verimor,
+    send_delivery_sms, _no_show_order_no, _send_no_show_sms,
+)
 
 app = FastAPI()
 app.mount("/uploads", StaticFiles(directory=str(ROOT_DIR / "uploads")), name="uploads")
@@ -1290,86 +1294,8 @@ def _clean_text(value) -> str:
 
 
 
-# ---------------- Verimor SMS helpers ----------------
-def _normalize_sms_phone(phone: str) -> str:
-    """TR cep telefonu normalleştir ve doğrula.
-    
-    Geçerli formatlar: 05XXXXXXXXX, 5XXXXXXXXX, +905XXXXXXXXX
-    05 ile başlamayanlar REDDED (geçersiz TR cep formatı).
-    Returns: 905XXXXXXXXX formatında string, geçersizse empty string.
-    """
-    phone_clean = str(phone or "").replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
-    
-    # 0 ile başlıyorsa kaldır
-    if phone_clean.startswith("0"):
-        phone_clean = phone_clean[1:]
-    
-    # 90 ile başlıyorsa kaldır (tekrar eklenecek)
-    if phone_clean.startswith("90"):
-        phone_clean = phone_clean[2:]
-    
-    # Kalan 10 haneli numara: ilk hane MUTLAKA 5 olmalı (TR cep)
-    if len(phone_clean) == 10 and phone_clean[0] == "5":
-        return "90" + phone_clean
-    
-    # Geçersiz format (5 ile başlamıyor veya uzunluk yanlış)
-    return ""
-
-
-def send_sms_verimor(phone: str, message: str) -> bool:
-    """Verimor HTTP API ile SMS gönder."""
-    username = os.environ.get("VERIMOR_USERNAME", "")
-    password = os.environ.get("VERIMOR_PASSWORD", "")
-    sender = os.environ.get("VERIMOR_SENDER", "AFROGIDA")
-
-    if not username or not password:
-        logger.error("[SMS] Verimor bilgileri eksik")
-        return False
-
-    phone_clean = _normalize_sms_phone(phone)
-    if not phone_clean:
-        logger.error("[SMS] Geçersiz telefon numarası (TR cep formatı değil veya 5 ile başlamıyor): %s", phone)
-        return False
-
-    payload = {
-        "username": username,
-        "password": password,
-        "sender": sender,
-        "messages": [{"msg": message, "dest": phone_clean}],
-    }
-
-    try:
-        response = httpx.post("https://sms.verimor.com.tr/v2/send.json", json=payload, timeout=10)
-        try:
-            result = response.json()
-        except Exception:
-            result = {"raw": response.text[:300]}
-        if response.status_code == 200:
-            logger.info("[SMS] Başarıyla gönderildi: %s", phone_clean[-4:].rjust(len(phone_clean), "*"))
-            return True
-        logger.error("[SMS] Verimor hata status=%s response=%s", response.status_code, result)
-        return False
-    except Exception as exc:
-        logger.error("[SMS] İstek hatası: %s", exc)
-        return False
-
-
-def _generate_sms_code() -> str:
-    import random
-    return f"{random.randint(0, 999999):06d}"
-
-
-def send_delivery_sms(phone: str, order_id: str, delivery_code: str) -> bool:
-    """Sipariş hazır olduğunda teslim kodu SMS'i gönder."""
-    expiry_time = datetime.now().replace(hour=23, minute=59, second=0, microsecond=0)
-    expiry_str = expiry_time.strftime("%d.%m.%Y 23:59")
-    message = (
-        "Afro Gida siparisiniz hazir!\n"
-        f"Teslim kodu: {delivery_code}\n"
-        f"Gecerlilik: {expiry_str}\n"
-        f"Siparis No: {str(order_id)[:8].upper()}"
-    )
-    return send_sms_verimor(phone, message)
+# SMS yardımcıları (_normalize_sms_phone, send_sms_verimor, _generate_sms_code,
+# send_delivery_sms, _tr_ascii, _no_show_order_no, _send_no_show_sms) -> services/sms.py
 
 
 # ---------------- Teslim alınmayan sipariş (no-show) ceza sistemi ----------------
@@ -1384,56 +1310,6 @@ NO_SHOW_RESTRICTION_DAYS = 60  # (geriye dönük uyumluluk; artık kademeli sabi
 NO_SHOW_DAYS_LEVEL2 = 60
 NO_SHOW_DAYS_LEVEL3 = 180
 NO_SHOW_DAYS_LEVEL4 = 365
-
-
-def _tr_ascii(text: str) -> str:
-    """Türkçe karakterleri ASCII'ye çevir (SMS GSM-7 uyumu / maliyet için)."""
-    table = str.maketrans({
-        "ç": "c", "Ç": "C", "ğ": "g", "Ğ": "G", "ı": "i", "İ": "I",
-        "ö": "o", "Ö": "O", "ş": "s", "Ş": "S", "ü": "u", "Ü": "U",
-    })
-    return str(text or "").translate(table)
-
-
-def _no_show_order_no(order: dict) -> str:
-    """SMS'te gösterilecek kısa sipariş numarası."""
-    if not order:
-        return ""
-    raw = order.get("order_number") or order.get("tx_id") or order.get("order_id") or ""
-    return str(raw)[:8].upper()
-
-
-def _send_no_show_sms(user: dict, order: dict, level: int, until: Optional[datetime]) -> Optional[bool]:
-    """No-show cezası SMS'i gönder. level=1 uyarı, level>=2 kısıtlama.
-    Döner: True/False (gönderim sonucu) veya None (telefon yok)."""
-    phone = (user or {}).get("phone")
-    if not phone:
-        return None
-    name = _tr_ascii((user or {}).get("name") or "Musterimiz")
-    order_no = _no_show_order_no(order)
-    if level <= 1:
-        message = (
-            f"Sayin {name}, #{order_no} numarali siparisiniz teslim alinmadi. "
-            "Bu bir uyaridir. Tekrarinda kapida odeme seceneginiz kisitlanacaktir. - Afro Gida"
-        )
-    else:
-        if level == 2:
-            sure = "60 gun"
-        elif level == 3:
-            sure = "180 gun"
-        else:
-            sure = "1 yil"
-        date_str = until.strftime("%d.%m.%Y") if until else ""
-        message = (
-            f"Sayin {name}, #{order_no} numarali siparisiniz teslim alinmadi. "
-            f"Tekrari nedeniyle {sure} boyunca yalnizca online odeme ile siparis verebilirsiniz. "
-            f"Kisitlama bitisi: {date_str}. - Afro Gida"
-        )
-    try:
-        return send_sms_verimor(phone, message)
-    except Exception as exc:
-        logger.error("[NO-SHOW SMS] Gönderim hatası: %s", exc)
-        return False
 
 
 def _evaluate_no_show_restriction(user: dict) -> dict:
