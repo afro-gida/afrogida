@@ -24,9 +24,20 @@ from datetime import datetime, timezone, timedelta
 
 
 from core.util import now_utc, to_aware, new_id
+from core.config import (
+    ROOT_DIR, EMERGENT_SESSION_API, SESSION_DURATION_DAYS, ORDERED_CATEGORIES,
+    PRODUCT_SEED_VERSION, WELCOME_DISCOUNT_AMOUNT, WELCOME_MIN_AMOUNT, CATALOG_CACHE_TTL,
+    AFRO_SECRET_KEY, _AFRO_ENC_RAW, SECURITY_ADMIN_PHONE, SECURITY_SMS_THROTTLE_MIN,
+    ADMIN_SESSION_HOURS, ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS,
+    ENC_PREFIX, _afro_key_material,
+)
+from core.money import _CENT, _MILLI, D, money, money_d, _num_close
+from core.crypto import (
+    Fernet, InvalidToken, _afro_fernet, _AFRO_FERNET, enc_str, dec_str, is_encrypted,
+    _hmac_hex, hash_token, order_signature, verify_order_signature,
+)
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+# .env core.config import'unda yüklendi
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -41,24 +52,17 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-EMERGENT_SESSION_API = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
-SESSION_DURATION_DAYS = 7
+# Sabitler -> core/config.py (EMERGENT_SESSION_API, SESSION_DURATION_DAYS,
+# ORDERED_CATEGORIES, PRODUCT_SEED_VERSION, WELCOME_*, CATALOG_CACHE_TTL)
 
-# Fixed, ordered product categories shown as tabs in the app
-ORDERED_CATEGORIES = ["Domates", "Salata", "Kabak", "Patlıcan", "Biber", "Fasulye & Bakliyat", "Çeşitler"]
-PRODUCT_SEED_VERSION = 2
-
-# Welcome coupon auto-issued to every new member on registration
-WELCOME_DISCOUNT_AMOUNT = 50.0   # TL
-WELCOME_MIN_AMOUNT = 500.0       # TL
-
-# catalog_config in-memory cache (60s TTL) - performance optimization
+# catalog_config bellek içi önbellek (TTL -> core/config.CATALOG_CACHE_TTL)
 _CATALOG_CACHE = None
 _CATALOG_CACHE_TS = 0
-CATALOG_CACHE_TTL = 60  # seconds
 
 # ---------------- Helpers ----------------
-# now_utc / to_aware / new_id -> core/util.py (yukarıda import edildi)
+# now_utc / to_aware / new_id -> core/util.py
+# para (D/money/money_d/_num_close) -> core/money.py
+# şifreleme + imzalar (enc_str/dec_str/_hmac_hex/hash_token/order_signature) -> core/crypto.py
 
 
 # ============================================================
@@ -76,149 +80,14 @@ import asyncio
 import secrets
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from pymongo import ReturnDocument
-try:
-    from cryptography.fernet import Fernet, InvalidToken
-except Exception:  # pragma: no cover
-    Fernet = None
-    InvalidToken = Exception
 
-
-def _afro_key_material(env_name: str, purpose: str) -> str:
-    """Anahtar .env'den okunur. Yoksa (acil durum) PayTR anahtarlarından
-    deterministik türetilir ki 3 uvicorn worker aynı anahtarı kullansın."""
-    val = (os.environ.get(env_name) or "").strip()
-    if val:
-        return val
-    logger.warning(f"[GÜVENLİK] {env_name} .env içinde yok, türetilmiş anahtar kullanılıyor")
-    seed = (os.environ.get("PAYTR_MERCHANT_SALT", "") + "|" + os.environ.get("PAYTR_MERCHANT_KEY", "") + "|" + purpose).encode("utf-8")
-    return hashlib.sha256(seed).hexdigest()
-
-
-AFRO_SECRET_KEY = _afro_key_material("AFRO_SECRET_KEY", "afro-hmac-v1")
-_AFRO_ENC_RAW = _afro_key_material("AFRO_ENC_KEY", "afro-enc-v1")
-SECURITY_ADMIN_PHONE = (os.environ.get("SECURITY_ADMIN_PHONE") or "05380557577").strip()
-SECURITY_SMS_THROTTLE_MIN = int(os.environ.get("SECURITY_SMS_THROTTLE_MIN") or 10)
-ADMIN_SESSION_HOURS = int(os.environ.get("ADMIN_SESSION_HOURS") or 12)
-# Yönetici 2FA: kod HER girişte (cihazdan bağımsız) bu numaraya gider
-ADMIN_2FA_PHONE = (os.environ.get("ADMIN_2FA_PHONE") or SECURITY_ADMIN_PHONE).strip()
-ADMIN_2FA_TTL_SEC = int(os.environ.get("ADMIN_2FA_TTL_SEC") or 300)
-ADMIN_2FA_MAX_ATTEMPTS = 5
-ENC_PREFIX = "enc:v1:"
-
-
-def _afro_fernet():
-    if Fernet is None:
-        logger.error("[GÜVENLİK] cryptography modülü yok — şifreleme devre dışı!")
-        return None
-    key = base64.urlsafe_b64encode(hashlib.sha256(_AFRO_ENC_RAW.encode("utf-8")).digest())
-    return Fernet(key)
-
-
-_AFRO_FERNET = _afro_fernet()
-
-
-def enc_str(value):
-    """Metni şifreler -> 'enc:v1:<token>'. Boş/None aynen döner. Zaten şifreliyse dokunmaz."""
-    if value is None or value == "":
-        return value
-    s = str(value)
-    if s.startswith(ENC_PREFIX) or _AFRO_FERNET is None:
-        return s
-    try:
-        return ENC_PREFIX + _AFRO_FERNET.encrypt(s.encode("utf-8")).decode("ascii")
-    except Exception as exc:
-        logger.error(f"[GÜVENLİK] şifreleme hatası: {exc}")
-        return s
-
-
-def dec_str(value):
-    """Şifreli metni çözer. Şifreli değilse (eski kayıt) aynen döner."""
-    if value is None or value == "":
-        return value
-    s = str(value)
-    if not s.startswith(ENC_PREFIX):
-        return s
-    if _AFRO_FERNET is None:
-        return "[şifreli]"
-    try:
-        return _AFRO_FERNET.decrypt(s[len(ENC_PREFIX):].encode("ascii")).decode("utf-8")
-    except (InvalidToken, Exception):
-        return "[şifre çözülemedi]"
-
-
-def is_encrypted(value) -> bool:
-    return isinstance(value, str) and value.startswith(ENC_PREFIX)
-
-
-def _hmac_hex(data: str) -> str:
-    return hmac.new(AFRO_SECRET_KEY.encode("utf-8"), data.encode("utf-8"), hashlib.sha256).hexdigest()
-
-
-def hash_token(token: str) -> str:
-    """Oturum token'ının DB'de saklanan tek yönlü özeti (DB sızsa bile token kullanılamaz)."""
-    return _hmac_hex("session|" + str(token or ""))
-
-
-# ---- Para hesabı: float yerine Decimal, kuruşa yuvarla ----
-_CENT = Decimal("0.01")
-_MILLI = Decimal("0.001")
-
-
-def D(value, default="0") -> Decimal:
-    try:
-        if value is None or value == "":
-            return Decimal(default)
-        if isinstance(value, bool):
-            return Decimal(default)
-        return Decimal(str(value))
-    except (InvalidOperation, ValueError, TypeError):
-        return Decimal(default)
-
-
-def money(value) -> float:
-    """Kuruşa (0.01) yuvarlanmış float (JSON uyumu için)."""
-    return float(D(value).quantize(_CENT, rounding=ROUND_HALF_UP))
-
-
-def money_d(value) -> Decimal:
-    return D(value).quantize(_CENT, rounding=ROUND_HALF_UP)
-
-
-def _num_close(a, b, tol="0.011") -> bool:
-    return abs(D(a) - D(b)) <= Decimal(tol)
-
-
-# ---- Sipariş bütünlük imzası ----
-def order_signature(order: dict) -> str:
-    items = []
-    for it in (order.get("items") or []):
-        items.append([
-            str(it.get("id") or ""),
-            str(D(it.get("qty"))),
-            str(money_d(it.get("price"))),
-            str(money_d(it.get("options_fee"))),
-            str(money_d(it.get("line_total"))),
-        ])
-    payload = json.dumps({
-        "tx_id": order.get("tx_id"),
-        "user_id": order.get("user_id"),
-        "items": items,
-        "subtotal": str(money_d(order.get("subtotal"))),
-        "delivery_fee": str(money_d(order.get("delivery_fee"))),
-        "discount": str(money_d(order.get("discount"))),
-        "amount": str(money_d(order.get("amount"))),
-        "coupon_code": order.get("coupon_code") or "",
-        "delivery_type": order.get("delivery_type"),
-        "payment_method": order.get("payment_method"),
-    }, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-    return _hmac_hex("order|" + payload)
-
-
-def verify_order_signature(order: dict) -> bool:
-    sig = order.get("calc_signature")
-    if not sig:
-        return False
-    return hmac.compare_digest(str(sig), order_signature(order))
+# Bu blok modüllere taşındı:
+#   _afro_key_material, AFRO_SECRET_KEY, _AFRO_ENC_RAW, SECURITY_ADMIN_PHONE,
+#   SECURITY_SMS_THROTTLE_MIN, ADMIN_SESSION_HOURS, ADMIN_2FA_*, ENC_PREFIX -> core/config.py
+#   Fernet, InvalidToken, _afro_fernet, _AFRO_FERNET, enc_str, dec_str, is_encrypted,
+#   _hmac_hex, hash_token, order_signature, verify_order_signature            -> core/crypto.py
+#   _CENT, _MILLI, D, money, money_d, _num_close                              -> core/money.py
+# (hepsi dosyanın başında import ediliyor)
 
 
 # ---- Şifreli alanların okunması (çıkış yollarında) ----
