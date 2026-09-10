@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 # Afro Gida deploy: pull the repo on the VPS and roll it out.
 #
-#   deploy.sh              -> backend only (server.py + restart + health check + auto-rollback)
-#   deploy.sh --frontend   -> also rsync frontend/ into the nginx web root
-#   deploy.sh --force       -> deploy even if origin/main == current HEAD
+#   deploy.sh                     backend: sync backend/ -> live dir, restart,
+#                                 health check, API-contract check, auto-rollback
+#   deploy.sh --frontend          also rsync frontend/ into the nginx web root
+#   deploy.sh --force             deploy even if origin/main == current HEAD
+#   deploy.sh --allow-api-change  skip the OpenAPI contract guard (intended change)
 #
-# Safe to re-run. On a failed health check the backend is restored and the
-# checkout is reset to the previous commit.
+# On a failed health check or contract drift the live backend dir is restored
+# from a full tgz backup and the checkout is reset to the previous commit.
 set -euo pipefail
 
 REPO=/opt/afrogida
 LIVE_BACKEND=/root/afro-proje-yedek/afro-proje/backend
 LIVE_FRONTEND=/var/www/afro-proje
+BACKUP_DIR=/root/afro-proje-yedek/deploy-backups
 BRANCH=main
 
 DO_FRONTEND=0
 FORCE=0
+ALLOW_API_CHANGE=0
 for arg in "$@"; do
     case "$arg" in
-        --frontend) DO_FRONTEND=1 ;;
-        --force)    FORCE=1 ;;
+        --frontend)         DO_FRONTEND=1 ;;
+        --force)            FORCE=1 ;;
+        --allow-api-change) ALLOW_API_CHANGE=1 ;;
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
     esac
 done
@@ -39,19 +44,38 @@ git reset --hard "origin/$BRANCH"
 
 TS=$(date +%Y%m%d-%H%M%S)
 PYBIN="$LIVE_BACKEND/venv/bin/python3"
+BACKUP="$BACKUP_DIR/backend-$TS.tgz"
+
+rollback() {
+    echo "!! $1 - rolling back to ${OLD_SHA:0:12}"
+    sudo find "$LIVE_BACKEND" -mindepth 1 -maxdepth 1 \
+        ! -name venv ! -name uploads ! -name '.env' ! -name '*.log' -exec rm -rf {} +
+    sudo tar xzf "$BACKUP" -C "$LIVE_BACKEND"
+    sudo systemctl restart afro-backend
+    git reset --hard "$OLD_SHA"
+    exit 1
+}
 
 # ---- backend ----
 echo ">> backend: syntax check"
-sudo "$PYBIN" -m py_compile "$REPO/backend/server.py"
+find "$REPO/backend" -name '*.py' -print0 | xargs -0 -r sudo "$PYBIN" -m py_compile
 
 if [ -f "$REPO/backend/requirements.txt" ]; then
     echo ">> backend: pip install -r requirements.txt"
     sudo "$LIVE_BACKEND/venv/bin/pip" install -q -r "$REPO/backend/requirements.txt"
 fi
 
-echo ">> backend: backup + install + restart"
-sudo cp -a "$LIVE_BACKEND/server.py" "$LIVE_BACKEND/server.py.deploy-bak-$TS"
-sudo install -m 644 -o root -g root "$REPO/backend/server.py" "$LIVE_BACKEND/server.py"
+echo ">> backend: full backup -> $BACKUP"
+sudo mkdir -p "$BACKUP_DIR"
+sudo tar czf "$BACKUP" -C "$LIVE_BACKEND" \
+    --exclude=venv --exclude=uploads --exclude='*.log' --exclude='__pycache__' .
+
+echo ">> backend: sync + restart"
+sudo rsync -a --delete \
+    --exclude='.env' --exclude='venv/' --exclude='uploads/' --exclude='*.log' \
+    --exclude='__pycache__/' --exclude='*bak*' --exclude='*.tgz' \
+    --exclude='server_remote*.py' \
+    "$REPO/backend/" "$LIVE_BACKEND/"
 sudo systemctl restart afro-backend
 sleep 4
 
@@ -59,12 +83,11 @@ echo ">> health check"
 LOCAL=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/ || echo 000)
 EDGE=$(curl -s -o /dev/null -w '%{http_code}' https://afrogida.com.tr/api/ || echo 000)
 echo "   backend=$LOCAL  edge=$EDGE"
-if [ "$LOCAL" != "200" ]; then
-    echo "!! HEALTH CHECK FAILED - rolling back"
-    sudo install -m 644 -o root -g root "$LIVE_BACKEND/server.py.deploy-bak-$TS" "$LIVE_BACKEND/server.py"
-    sudo systemctl restart afro-backend
-    git reset --hard "$OLD_SHA"
-    exit 1
+[ "$LOCAL" = "200" ] || rollback "HEALTH CHECK FAILED (HTTP $LOCAL)"
+
+if [ "$ALLOW_API_CHANGE" -eq 0 ] && [ -f "$REPO/backend/openapi-baseline.json" ]; then
+    echo ">> API contract check"
+    BACKEND_URL=http://127.0.0.1:8000 bash "$REPO/infra/check-openapi.sh" || rollback "API CONTRACT DRIFT"
 fi
 
 # ---- frontend (opt-in) ----
@@ -77,7 +100,7 @@ if [ "$DO_FRONTEND" -eq 1 ]; then
     sudo chown -R www-data:www-data "$LIVE_FRONTEND"
 fi
 
-# prune old deploy backups (keep last 10)
-sudo bash -c "ls -1t $LIVE_BACKEND/server.py.deploy-bak-* 2>/dev/null | tail -n +11 | xargs -r rm -f"
+# keep the last 10 backups
+sudo bash -c "ls -1t $BACKUP_DIR/backend-*.tgz 2>/dev/null | tail -n +11 | xargs -r rm -f"
 
-echo ">> deployed ${NEW_SHA:0:12}  (health OK)"
+echo ">> deployed ${NEW_SHA:0:12}  (health + contract OK)"

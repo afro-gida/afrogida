@@ -31,10 +31,22 @@ powershell -ExecutionPolicy Bypass -File infra\deploy-remote.ps1 [-Frontend] [-F
 ```
 `afrogida-vps` ssh alias'ını (`~/.ssh/config`) ve `~/.ssh/afrogida_vps` anahtarını kullanır.
 
-Health check `http://127.0.0.1:8000/api/` 200 dönmezse: server.py eski haline döner,
-servis restart edilir, checkout bir önceki commit'e sarılır, exit 1.
+Deploy şunu yapar: `backend/` ağacını canlı dizine `rsync --delete` ile senkronlar
+(`.env`, `venv`, `uploads`, loglar, backup'lar korunur) → `pip install -r
+requirements.txt` (dosya varsa) → `afro-backend` restart → health check → **API
+sözleşme kontrolü** (`check-openapi.sh`, `backend/openapi-baseline.json`'a karşı).
 
-Backend yedekleri: `server.py.deploy-bak-<zaman>` (son 10 tutulur).
+Health check 200 değilse **veya** API yüzeyi (path/method/parametre/şema) değiştiyse:
+canlı backend dizini tam yedekten (`/root/afro-proje-yedek/deploy-backups/backend-<zaman>.tgz`)
+geri yüklenir, servis restart edilir, checkout önceki commit'e sarılır, exit 1.
+
+Kasıtlı bir API değişikliği yapıyorsan: `afrogida-deploy --allow-api-change`, sonra
+baseline'ı güncelle:
+```bash
+curl -s http://127.0.0.1:8000/openapi.json | python3 -m json.tool --sort-keys > backend/openapi-baseline.json
+```
+
+Backend yedekleri: `deploy-backups/backend-<zaman>.tgz` (son 10 tutulur).
 
 ## Notlar
 
