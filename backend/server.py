@@ -75,7 +75,7 @@ from services.payments import (
     _paytr_keys_status, _clean_paytr_oid, _init_paytr_token, _paytr_refund,
     paytr_callback_expected_hash,
 )
-from services.catalog import DEFAULT_CATALOG_CONFIG, _read_catalog_config, _write_catalog_config
+from services.catalog import _read_catalog_config
 from services.orders import (
     ORDER_ENC_FIELDS, ORDER_INTERNAL_FIELDS, _dec_order, _dec_orders, _customer_order_view,
     _normalize_delivery_type, _normalize_payment_method, _as_float, _resolve_selected_options,
@@ -886,6 +886,7 @@ from routers.payments import router as _payments_router
 from routers.courier import router as _courier_router
 from routers.suppliers import router as _suppliers_router
 from routers.logs import router as _logs_router
+from routers.catalog import router as _catalog_router
 app.include_router(api_router)
 app.include_router(_push_router)
 app.include_router(_auth_router)
@@ -897,6 +898,7 @@ app.include_router(_payments_router)
 app.include_router(_courier_router)
 app.include_router(_suppliers_router)
 app.include_router(_logs_router)
+app.include_router(_catalog_router)
 
 
 
@@ -1055,26 +1057,7 @@ async def shutdown_db_client():
 # SUPPLIER ENDPOINTS (admin CRUD /api/admin/suppliers*, public /api/suppliers)
 # -> routers/suppliers.py
 
-# ---------- Catalog Config ----------
-# DEFAULT_CATALOG_CONFIG, _read_catalog_config, _write_catalog_config
-# -> services/catalog.py (dosya başında import ediliyor)
-
-@app.get("/api/catalog-config")
-async def get_catalog_config():
-    return await _read_catalog_config()
-
-@app.get("/api/admin/catalog-config")
-async def admin_get_catalog_config(current_admin: dict = Depends(get_current_staff)):
-    return await _read_catalog_config()
-
-@app.put("/api/catalog-config")
-async def update_catalog_config(data: dict, current_admin: dict = Depends(get_current_admin)):
-    return await _write_catalog_config(data)
-
-@app.put("/api/admin/catalog-config")
-async def admin_update_catalog_config(data: dict, current_admin: dict = Depends(get_current_admin)):
-    return await _write_catalog_config(data)
-
+# Catalog Config (get/set) -> routers/catalog.py
 
 
 # ---------------- Restored admin read endpoints (orders / complaints / issues / visits) ----------------
