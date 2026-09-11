@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { SAMPLE_PRODUCTS } from '@/data/sample';
+import { useProducts } from '@/lib/products-context';
 import { useCart } from '@/lib/cart-context';
 import { Spacing } from '@/constants/theme';
 
@@ -13,8 +13,9 @@ export default function ProductDetailScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { addItem } = useCart();
+  const { getById } = useProducts();
 
-  const product = SAMPLE_PRODUCTS.find((p) => p.id === id);
+  const product = getById(id);
 
   if (!product) {
     return (

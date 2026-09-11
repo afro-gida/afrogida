@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { CATEGORIES, SAMPLE_PRODUCTS } from '@/data/sample';
+import { CATEGORIES } from '@/data/sample';
+import { useProducts } from '@/lib/products-context';
 import { Spacing } from '@/constants/theme';
 import type { Product } from '@/lib/types';
 
@@ -13,19 +14,30 @@ export default function ProductsScreen() {
   const theme = useTheme();
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('Tümü');
+  const { products: allProducts, isLive, loading } = useProducts();
 
   const products = useMemo(() => {
-    if (activeCategory === 'Tümü') return SAMPLE_PRODUCTS;
-    return SAMPLE_PRODUCTS.filter((p) => p.category === activeCategory);
-  }, [activeCategory]);
+    if (activeCategory === 'Tümü') return allProducts;
+    return allProducts.filter((p) => p.category === activeCategory);
+  }, [allProducts, activeCategory]);
 
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]} edges={['top']}>
       <View style={styles.header}>
-        <ThemedText type="title" style={styles.title}>
-          Afro Gıda
-        </ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText type="title" style={styles.title}>
+            Afro Gıda
+          </ThemedText>
+          {loading && <ActivityIndicator color={theme.tint} />}
+        </View>
         <ThemedText themeColor="textSecondary">Tezgahtan sofraya, taze sebze &amp; meyve.</ThemedText>
+        {!loading && !isLive && (
+          <View style={[styles.demoNotice, { backgroundColor: theme.tintSoft }]}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Örnek veri gösteriliyor — yerel backend'e ulaşılamadı.
+            </ThemedText>
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -116,7 +128,9 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, gap: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   title: { fontSize: 28, lineHeight: 34 },
+  demoNotice: { borderRadius: 8, paddingHorizontal: Spacing.two, paddingVertical: 4, marginTop: 4, alignSelf: 'flex-start' },
   chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two },
   chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: 999, borderWidth: 1 },
   grid: { padding: Spacing.two, gap: Spacing.two },

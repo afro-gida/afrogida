@@ -28,6 +28,7 @@ build/
 
 # Logs / OS
 *.log
+dev_server_pid.txt
 .DS_Store
 Thumbs.db
 
