@@ -887,6 +887,7 @@ from routers.courier import router as _courier_router
 from routers.suppliers import router as _suppliers_router
 from routers.logs import router as _logs_router
 from routers.catalog import router as _catalog_router
+from routers.complaints import router as _complaints_router
 app.include_router(api_router)
 app.include_router(_push_router)
 app.include_router(_auth_router)
@@ -899,6 +900,7 @@ app.include_router(_courier_router)
 app.include_router(_suppliers_router)
 app.include_router(_logs_router)
 app.include_router(_catalog_router)
+app.include_router(_complaints_router)
 
 
 
@@ -1419,42 +1421,7 @@ async def admin_verify_delivery_code(tx_id: str, data: dict, current_admin: dict
 # orders/{tx_id}/depart,orders/{tx_id}/verify-delivery-code} -> routers/courier.py
 
 
-@app.get("/api/admin/complaints")
-async def admin_list_complaints(current_admin: dict = Depends(get_current_admin)):
-    return await db.complaints.find({}, {"_id": 0}).sort("created_at", -1).to_list(3000)
-
-
-@app.put("/api/admin/complaints/{complaint_id}")
-async def admin_update_complaint(complaint_id: str, data: dict, current_admin: dict = Depends(get_current_admin)):
-    updates = {k: v for k, v in data.items() if k in ("status", "admin_response")}
-    updates["updated_at"] = now_utc()
-    result = await db.complaints.update_one({"id": complaint_id}, {"$set": updates})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
-    return await db.complaints.find_one({"id": complaint_id}, {"_id": 0})
-
-
-@app.delete("/api/admin/complaints/{complaint_id}")
-async def admin_delete_complaint(complaint_id: str, current_admin: dict = Depends(get_current_admin)):
-    result = await db.complaints.delete_one({"id": complaint_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
-    return {"success": True}
-
-
-@app.get("/api/admin/issues")
-async def admin_list_issues(current_admin: dict = Depends(get_current_admin)):
-    return await db.order_issues.find({}, {"_id": 0}).sort("created_at", -1).to_list(3000)
-
-
-@app.put("/api/admin/issues/{issue_id}")
-async def admin_update_issue(issue_id: str, data: dict, current_admin: dict = Depends(get_current_admin)):
-    updates = {k: v for k, v in data.items() if k in ("status", "admin_note")}
-    updates["updated_at"] = now_utc()
-    result = await db.order_issues.update_one({"id": issue_id}, {"$set": updates})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
-    return await db.order_issues.find_one({"id": issue_id}, {"_id": 0})
+# admin/complaints, admin/issues -> routers/complaints.py
 
 
 @app.get("/api/admin/visits/report")
