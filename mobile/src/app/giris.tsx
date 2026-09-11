@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -9,12 +9,15 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
 
+const LOGO = require('@/assets/brand/logo.png');
+
 export default function LoginScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,12 +44,24 @@ export default function LoginScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <View style={[styles.body, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="subtitle">Giriş Yap</ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.hint}>
-          Telefon numaran ve şifrenle giriş yap.
+      <View style={styles.headerSpace}>
+        <Pressable style={styles.closeBtn} onPress={() => router.back()} hitSlop={12}>
+          <ThemedText style={styles.closeIcon}>✕</ThemedText>
+        </Pressable>
+        <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+        <ThemedText type="title" style={styles.title}>
+          Giriş Yap
+        </ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+          Kayıtlı telefon numaranızla giriş yapın.
         </ThemedText>
 
+        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+          Telefon Numarası
+        </ThemedText>
         <TextInput
           value={phone}
           onChangeText={setPhone}
@@ -55,22 +70,31 @@ export default function LoginScreen() {
           keyboardType="phone-pad"
           style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
         />
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Şifre"
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
-        />
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+          Şifre
+        </ThemedText>
+        <View style={styles.passwordWrap}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Şifreniz"
+            placeholderTextColor={theme.textSecondary}
+            secureTextEntry={!showPassword}
+            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+          />
+          <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
+            <ThemedText themeColor="textSecondary">{showPassword ? '🙈' : '👁️'}</ThemedText>
+          </Pressable>
+        </View>
 
         {error && (
-          <ThemedText themeColor="danger" type="small">
+          <ThemedText themeColor="danger" type="small" style={styles.error}>
             {error}
           </ThemedText>
         )}
 
-        <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleLogin} disabled={submitting}>
+        <Pressable style={[styles.submitBtn, { backgroundColor: theme.tint }]} onPress={handleLogin} disabled={submitting}>
           {submitting ? <ActivityIndicator color="#fff" /> : (
             <ThemedText style={{ color: '#fff' }} type="smallBold">
               Giriş Yap
@@ -78,17 +102,18 @@ export default function LoginScreen() {
           )}
         </Pressable>
 
-        <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.linkBtn}>
-          <ThemedText themeColor="tint" type="small">
-            Şifremi unuttum
+        <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgotLink}>
+          <ThemedText themeColor="accentOrange" type="small" style={styles.underline}>
+            Şifremi Unuttum
           </ThemedText>
         </Pressable>
 
-        <View style={[styles.divider, { borderColor: theme.border }]} />
-
-        <Pressable onPress={() => router.push('/kayit')} style={styles.linkBtn}>
-          <ThemedText themeColor="textSecondary" type="small">
-            Hesabın yok mu? <ThemedText themeColor="tint" type="smallBold">Kayıt Ol</ThemedText>
+        <Pressable
+          style={[styles.registerBtn, { borderColor: theme.tint }]}
+          onPress={() => router.replace('/kayit')}
+        >
+          <ThemedText themeColor="tint" type="smallBold">
+            Ücretsiz Üye Ol
           </ThemedText>
         </Pressable>
       </View>
@@ -97,10 +122,20 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { margin: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  hint: { marginBottom: Spacing.two },
+  headerSpace: { height: 150, alignItems: 'center', justifyContent: 'center' },
+  closeBtn: { position: 'absolute', top: Spacing.two, left: Spacing.three, zIndex: 1, padding: Spacing.one },
+  closeIcon: { fontSize: 20 },
+  logo: { width: 96, height: 96, borderRadius: 48 },
+  card: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, padding: Spacing.three, gap: 6 },
+  title: { fontSize: 26, lineHeight: 30 },
+  subtitle: { marginBottom: Spacing.two },
+  label: { marginTop: Spacing.two, marginBottom: 2 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
-  button: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
-  linkBtn: { alignItems: 'center', paddingVertical: Spacing.two },
-  divider: { borderTopWidth: 1, marginVertical: Spacing.one },
+  passwordWrap: { justifyContent: 'center' },
+  eyeBtn: { position: 'absolute', right: Spacing.three },
+  error: { marginTop: Spacing.one },
+  submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.two },
+  forgotLink: { alignItems: 'flex-end', paddingVertical: Spacing.two },
+  underline: { textDecorationLine: 'underline', fontWeight: '600' },
+  registerBtn: { borderRadius: 999, borderWidth: 1.5, paddingVertical: Spacing.three - 2, alignItems: 'center', marginTop: Spacing.one },
 });

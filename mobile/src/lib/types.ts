@@ -32,11 +32,16 @@ export type Market = {
   day: string;
   image_url?: string | null;
   location?: string | null;
+  location_url?: string | null;
+  google_maps_url?: string | null;
   note?: string | null;
   active: boolean;
   is_open: boolean;
   orders_enabled: boolean;
   delivery_enabled: boolean;
+  active_eve_servis: boolean;
+  active_gel_al: boolean;
+  delivery_neighborhoods?: string[];
 };
 
 export type CartLine = {

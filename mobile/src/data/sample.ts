@@ -27,8 +27,17 @@ export const SAMPLE_CAMPAIGNS: Campaign[] = [
 ];
 
 export const SAMPLE_MARKETS: Market[] = [
-  { id: 'm1', name: 'Mudanya Güzelyalı Pazarı', day: 'Perşembe', location: 'Güzelyalı, Mudanya / Bursa', active: true, is_open: true, orders_enabled: true, delivery_enabled: true, note: 'Sabah erken taze ürünlerle tezgahtayız.' },
-  { id: 'm2', name: 'Mudanya Cumartesi Pazarı', day: 'Cumartesi', location: 'Mudanya Merkez / Bursa', active: true, is_open: false, orders_enabled: false, delivery_enabled: false },
+  {
+    id: 'm1', name: 'Mudanya Güzelyalı Pazarı', day: 'Perşembe', location: 'Güzelyalı, Mudanya / Bursa',
+    active: true, is_open: true, orders_enabled: true, delivery_enabled: true,
+    active_gel_al: true, active_eve_servis: true, delivery_neighborhoods: ['Güzelyalı', 'Bademli'],
+    note: 'Sabah erken taze ürünlerle tezgahtayız.',
+  },
+  {
+    id: 'm2', name: 'Mudanya Cumartesi Pazarı', day: 'Cumartesi', location: 'Mudanya Merkez / Bursa',
+    active: true, is_open: false, orders_enabled: false, delivery_enabled: false,
+    active_gel_al: true, active_eve_servis: false, delivery_neighborhoods: [],
+  },
 ];
 
 export const SAMPLE_ORDERS: Order[] = [

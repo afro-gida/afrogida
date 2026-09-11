@@ -24,7 +24,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Ürünler', tabBarIcon: () => <TabIcon symbol="🥬" /> }}
+        options={{ title: 'Pazarlar', tabBarIcon: () => <TabIcon symbol="🏪" /> }}
       />
       <Tabs.Screen
         name="sepet"
