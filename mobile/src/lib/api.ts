@@ -1,10 +1,6 @@
 /**
  * Backend API istemcisi. Taban adres EXPO_PUBLIC_API_URL env değişkeninden gelir;
- * verilmezse yerel geliştirme backend'ini varsayar.
- *
- * NOT: Henüz gerçek backend'e bağlanmıyoruz (bkz. proje notları — .env içinde
- * gerçek PayTR/SMS anahtarları var, test modu kapalı). Ekranlar şimdilik
- * `src/data/sample.ts` içindeki örnek veriyle çalışıyor.
+ * verilmezse yerel geliştirme backend'ini (backend/run_dev_server.py) varsayar.
  */
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -16,11 +12,18 @@ export class ApiError extends Error {
   }
 }
 
+let authToken: string | null = null;
+
+/** AuthProvider oturum açtığında/kapattığında çağırır; sonraki tüm isteklere eklenir. */
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init,
-  });
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -31,6 +34,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(res.status, detail);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
