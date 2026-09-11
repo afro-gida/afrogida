@@ -30,7 +30,7 @@ from core.config import (
     PRODUCT_SEED_VERSION, WELCOME_DISCOUNT_AMOUNT, WELCOME_MIN_AMOUNT, CATALOG_CACHE_TTL,
     AFRO_SECRET_KEY, _AFRO_ENC_RAW, SECURITY_ADMIN_PHONE, SECURITY_SMS_THROTTLE_MIN,
     ADMIN_SESSION_HOURS, ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS,
-    ENC_PREFIX, _afro_key_material,
+    ENC_PREFIX, _afro_key_material, _AFRO_DOC_NAME_TR,
 )
 from core.money import _CENT, _MILLI, D, money, money_d, _num_close
 from core.crypto import (
@@ -85,6 +85,7 @@ from services.orders import (
     ORDER_ENC_FIELDS, ORDER_INTERNAL_FIELDS, _dec_order, _dec_orders, _customer_order_view,
     _normalize_delivery_type, _normalize_payment_method, _as_float, _resolve_selected_options,
     _find_address_coordinates, _evaluate_coupon, _prepare_order_payload, _consume_coupon_for_order,
+    _compat_json_clean,
 )
 from services.suppliers import (
     SUPPLIER_SOLD_STATUSES, _order_refund_info, _order_item_refunds, _build_cost_map,
@@ -584,17 +585,7 @@ async def admin_supplier_groups(admin=Depends(get_current_admin)):
 # -> services/suppliers.py
 
 
-@app.get("/api/user/me")
-async def get_user_me(user: dict = Depends(get_current_user)):
-    """Mevcut kullanıcının bilgilerini döndürür (hassas bilgiler filtrelenmiş)."""
-    return {
-        "user_id": user.get("user_id"),
-        "name": user.get("name"),
-        "phone": user.get("phone"),
-        "email": user.get("email"),
-        "role": user.get("role"),
-        "supplier_group": user.get("supplier_group") or user.get("supplier_name"),
-    }
+# /api/user/me -> routers/orders.py
 
 
 @app.get("/api/supplier/my-sales")
@@ -1713,12 +1704,16 @@ from routers.auth import router as _auth_router
 from routers.products import router as _products_router
 from routers.coupons import router as _coupons_router
 from routers.markets import router as _markets_router
+from routers.orders import router as _orders_router
+from routers.payments import router as _payments_router
 app.include_router(api_router)
 app.include_router(_push_router)
 app.include_router(_auth_router)
 app.include_router(_products_router)
 app.include_router(_coupons_router)
 app.include_router(_markets_router)
+app.include_router(_orders_router)
+app.include_router(_payments_router)
 
 
 
@@ -2583,10 +2578,7 @@ async def compat_update_admin_settings(data: dict, current_admin: dict = Depends
             await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name",""), "action": "system_settings_changed", "target_type": "system", "target_id": "global_settings", "change_details": {"field": _sf, "old_value": _sov, "new_value": _snv}, "admin_note": ""}, request)
     return {"success": True, "settings": await db.settings.find_one({"id": "global_settings"}, {"_id": 0})}
 
-@app.get("/api/orders")
-async def compat_list_my_orders(current_user: dict = Depends(get_current_user)):
-    rows = await db.transactions.find({"user_id": current_user.get("user_id")}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return [_customer_order_view(o) for o in rows]
+# /api/orders (GET) -> routers/orders.py
 
 @app.get("/api/admin/legal-docs")
 async def compat_admin_legal_docs(current_admin: dict = Depends(get_current_admin)):
@@ -2649,28 +2641,7 @@ _AFRO_AUTH_ACTION_TR = {
     "address_deleted": "Adres silindi",
     "account_closed": "Hesap kapatıldı",
 }
-_AFRO_DOC_NAME_TR = {
-    "kvkk": "KVKK Aydınlatma Metni",
-    "privacy": "Gizlilik Politikası",
-    "membership": "Üyelik Sözleşmesi",
-    "refundComplaintPolicy": "İade ve Şikayet Politikası",
-    "couponTerms": "Kupon Koşulları",
-    "pickupTerms": "Gel-Al Koşulları",
-    "homeDeliveryTerms": "Eve Servis Koşulları",
-    "tedarikci_sozlesmesi": "Tedarikçi Sözleşmesi",
-    "delivery_terms": "Eve Servis Koşulları",
-    "home_delivery": "Eve Servis Koşulları",
-    "eve-servis-mesafeli-sat-s-zle-mesi": "Eve Servis Mesafeli Satış Sözleşmesi",
-    "pickup_terms": "Gel-Al Koşulları",
-    "pickup": "Gel-Al Koşulları",
-    "kvkk_aydinlatma": "KVKK Aydınlatma Metni",
-    "gizlilik_politikasi": "Gizlilik Politikası",
-    "uyelik_sozlesmesi": "Üyelik Sözleşmesi",
-    "ticari_ileti_izni": "Ticari İleti İzni",
-    "mesafeli_satis": "Mesafeli Satış Sözleşmesi",
-    "on_bilgilendirme": "Ön Bilgilendirme Formu",
-    "gel_al": "Gel-Al Koşulları",
-}
+# _AFRO_DOC_NAME_TR -> core/config.py
 _AFRO_PAY_STATUS_TR = {
     "payment_success": "Başarılı",
     "payment_failed": "Başarısız",
@@ -3146,252 +3117,22 @@ async def compat_admin_agreement_logs(limit: int = 200, current_admin: dict = De
 # _paytr_refund, paytr_callback_expected_hash) -> services/payments.py
 
 
-async def _log_order_agreement(order: dict, data: dict, current_user: dict, request: Request = None):
-    """Sipariş anında kabul edilen sözleşmeyi (mesafeli satış / ön bilgilendirme /
-    Gel-Al / Eve Servis koşulları) legal_agreement_logs'a yazar; böylece 'Sözleşme
-    Onayları' sekmesinde SİPARİŞ NUMARASIYLA görünür. Frontend her siparişte
-    agreements_accepted + agreements_versions + legal_document_type gönderir; eskiden
-    bu kabul transaction'a yazılıyor ama onay loguna HİÇ düşmüyordu (sipariş
-    sözleşmeleri eksik görünüyordu)."""
-    try:
-        accepted = bool(data.get("agreements_accepted") or data.get("legal_accepted"))
-        if not accepted:
-            return
-        versions = data.get("agreements_versions") or {}
-        if not isinstance(versions, dict):
-            versions = {}
-        doc_type = data.get("legal_document_type") or order.get("delivery_type") or ""
-        # Belge kodu: agreements_versions anahtarı > legal_document_type
-        doc_code = (next(iter(versions.keys()), None) if versions else None) or doc_type or "mesafeli_satis"
-        doc_version = str(next(iter(versions.values()), "") or "") if versions else ""
-        doc_name = _AFRO_DOC_NAME_TR.get(doc_code) or _AFRO_DOC_NAME_TR.get(doc_type) or "Mesafeli Satış Sözleşmesi"
-        ts = now_utc().isoformat()
-        ip = "unknown"; ua = "unknown"
-        if request is not None:
-            ip = request.headers.get("x-forwarded-for", request.headers.get("x-real-ip", "unknown"))
-            ua = request.headers.get("user-agent", "unknown")
-        await db.legal_agreement_logs.insert_one({
-            "user_id": current_user.get("user_id"),
-            "accepted": True,
-            "gate_type": "order",
-            "document_code": doc_code,
-            "document_name": doc_name,
-            "document_version": doc_version,
-            "document_type": doc_code,
-            "document_hash": data.get("agreement_hash", ""),
-            "versions": versions if versions else {doc_code: doc_version},
-            "timestamp": ts,
-            "accepted_at": ts,
-            "ip": ip,
-            "user_agent": ua,
-            "user_name": current_user.get("name", ""),
-            "user_phone": current_user.get("phone", ""),
-            "order_id": order.get("tx_id"),
-        })
-    except Exception as _e:
-        logging.warning(f"Sipariş sözleşme logu yazılamadı: {_e}")
+# _log_order_agreement -> services/orders.py
+# /api/orders (POST) -> routers/orders.py
+# /api/payments/init -> routers/payments.py
 
 
-@app.post("/api/orders")
-async def compat_create_order(data: dict, current_user: dict = Depends(get_current_user), request: Request = None):
-    await rate_limit(f"order_user:{current_user.get('user_id')}", 12, 300, "Çok sık sipariş denemesi. Lütfen biraz bekleyin.")
-    order = await _prepare_order_payload(data, current_user, request)
-    await db.transactions.insert_one(order)
-    # Sipariş anındaki sözleşme onayını sipariş no ile logla.
-    await _log_order_agreement(order, data, current_user, request)
-    # Ödeme adımı olmayan doğrudan sipariş -> kuponu hemen tüket.
-    await _consume_coupon_for_order(order)
-    return {"success": True, "tx_id": order["tx_id"], "order": _compat_json_clean(_customer_order_view(order))}
-
-
-@app.post("/api/payments/init")
-async def compat_payments_init(data: dict, request: Request, current_user: dict = Depends(get_current_user)):
-    await rate_limit(f"order_user:{current_user.get('user_id')}", 12, 300, "Çok sık sipariş denemesi. Lütfen biraz bekleyin.")
-    order = await _prepare_order_payload(data, current_user, request)
-    await db.transactions.insert_one(order)
-    # --- LOG: sipariş oluşturma ---
-    _os_items = []
-    for _oi in (order.get("items") or []):
-        _os_items.append({"product_id": _oi.get("product_id",""), "name": _oi.get("name",""), "qty": _oi.get("qty",0), "unit": _oi.get("unit",""), "supplier_price": _oi.get("supplier_price",0), "sale_price": _oi.get("sale_price", _oi.get("price",0)), "customizations": _oi.get("customizations",[])})
-    _os = {"items": _os_items, "subtotal": order.get("subtotal",0), "delivery_fee": order.get("delivery_fee",0), "discount": order.get("discount_amount",0), "coupon_code": order.get("coupon_code"), "total": order.get("total",0), "payment_method": order.get("payment_method",""), "delivery_type": order.get("delivery_type",""), "address": (order.get("delivery_address") or {}).get("full_address","") if isinstance(order.get("delivery_address"), dict) else str(order.get("delivery_address","")), "delivery_time_slot": order.get("delivery_time_slot",""), "customer_note": order.get("customer_note",""), "market_name": order.get("market_name",""), "supplier_group": order.get("supplier_group","")}
-    await _insert_log("log_orders", {"order_id": order["tx_id"], "user_id": current_user["user_id"], "action": "order_created", "performed_by": "user", "admin_id": None, "admin_note": None, "order_snapshot": _os}, request)
-    await _insert_log("log_payments", {"order_id": order["tx_id"], "user_id": current_user["user_id"], "payment_provider": "PayTR" if order["payment_method"]=="online_card" else "cash", "transaction_id": None, "action": "payment_initiated", "amount": order.get("total",0), "payment_method": order.get("payment_method",""), "card_last_four": None, "error_message": None, "paytr_hash_valid": None}, request)
-    # Sipariş anındaki sözleşme onayını sipariş no ile logla ('Sözleşme Onayları' sekmesi).
-    await _log_order_agreement(order, data, current_user, request)
-    if order.get("coupon_code"):
-        await _insert_log("log_coupons", {"coupon_id": order.get("coupon_id"), "coupon_code": order["coupon_code"], "user_id": current_user["user_id"], "action": "coupon_used", "order_id": order["tx_id"], "discount_amount": order.get("discount_amount",0), "discount_type": "fixed_amount", "original_total": order.get("subtotal",0)+order.get("delivery_fee",0), "final_total": order.get("total",0), "performed_by": "user", "admin_id": None, "admin_note": None}, request)
-    if order["payment_method"] != "online_card":
-        # Nakit/tezgah: sipariş kesinleşti -> kuponu şimdi tüket.
-        await _consume_coupon_for_order(order, request)
-        return {"success": True, "tx_id": order["tx_id"], "order": _compat_json_clean(_customer_order_view(order))}
-    paytr = await _init_paytr_token(order, request, current_user.get("email"))
-    await db.transactions.update_one({"tx_id": order["tx_id"]}, {"$set": {"merchant_oid": paytr.get("merchant_oid"), "paytr_init": paytr, "updated_at": now_utc()}})
-    if not paytr.get("success"):
-        raise HTTPException(status_code=503 if not paytr.get("configured") else 400, detail=paytr.get("message") or "PayTR ödeme başlatılamadı")
-    return {"success": True, "tx_id": order["tx_id"], "payment_url": paytr.get("payment_url"), "token": paytr.get("token")}
-
-
-
-@app.post("/api/payment/paytr/iframe-token")
-async def get_paytr_iframe_token(data: dict, request: Request, current_user: dict = Depends(get_current_admin)):
-    """PayTR iFrame token (yalnızca yönetici testi). Uygulama gerçek ödemede /api/payments/init kullanır;
-    serbest tutarlı bu uç GÜVENLİK gereği yönetici oturumuna kilitlendi."""
-    keys = _paytr_keys_status()
-    if not all(keys.values()):
-        return {"success": False, "configured": False, "keys": keys, "message": "PayTR API anahtarları backend .env içinde tanımlı değil"}
-
-    merchant_oid = str(data.get("order_id") or data.get("merchant_oid") or new_id("tx"))
-    amount = _as_float(data.get("amount"), 0)
-    raw_basket = data.get("basket") or data.get("items") or []
-    items = []
-    for item in raw_basket:
-        qty = _as_float(item.get("qty") or item.get("quantity"), 1)
-        price = _as_float(item.get("price") or item.get("unit_price") or item.get("line_total") or item.get("total_price"), 0)
-        items.append({
-            "name": str(item.get("name") or item.get("product_name") or "Ürün"),
-            "qty": qty,
-            "line_total": price * qty if not item.get("line_total") and not item.get("total_price") else price,
-        })
-    if not items:
-        items = [{"name": "Test Ürün", "qty": 1, "line_total": amount}]
-
-    user = current_user or {}
-    order = {
-        "tx_id": merchant_oid,
-        "merchant_oid": merchant_oid,
-        "amount": amount,
-        "user_id": user.get("user_id") or "paytr_test",
-        "user_name": data.get("user_name") or user.get("name") or "Afro Gıda Müşteri",
-        "user_phone": data.get("user_phone") or user.get("phone") or "+905380557577",
-        "address": data.get("user_address") or data.get("address") or "Bursa",
-        "items": items,
-    }
-    email = data.get("email") or data.get("user_email") or user.get("email") or "musteri@afrogida.com.tr"
-    paytr = await _init_paytr_token(order, request, email)
-    if paytr.get("success"):
-        paytr_merchant_oid = paytr.get("merchant_oid") or merchant_oid
-        await db.transactions.update_one(
-            {"tx_id": merchant_oid},
-            {"$setOnInsert": {"tx_id": merchant_oid, "created_at": now_utc()}, "$set": {"merchant_oid": paytr_merchant_oid, "amount": amount, "payment_method": "online_card", "payment_status": "pending", "paytr_init": paytr, "updated_at": now_utc()}},
-            upsert=True,
-        )
-        return {"success": True, "token": paytr.get("token"), "iframe_url": paytr.get("payment_url"), "payment_url": paytr.get("payment_url")}
-    raise HTTPException(status_code=503 if not paytr.get("configured") else 400, detail=paytr.get("message") or "PayTR token alınamadı")
-
-@app.post("/api/payment/paytr/callback")
-@app.post("/api/payments/paytr/callback")
-async def paytr_callback(request: Request):
-    from urllib.parse import parse_qs
-    body = (await request.body()).decode("utf-8", errors="ignore")
-    parsed = parse_qs(body, keep_blank_values=True)
-    form_data = {k: (v[0] if isinstance(v, list) and v else "") for k, v in parsed.items()}
-    merchant_oid = form_data.get("merchant_oid")
-    status = form_data.get("status")
-    total_amount = form_data.get("total_amount")
-    hash_val = form_data.get("hash")
-
-    expected = paytr_callback_expected_hash(merchant_oid, status, total_amount)
-    if expected is None:
-        return PlainTextResponse("PAYTR_CONFIG_MISSING")
-    if not merchant_oid or not status or not total_amount or not hash_val:
-        return PlainTextResponse("PAYTR_MISSING_FIELDS")
-
-    if hash_val != expected:
-        await _insert_log("log_security", {"event_type": "unauthorized_access", "source_ip": _extract_request_meta(request)["ip_address"], "user_id": None, "details": {"reason": "PayTR hash doğrulama başarısız", "merchant_oid": merchant_oid}, "severity": "critical", "resolved": False}, request)
-        return PlainTextResponse("PAYTR_HASH_MISMATCH")
-
-    update = {
-        "paytr_callback": dict(form_data),
-        "paytr_total_amount": total_amount,
-        "updated_at": now_utc(),
-    }
-    # GÜVENLİK: PayTR'ın bildirdiği tutar (kuruş) sipariş tutarıyla eşleşmeli; ayrıca imza kontrolü
-    _cb_order = await db.transactions.find_one({"$or": [{"merchant_oid": merchant_oid}, {"tx_id": merchant_oid}]}, {"_id": 0})
-    if status == "success" and _cb_order and _cb_order.get("amount") is not None:
-        try:
-            _paid_kurus = int(str(total_amount).strip())
-        except Exception:
-            _paid_kurus = -1
-        _expected_kurus = int((money_d(_cb_order.get("amount")) * 100).to_integral_value(rounding=ROUND_HALF_UP))
-        _sig_ok = verify_order_signature(_cb_order) if _cb_order.get("calc_signature") else True
-        if _paid_kurus != _expected_kurus or not _sig_ok:
-            await security_alarm(
-                "payment_amount_mismatch",
-                {"summary": f"odenen {_paid_kurus} krs, beklenen {_expected_kurus} krs", "merchant_oid": merchant_oid, "tx_id": _cb_order.get("tx_id"),
-                 "paid_kurus": _paid_kurus, "expected_kurus": _expected_kurus, "signature_ok": _sig_ok},
-                request, {"user_id": _cb_order.get("user_id"), "name": _cb_order.get("user_name")}, severity="critical", notify=True,
-            )
-            update.update({"payment_status": "suspicious", "status": "payment_amount_mismatch", "order_status": "iptal",
-                           "security_hold": True, "security_note": f"PayTR tutarı ({_paid_kurus} krş) sipariş tutarıyla ({_expected_kurus} krş) uyuşmuyor"})
-            await db.transactions.update_one({"$or": [{"merchant_oid": merchant_oid}, {"tx_id": merchant_oid}]}, {"$set": update})
-            await _insert_log("log_payments", {"order_id": _cb_order.get("tx_id"), "user_id": _cb_order.get("user_id"), "payment_provider": "PayTR", "transaction_id": merchant_oid, "action": "payment_amount_mismatch", "amount": _paid_kurus / 100, "payment_method": "credit_card", "card_last_four": None, "error_message": update["security_note"], "paytr_hash_valid": True}, request)
-            return PlainTextResponse("OK")
-    if status == "success":
-        # Online ödeme onaylandığında ödeme "Ödendi" olur ama sipariş iş akışı durumu
-        # nakit siparişlerle AYNI şekilde "Talep Alındı"da kalır (esnaf yeni talebi görüp
-        # onaylasın). Eskiden otomatik "hazirlik_bekliyor"a atlıyordu; kaldırıldı.
-        update.update({"payment_status": "paid", "status": "confirmed", "order_status": "talep_alindi"})
-    else:
-        update.update({"payment_status": "failed", "status": "payment_failed", "paytr_failed_reason": form_data.get("failed_reason_msg") or form_data.get("failed_reason_code")})
-
-    await db.transactions.update_one({"$or": [{"merchant_oid": merchant_oid}, {"tx_id": merchant_oid}]}, {"$set": update})
-    await db.orders.update_one({"$or": [{"merchant_oid": merchant_oid}, {"tx_id": merchant_oid}, {"order_id": merchant_oid}]}, {"$set": update})
-    # --- LOG: PayTR callback ---
-    _pt_order = await db.transactions.find_one({"$or": [{"merchant_oid": merchant_oid}, {"tx_id": merchant_oid}]}, {"_id": 0, "tx_id": 1, "user_id": 1, "coupon_code": 1, "coupon_consumed": 1})
-    _pt_uid = (_pt_order or {}).get("user_id")
-    _pt_txid = (_pt_order or {}).get("tx_id", merchant_oid)
-    if status == "success":
-        await _insert_log("log_payments", {"order_id": _pt_txid, "user_id": _pt_uid, "payment_provider": "PayTR", "transaction_id": merchant_oid, "action": "payment_success", "amount": _as_float(total_amount,0)/100, "payment_method": "credit_card", "card_last_four": None, "error_message": None, "paytr_hash_valid": True}, request)
-        await _insert_log("log_orders", {"order_id": _pt_txid, "user_id": _pt_uid, "action": "order_confirmed", "performed_by": "system", "admin_id": None, "admin_note": None, "order_snapshot": None}, request)
-        # Online kart ödemesi BAŞARILI -> kuponu şimdi tüket (başarısız ödemede sayaç artmaz).
-        if _pt_order:
-            await _consume_coupon_for_order(_pt_order, request)
-    else:
-        await _insert_log("log_payments", {"order_id": _pt_txid, "user_id": _pt_uid, "payment_provider": "PayTR", "transaction_id": merchant_oid, "action": "payment_failed", "amount": _as_float(total_amount,0)/100, "payment_method": "credit_card", "card_last_four": None, "error_message": f"PayTR status: {status}", "paytr_hash_valid": True}, request)
-    return PlainTextResponse("OK")
-
-@app.post("/api/payment/paytr")
-async def compat_payment_paytr(data: dict, request: Request, current_user: dict = Depends(get_current_admin)):
-    """Yalnızca yönetici testi (serbest tutar). Müşteri akışı /api/payments/init."""
-    keys = _paytr_keys_status()
-    if not all(keys.values()):
-        return {"success": False, "configured": False, "keys": keys, "message": "PayTR API anahtarları backend .env içinde tanımlı değil"}
-    order = {
-        "tx_id": str(data.get("order_id") or new_id("tx")),
-        "amount": _as_float(data.get("amount"), 0),
-        "user_id": "paytr_test",
-        "user_name": data.get("user_name") or "Test Kullanıcı",
-        "user_phone": data.get("user_phone") or "+905380557577",
-        "address": data.get("user_address") or "Bursa",
-        "items": [{"name": "Test Sipariş", "line_total": _as_float(data.get("amount"), 0), "qty": 1}],
-    }
-    paytr = await _init_paytr_token(order, request, data.get("user_email"))
-    return {"success": bool(paytr.get("success")), "configured": True, **paytr}
-
-@app.get("/api/visit")
-async def compat_get_visit(current_user: Optional[dict] = Depends(get_current_user_optional)):
-    return await _record_visit({"method": "GET"}, current_user)
-
-@app.post("/api/visit")
-async def compat_post_visit(data: dict = None, current_user: Optional[dict] = Depends(get_current_user_optional)):
-    return await _record_visit(data or {"method": "POST"}, current_user)
+# /api/payment/paytr/iframe-token -> routers/payments.py
+# /api/payment/paytr/callback (+ /api/payments/paytr/callback) -> routers/payments.py
+# /api/payment/paytr -> routers/payments.py
+# /api/visit (GET/POST) -> routers/orders.py
 
 # telefon OTP + parola sıfırlama endpoint'leri -> routers/auth.py
 
 
 
 
-def _compat_json_clean(value):
-    from datetime import datetime, date
-    if isinstance(value, list):
-        return [_compat_json_clean(v) for v in value]
-    if isinstance(value, dict):
-        return {k: _compat_json_clean(v) for k, v in value.items() if k != "_id"}
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    if value.__class__.__name__ == "ObjectId":
-        return str(value)
-    return value
+# _compat_json_clean -> services/orders.py
 
 
 # =====================================================================

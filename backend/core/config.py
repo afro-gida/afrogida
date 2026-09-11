@@ -56,3 +56,28 @@ ADMIN_2FA_TTL_SEC = int(os.environ.get("ADMIN_2FA_TTL_SEC") or 300)
 ADMIN_2FA_MAX_ATTEMPTS = 5
 
 ENC_PREFIX = "enc:v1:"
+
+# Sözleşme/belge kodu -> Türkçe ad. Sipariş sözleşme logunda ve admin log
+# sekmelerinde ("Sözleşme Onayları") belge adını göstermek için kullanılır.
+_AFRO_DOC_NAME_TR = {
+    "kvkk": "KVKK Aydınlatma Metni",
+    "privacy": "Gizlilik Politikası",
+    "membership": "Üyelik Sözleşmesi",
+    "refundComplaintPolicy": "İade ve Şikayet Politikası",
+    "couponTerms": "Kupon Koşulları",
+    "pickupTerms": "Gel-Al Koşulları",
+    "homeDeliveryTerms": "Eve Servis Koşulları",
+    "tedarikci_sozlesmesi": "Tedarikçi Sözleşmesi",
+    "delivery_terms": "Eve Servis Koşulları",
+    "home_delivery": "Eve Servis Koşulları",
+    "eve-servis-mesafeli-sat-s-zle-mesi": "Eve Servis Mesafeli Satış Sözleşmesi",
+    "pickup_terms": "Gel-Al Koşulları",
+    "pickup": "Gel-Al Koşulları",
+    "kvkk_aydinlatma": "KVKK Aydınlatma Metni",
+    "gizlilik_politikasi": "Gizlilik Politikası",
+    "uyelik_sozlesmesi": "Üyelik Sözleşmesi",
+    "ticari_ileti_izni": "Ticari İleti İzni",
+    "mesafeli_satis": "Mesafeli Satış Sözleşmesi",
+    "on_bilgilendirme": "Ön Bilgilendirme Formu",
+    "gel_al": "Gel-Al Koşulları",
+}

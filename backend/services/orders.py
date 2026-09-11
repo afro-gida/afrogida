@@ -10,8 +10,9 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
+from core.config import _AFRO_DOC_NAME_TR
 from core.crypto import enc_str, dec_str, order_signature
 from core.db import db
 from core.logs import _mask_phone
@@ -534,3 +535,62 @@ async def _consume_coupon_for_order(order: dict, request=None):
         await db.transactions.update_one({"tx_id": order.get("tx_id")}, {"$set": {"coupon_consumed": True}})
     except Exception as _e:
         logger.warning("Kupon kullanım sayacı güncellenemedi: %s", _e)
+
+
+async def _log_order_agreement(order: dict, data: dict, current_user: dict, request: Request = None):
+    """Sipariş anında kabul edilen sözleşmeyi (mesafeli satış / ön bilgilendirme /
+    Gel-Al / Eve Servis koşulları) legal_agreement_logs'a yazar; böylece 'Sözleşme
+    Onayları' sekmesinde SİPARİŞ NUMARASIYLA görünür. Frontend her siparişte
+    agreements_accepted + agreements_versions + legal_document_type gönderir; eskiden
+    bu kabul transaction'a yazılıyor ama onay loguna HİÇ düşmüyordu (sipariş
+    sözleşmeleri eksik görünüyordu)."""
+    try:
+        accepted = bool(data.get("agreements_accepted") or data.get("legal_accepted"))
+        if not accepted:
+            return
+        versions = data.get("agreements_versions") or {}
+        if not isinstance(versions, dict):
+            versions = {}
+        doc_type = data.get("legal_document_type") or order.get("delivery_type") or ""
+        # Belge kodu: agreements_versions anahtarı > legal_document_type
+        doc_code = (next(iter(versions.keys()), None) if versions else None) or doc_type or "mesafeli_satis"
+        doc_version = str(next(iter(versions.values()), "") or "") if versions else ""
+        doc_name = _AFRO_DOC_NAME_TR.get(doc_code) or _AFRO_DOC_NAME_TR.get(doc_type) or "Mesafeli Satış Sözleşmesi"
+        ts = now_utc().isoformat()
+        ip = "unknown"; ua = "unknown"
+        if request is not None:
+            ip = request.headers.get("x-forwarded-for", request.headers.get("x-real-ip", "unknown"))
+            ua = request.headers.get("user-agent", "unknown")
+        await db.legal_agreement_logs.insert_one({
+            "user_id": current_user.get("user_id"),
+            "accepted": True,
+            "gate_type": "order",
+            "document_code": doc_code,
+            "document_name": doc_name,
+            "document_version": doc_version,
+            "document_type": doc_code,
+            "document_hash": data.get("agreement_hash", ""),
+            "versions": versions if versions else {doc_code: doc_version},
+            "timestamp": ts,
+            "accepted_at": ts,
+            "ip": ip,
+            "user_agent": ua,
+            "user_name": current_user.get("name", ""),
+            "user_phone": current_user.get("phone", ""),
+            "order_id": order.get("tx_id"),
+        })
+    except Exception as _e:
+        logging.warning(f"Sipariş sözleşme logu yazılamadı: {_e}")
+
+
+def _compat_json_clean(value):
+    from datetime import datetime, date
+    if isinstance(value, list):
+        return [_compat_json_clean(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _compat_json_clean(v) for k, v in value.items() if k != "_id"}
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if value.__class__.__name__ == "ObjectId":
+        return str(value)
+    return value
