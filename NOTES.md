@@ -85,6 +85,28 @@ Verimor SMS/OTP, web push bildirimleri, MongoDB.
 
 ## Diğer açık işler
 1. Bundle-elle-düzenleme düzeninden çıkış (kaynak koda dönüş).
-2. Backend `server.py`'yi modüllere bölmek (opsiyonel; çalışıyor).
+2. ~~Backend `server.py`'yi modüllere bölmek~~ — **tamamlandı (2026-09-11):** `server.py`
+   6888 → 1067 satır, `@app.` ile tanımlı endpoint kalmadı, hepsi `backend/routers/*.py`
+   altında (auth, products, coupons, markets, orders, payments, courier, suppliers,
+   logs, catalog, complaints, admin_orders, settings, legal). API sözleşmesi
+   (`infra/verify-local.py`) ve pytest suite (43 test) her adımda doğrulandı.
 3. Sunucuda git yok — deploy'u repo'dan yapacak akış kurmak.
 4. `/root/afro-proje-yedek/...` isimlendirmesini düzeltmek.
+
+## Faz 1 — mobile/ (Expo müşteri uygulaması, başlandı 2026-09-11)
+- `mobile/` — Expo SDK 57 + expo-router (`src/app` altında file-based routing),
+  React 19 / RN 0.86. Sekmeler: Ürünler, Sepet, Siparişlerim, Hesabım.
+- **Şu an ÖRNEK VERİYLE çalışıyor** (`mobile/src/data/sample.ts`), gerçek backend'e
+  bağlı DEĞİL. Sepet durumu React Context (`lib/cart-context.tsx`) ile yerel.
+- `mobile/src/lib/api.ts` hazır ama kullanılmıyor; `EXPO_PUBLIC_API_URL` bekliyor.
+- **ÖNEMLİ GÜVENLİK NOTU:** `backend/.env` (yerel) prod'dan çekilmiş gerçek
+  anahtarları içeriyor — `PAYTR_TEST_MODE=0` (gerçek para) ve gerçek Verimor SMS
+  kimlik bilgileri. Mobil app'i gerçek backend'e bağlamadan önce ya (a) yerel
+  `.env`'i `PAYTR_TEST_MODE=1` + sahte/boş SMS bilgileriyle güvenli bir kopyaya
+  çevir, ya da (b) `infra/staging` ortamını kullan (ama `/api/` basic-auth çerez
+  kapısının arkasında — native mobil için ayrı bir çözüm gerekir, ör. mobil için
+  ayrı bir nginx `location` veya API key ile geçit).
+- Giriş ekranı (`giris.tsx`) kasıtlı olarak SMS göndermiyor (yukarıdaki risk
+  netleşene kadar).
+- Sıradaki adımlar: gerçek API bağlantısı (yukarıdaki güvenlik kararı sonrası),
+  gerçek OTP/telefon girişi, PayTR ödeme akışı, sipariş oluşturma.
