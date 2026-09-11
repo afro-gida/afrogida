@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
@@ -18,43 +18,49 @@ export default function AccountScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <ThemedText type="subtitle">Hesabım</ThemedText>
-      </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.header}>
+          <ThemedText type="subtitle">Hesabım</ThemedText>
+        </View>
 
-      <View style={[styles.loginCard, { backgroundColor: theme.tintSoft }]}>
-        <ThemedText type="smallBold">Giriş yapmadın</ThemedText>
-        <ThemedText themeColor="textSecondary" type="small" style={styles.loginText}>
-          Siparişlerini takip etmek ve hızlı ödeme yapmak için giriş yap.
-        </ThemedText>
-        <Pressable style={[styles.loginBtn, { backgroundColor: theme.tint }]} onPress={() => router.push('/giris')}>
-          <ThemedText style={{ color: '#fff' }} type="smallBold">
-            Giriş Yap / Kayıt Ol
+        <View style={[styles.loginCard, { backgroundColor: theme.tintSoft }]}>
+          <ThemedText type="smallBold">Giriş yapmadın</ThemedText>
+          <ThemedText themeColor="textSecondary" type="small" style={styles.loginText}>
+            Siparişlerini takip etmek ve hızlı ödeme yapmak için giriş yap.
           </ThemedText>
-        </Pressable>
-      </View>
-
-      <View style={styles.links}>
-        {LINKS.map((l) => (
-          <Pressable key={l.label} style={[styles.linkRow, { borderColor: theme.border }]}>
-            <ThemedText style={styles.linkIcon}>{l.icon}</ThemedText>
-            <ThemedText style={styles.flex}>{l.label}</ThemedText>
-            <ThemedText themeColor="textSecondary">›</ThemedText>
+          <Pressable style={[styles.loginBtn, { backgroundColor: theme.tint }]} onPress={() => router.push('/giris')}>
+            <ThemedText style={{ color: '#fff' }} type="smallBold">
+              Giriş Yap / Kayıt Ol
+            </ThemedText>
           </Pressable>
-        ))}
-      </View>
-    </SafeAreaView>
+        </View>
+
+        <View style={[styles.links, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          {LINKS.map((l, i) => (
+            <Pressable
+              key={l.label}
+              style={[styles.linkRow, i < LINKS.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
+            >
+              <ThemedText style={styles.linkIcon}>{l.icon}</ThemedText>
+              <ThemedText style={styles.flex}>{l.label}</ThemedText>
+              <ThemedText themeColor="textSecondary">›</ThemedText>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  scroll: { paddingBottom: Spacing.five },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
-  loginCard: { marginHorizontal: Spacing.three, borderRadius: 14, padding: Spacing.three, gap: Spacing.one },
+  loginCard: { marginHorizontal: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
   loginText: { marginBottom: Spacing.one },
-  loginBtn: { borderRadius: 10, paddingVertical: Spacing.two, alignItems: 'center', marginTop: Spacing.one },
-  links: { marginTop: Spacing.four, paddingHorizontal: Spacing.three },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two, borderBottomWidth: 1 },
+  loginBtn: { borderRadius: 999, paddingVertical: Spacing.two + 2, alignItems: 'center', marginTop: Spacing.one },
+  links: { marginTop: Spacing.four, marginHorizontal: Spacing.three, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
   linkIcon: { fontSize: 18 },
 });

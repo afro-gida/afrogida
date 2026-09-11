@@ -1,6 +1,6 @@
 import { FlatList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { SAMPLE_ORDERS } from '@/data/sample';
@@ -21,11 +21,12 @@ export default function OrdersScreen() {
   const theme = useTheme();
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]} edges={['top']}>
+    <Screen>
       <View style={styles.header}>
         <ThemedText type="subtitle">Siparişlerim</ThemedText>
       </View>
       <FlatList
+        style={styles.flex}
         data={SAMPLE_ORDERS}
         keyExtractor={(o) => o.tx_id}
         contentContainerStyle={styles.list}
@@ -55,14 +56,14 @@ export default function OrdersScreen() {
           </ThemedText>
         }
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
-  list: { paddingHorizontal: Spacing.three, gap: Spacing.two },
+  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.four },
   card: { borderWidth: 1, borderRadius: 14, padding: Spacing.three, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statusPill: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 2 },

@@ -7,28 +7,36 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+/**
+ * Gerçek afrogida.com.tr sitesinden alınmış marka renkleri
+ * (frontend/index.html içindeki buton/tema renkleri).
+ */
 export const Colors = {
   light: {
-    text: '#1B2420',
+    text: '#0d2b1e',
     background: '#ffffff',
-    backgroundElement: '#F0F3EE',
-    backgroundSelected: '#E3ECE0',
-    textSecondary: '#5B6259',
-    tint: '#1F6E52',
-    tintSoft: '#DCE8DE',
-    border: '#DDE3D6',
-    danger: '#B4453F',
+    backgroundElement: '#eafff4',
+    backgroundSelected: '#cdeee0',
+    textSecondary: '#4b6358',
+    tint: '#14B67E',
+    tintSoft: '#CCE6D1',
+    border: '#cdeee0',
+    danger: '#c0392b',
+    accentOrange: '#f97316',
+    wallpaperBg: '#e2b676',
   },
   dark: {
-    text: '#ECEFE8',
-    background: '#12160F',
-    backgroundElement: '#1B211A',
-    backgroundSelected: '#243024',
-    textSecondary: '#A6AF9E',
-    tint: '#5BCB99',
-    tintSoft: '#1D2E24',
-    border: '#2C3529',
-    danger: '#E38080',
+    text: '#eafff4',
+    background: '#062216',
+    backgroundElement: '#0d3325',
+    backgroundSelected: '#135f42',
+    textSecondary: '#9ccbb8',
+    tint: '#14B67E',
+    tintSoft: '#154b36',
+    border: '#154b36',
+    danger: '#f87171',
+    accentOrange: '#fb8c3c',
+    wallpaperBg: '#0d0d0d',
   },
 } as const;
 

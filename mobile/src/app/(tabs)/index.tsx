@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { CATEGORIES } from '@/data/sample';
 import { useProducts } from '@/lib/products-context';
 import { Spacing } from '@/constants/theme';
 import type { Product } from '@/lib/types';
+
+const LOGO = require('@/assets/brand/logo.png');
 
 export default function ProductsScreen() {
   const theme = useTheme();
@@ -22,15 +24,20 @@ export default function ProductsScreen() {
   }, [allProducts, activeCategory]);
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]} edges={['top']}>
+    <Screen>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <ThemedText type="title" style={styles.title}>
-            Afro Gıda
-          </ThemedText>
+          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+          <View style={styles.flex}>
+            <ThemedText type="title" style={[styles.title, { color: theme.tint }]}>
+              Afro Gıda
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" type="small">
+              Tezgahtan sofraya, taze sebze &amp; meyve
+            </ThemedText>
+          </View>
           {loading && <ActivityIndicator color={theme.tint} />}
         </View>
-        <ThemedText themeColor="textSecondary">Tezgahtan sofraya, taze sebze &amp; meyve.</ThemedText>
         {!loading && !isLive && (
           <View style={[styles.demoNotice, { backgroundColor: theme.tintSoft }]}>
             <ThemedText type="small" themeColor="textSecondary">
@@ -42,6 +49,7 @@ export default function ProductsScreen() {
 
       <FlatList
         horizontal
+        style={styles.chipList}
         showsHorizontalScrollIndicator={false}
         data={['Tümü', ...CATEGORIES]}
         keyExtractor={(c) => c}
@@ -53,13 +61,13 @@ export default function ProductsScreen() {
               onPress={() => setActiveCategory(item)}
               style={[
                 styles.chip,
-                { borderColor: theme.border, backgroundColor: active ? theme.tint : 'transparent' },
+                {
+                  borderColor: active ? theme.tint : theme.border,
+                  backgroundColor: active ? theme.tint : theme.backgroundElement,
+                },
               ]}
             >
-              <ThemedText
-                type="small"
-                style={{ color: active ? '#fff' : theme.text }}
-              >
+              <ThemedText type="small" style={{ color: active ? '#fff' : theme.text, fontWeight: '600' }}>
                 {item}
               </ThemedText>
             </Pressable>
@@ -68,6 +76,7 @@ export default function ProductsScreen() {
       />
 
       <FlatList
+        style={styles.flex}
         data={products}
         keyExtractor={(p) => p.id}
         numColumns={2}
@@ -77,39 +86,46 @@ export default function ProductsScreen() {
           <ProductCard product={item} onPress={() => router.push(`/urun/${item.id}`)} />
         )}
         ListEmptyComponent={
-          <ThemedText themeColor="textSecondary" style={styles.empty}>
-            Bu kategoride ürün yok.
-          </ThemedText>
+          <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText themeColor="textSecondary">Bu kategoride ürün yok.</ThemedText>
+          </View>
         }
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
   const theme = useTheme();
   const outOfStock = !product.in_stock;
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = product.image_url && !imageFailed;
   return (
     <Pressable
       onPress={onPress}
       style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
     >
-      <View style={[styles.cardImage, { backgroundColor: theme.tintSoft }]}>
-        {product.image_url ? (
-          <Image source={{ uri: product.image_url }} style={styles.cardImage} resizeMode="cover" />
+      <View style={[styles.cardImageWrap, { backgroundColor: theme.tintSoft }]}>
+        {showImage ? (
+          <Image
+            source={{ uri: product.image_url! }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <ThemedText style={styles.cardImageFallback}>🥬</ThemedText>
         )}
         {outOfStock && (
           <View style={styles.outOfStockBadge}>
-            <ThemedText type="small" style={{ color: '#fff' }}>
+            <ThemedText type="small" style={styles.badgeText}>
               Stokta yok
             </ThemedText>
           </View>
         )}
         {!!product.campaign_discount_percent && (
-          <View style={[styles.discountBadge, { backgroundColor: theme.danger }]}>
-            <ThemedText type="small" style={{ color: '#fff' }}>
+          <View style={[styles.discountBadge, { backgroundColor: theme.accentOrange }]}>
+            <ThemedText type="small" style={styles.badgeText}>
               %{product.campaign_discount_percent} indirim
             </ThemedText>
           </View>
@@ -118,8 +134,12 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
       <ThemedText type="smallBold" numberOfLines={1} style={styles.cardTitle}>
         {product.name}
       </ThemedText>
-      <ThemedText themeColor="textSecondary" type="small">
-        {product.gel_al_price ? `${product.gel_al_price.toFixed(0)} ₺ / ${product.unit}` : 'Fiyat yok'}
+      <ThemedText themeColor="tint" type="smallBold">
+        {product.gel_al_price ? `${product.gel_al_price.toFixed(0)} ₺` : 'Fiyat yok'}
+        <ThemedText themeColor="textSecondary" type="small">
+          {' '}
+          / {product.unit}
+        </ThemedText>
       </ThemedText>
     </Pressable>
   );
@@ -127,22 +147,32 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, gap: 2 },
+  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two, gap: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  title: { fontSize: 28, lineHeight: 34 },
-  demoNotice: { borderRadius: 8, paddingHorizontal: Spacing.two, paddingVertical: 4, marginTop: 4, alignSelf: 'flex-start' },
-  chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.two },
-  chip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.one, borderRadius: 999, borderWidth: 1 },
-  grid: { padding: Spacing.two, gap: Spacing.two },
+  logo: { width: 44, height: 44, borderRadius: 22 },
+  title: { fontSize: 24, lineHeight: 28 },
+  demoNotice: { borderRadius: 8, paddingHorizontal: Spacing.two, paddingVertical: 4, alignSelf: 'flex-start' },
+  chipList: { flexGrow: 0, flexShrink: 0, height: 48 },
+  chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, alignItems: 'center', height: 48 },
+  chip: {
+    paddingHorizontal: Spacing.three,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  grid: { padding: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
   row: { gap: Spacing.two },
-  card: { flex: 1, borderRadius: 14, borderWidth: 1, padding: Spacing.two, gap: 4, marginBottom: Spacing.two },
-  cardImage: { height: 100, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  card: { flex: 1, borderRadius: 16, borderWidth: 1, padding: Spacing.two, gap: 4 },
+  cardImageWrap: { height: 110, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cardImageFallback: { fontSize: 36 },
   cardTitle: { marginTop: 4 },
+  badgeText: { color: '#fff', fontWeight: '700' },
   outOfStockBadge: {
     position: 'absolute', bottom: 6, left: 6, right: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingVertical: 2, alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 6, paddingVertical: 3, alignItems: 'center',
   },
   discountBadge: { position: 'absolute', top: 6, right: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  empty: { textAlign: 'center', marginTop: Spacing.five },
+  emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two },
 });
