@@ -29,10 +29,7 @@ export default function RootLayout() {
                 name="giris"
                 options={{ presentation: 'modal', headerShown: true, title: 'Giriş Yap', ...headerOptions }}
               />
-              <Stack.Screen
-                name="kayit"
-                options={{ presentation: 'modal', headerShown: true, title: 'Kayıt Ol', ...headerOptions }}
-              />
+              <Stack.Screen name="kayit" options={{ presentation: 'modal', headerShown: false }} />
               <Stack.Screen
                 name="sifremi-unuttum"
                 options={{ presentation: 'modal', headerShown: true, title: 'Şifremi Unuttum', ...headerOptions }}

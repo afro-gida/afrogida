@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { CheckboxRow } from '@/components/checkbox-row';
@@ -10,6 +10,8 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
 
+const LOGO = require('@/assets/brand/logo.png');
+
 export default function RegisterScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -17,31 +19,29 @@ export default function RegisterScreen() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
   const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpRequested, setOtpRequested] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [kvkkOk, setKvkkOk] = useState(false);
-  const [privacyOk, setPrivacyOk] = useState(false);
-  const [membershipOk, setMembershipOk] = useState(false);
-  const [marketingOk, setMarketingOk] = useState(false);
+  const [termsOk, setTermsOk] = useState(false);
+  const [notifyOk, setNotifyOk] = useState(false);
 
-  const allRequiredChecked = kvkkOk && privacyOk && membershipOk;
+  const canSubmit = name.trim() && phone.trim().length >= 10 && otpCode.trim().length === 6 && password.length >= 6 && termsOk;
 
-  async function handleSendOtp() {
+  async function handleRequestCode() {
     setError(null);
-    if (!name.trim()) return setError('Lütfen adını gir.');
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
-    if (password.length < 6) return setError('Şifre en az 6 karakter olmalı.');
     setSendingOtp(true);
     try {
       const res = await sendOtp(phone.trim(), 'registration');
-      setOtpSent(true);
+      setOtpRequested(true);
       if (!res.sms_sent) {
-        setError('Not: SMS gönderilemedi (geliştirme ortamı) — kodu backend/run_dev_server.py terminalindeki logdan oku.');
+        setError('Not: SMS gönderilemedi (geliştirme ortamı). Kod için bana sor, sunucu kaydından bakayım.');
       }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
@@ -52,8 +52,10 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     setError(null);
-    if (otpCode.trim().length !== 6) return setError('SMS ile gelen 6 haneli kodu gir.');
-    if (!allRequiredChecked) return setError('Devam etmek için zorunlu sözleşmeleri onaylamalısın.');
+    if (!canSubmit) {
+      setError('Lütfen tüm alanları doldur ve zorunlu sözleşmeyi onayla.');
+      return;
+    }
     setSubmitting(true);
     try {
       await register({
@@ -61,7 +63,7 @@ export default function RegisterScreen() {
         name: name.trim(),
         password,
         otp_code: otpCode.trim(),
-        marketing_consent: marketingOk,
+        marketing_consent: notifyOk,
       });
       router.back();
     } catch (e) {
@@ -73,98 +75,156 @@ export default function RegisterScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <View style={[styles.body, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="subtitle">Kayıt Ol</ThemedText>
-
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          editable={!otpSent}
-          placeholder="Ad Soyad"
-          placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
-        />
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          editable={!otpSent}
-          placeholder="05XX XXX XX XX"
-          placeholderTextColor={theme.textSecondary}
-          keyboardType="phone-pad"
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
-        />
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          editable={!otpSent}
-          placeholder="Şifre (en az 6 karakter)"
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
-        />
-
-        {!otpSent ? (
-          <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleSendOtp} disabled={sendingOtp}>
-            {sendingOtp ? <ActivityIndicator color="#fff" /> : (
-              <ThemedText style={{ color: '#fff' }} type="smallBold">
-                SMS Kodu Gönder
-              </ThemedText>
-            )}
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <View style={styles.headerSpace}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
+            <ThemedText style={styles.backArrow}>←</ThemedText>
           </Pressable>
-        ) : (
-          <>
+          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
+        </View>
+
+        <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="title" style={styles.title}>
+            Yeni Üyelik
+          </ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+            Avantajlardan yararlanmak için hemen üye olun.
+          </ThemedText>
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+            Ad Soyad
+          </ThemedText>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Ad Soyad"
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+          />
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+            Telefon Numarası
+          </ThemedText>
+          <View style={styles.phoneRow}>
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="05XX XXX XX XX"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="phone-pad"
+              style={[styles.input, styles.phoneInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+            />
             <TextInput
               value={otpCode}
               onChangeText={setOtpCode}
-              placeholder="SMS Kodu (6 hane)"
+              placeholder="6 hane"
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, styles.otpInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
             />
-
-            <View style={styles.consents}>
-              <CheckboxRow checked={kvkkOk} onToggle={() => setKvkkOk((v) => !v)} required>
-                KVKK Aydınlatma Metni'ni okudum, kabul ediyorum.
-              </CheckboxRow>
-              <CheckboxRow checked={privacyOk} onToggle={() => setPrivacyOk((v) => !v)} required>
-                Gizlilik Politikası'nı okudum, kabul ediyorum.
-              </CheckboxRow>
-              <CheckboxRow checked={membershipOk} onToggle={() => setMembershipOk((v) => !v)} required>
-                Üyelik Sözleşmesi'ni okudum, kabul ediyorum.
-              </CheckboxRow>
-              <CheckboxRow checked={marketingOk} onToggle={() => setMarketingOk((v) => !v)}>
-                Kampanya ve fırsatlardan haberdar olmak istiyorum (opsiyonel).
-              </CheckboxRow>
-            </View>
-
             <Pressable
-              style={[styles.button, { backgroundColor: allRequiredChecked ? theme.tint : theme.border }]}
-              onPress={handleRegister}
-              disabled={submitting || !allRequiredChecked}
+              style={[styles.codeBtn, { backgroundColor: theme.tint }]}
+              onPress={handleRequestCode}
+              disabled={sendingOtp}
             >
-              {submitting ? <ActivityIndicator color="#fff" /> : (
-                <ThemedText style={{ color: '#fff' }} type="smallBold">
-                  Kayıt Ol
+              {sendingOtp ? <ActivityIndicator color="#fff" size="small" /> : (
+                <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
+                  {otpRequested ? 'Tekrar Gönder' : 'Kod İste'}
                 </ThemedText>
               )}
             </Pressable>
-          </>
-        )}
+          </View>
 
-        {error && (
-          <ThemedText themeColor="danger" type="small">
-            {error}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+            Şifre
           </ThemedText>
-        )}
-      </View>
+          <View style={styles.passwordWrap}>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="En az 6 karakter"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry={!showPassword}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+            />
+            <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
+              <ThemedText themeColor="textSecondary">{showPassword ? '🙈' : '👁️'}</ThemedText>
+            </Pressable>
+          </View>
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.kvkkLine}>
+            Kişisel verileriniz hakkında{' '}
+            <ThemedText type="small" themeColor="tint" style={styles.linkText}>
+              KVKK Aydınlatma Metni
+            </ThemedText>
+            'ni inceleyebilirsiniz.
+          </ThemedText>
+
+          <CheckboxRow checked={termsOk} onToggle={() => setTermsOk((v) => !v)} required>
+            <ThemedText type="small" themeColor="tint" style={styles.linkText}>
+              Gizlilik Politikası
+            </ThemedText>
+            'nı ve{' '}
+            <ThemedText type="small" themeColor="tint" style={styles.linkText}>
+              Üyelik Sözleşmesi
+            </ThemedText>
+            'ni okudum, onaylıyorum.
+          </CheckboxRow>
+
+          <CheckboxRow checked={notifyOk} onToggle={() => setNotifyOk((v) => !v)}>
+            Kampanya, duyuru ve fırsatlardan haberdar olmak için uygulama bildirimi almak istiyorum. (İsteğe bağlı)
+          </CheckboxRow>
+
+          {error && (
+            <ThemedText themeColor="danger" type="small" style={styles.error}>
+              {error}
+            </ThemedText>
+          )}
+
+          <Pressable
+            style={[styles.submitBtn, { backgroundColor: canSubmit ? theme.tint : theme.border }]}
+            onPress={handleRegister}
+            disabled={submitting || !canSubmit}
+          >
+            {submitting ? <ActivityIndicator color="#fff" /> : (
+              <ThemedText style={{ color: '#fff' }} type="smallBold">
+                Üye Ol
+              </ThemedText>
+            )}
+          </Pressable>
+
+          <Pressable onPress={() => router.replace('/giris')} style={styles.loginLink}>
+            <ThemedText themeColor="textSecondary" type="small">
+              Zaten üye misiniz? <ThemedText themeColor="tint" type="smallBold">Giriş Yapın</ThemedText>
+            </ThemedText>
+          </Pressable>
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { margin: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
+  scroll: { flexGrow: 1 },
+  headerSpace: { height: 150, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { position: 'absolute', top: Spacing.two, left: Spacing.three, zIndex: 1, padding: Spacing.one },
+  backArrow: { fontSize: 22 },
+  logo: { width: 96, height: 96, borderRadius: 48 },
+  card: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, padding: Spacing.three, gap: 6 },
+  title: { fontSize: 26, lineHeight: 30 },
+  subtitle: { marginBottom: Spacing.two },
+  label: { marginTop: Spacing.two, marginBottom: 2 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
-  button: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
-  consents: { gap: 2, marginTop: Spacing.one },
+  phoneRow: { flexDirection: 'row', gap: Spacing.one, alignItems: 'stretch' },
+  phoneInput: { flex: 2 },
+  otpInput: { flex: 1, textAlign: 'center' },
+  codeBtn: { borderRadius: 12, paddingHorizontal: Spacing.two, alignItems: 'center', justifyContent: 'center' },
+  passwordWrap: { justifyContent: 'center' },
+  eyeBtn: { position: 'absolute', right: Spacing.three },
+  kvkkLine: { marginTop: Spacing.two },
+  linkText: { textDecorationLine: 'underline', fontWeight: '700' },
+  error: { marginTop: Spacing.one },
+  submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.two },
+  loginLink: { alignItems: 'center', paddingVertical: Spacing.two },
 });
