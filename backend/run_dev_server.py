@@ -7,7 +7,9 @@ degerler `.env`'dekileri EZER:
 
   - ayri DB (afrogida_dev) - prod/test_database'a hic dokunmaz
   - PAYTR_TEST_MODE=1      - PayTR'a sahte odeme olarak gider, gercek kart cekilmez
-  - VERIMOR_USERNAME/PASSWORD bos - SMS gonderilmez (kod log'a yazilir, gonderilmis SAYILMAZ)
+  - VERIMOR_USERNAME/PASSWORD bos - SMS gonderilmez (GONDERILMEDI sayilir); OTP
+    kodu dahil mesajin tam metni bu terminaldeki loglara yazilir, buradan okuyup
+    uygulamaya elle girebilirsin.
 
 CORS: varsayilan AFRO_ALLOWED_ORIGINS zaten localhost:8081/19006 (Expo web)
 icerir, burada dokunulmadi.

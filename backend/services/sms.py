@@ -42,7 +42,9 @@ def send_sms_verimor(phone: str, message: str) -> bool:
     sender = os.environ.get("VERIMOR_SENDER", "AFROGIDA")
 
     if not username or not password:
-        logger.error("[SMS] Verimor bilgileri eksik")
+        # Gelistirme ortaminda (bilgiler kasitli bos, bkz. run_dev_server.py)
+        # gonderilecek mesaji burada goster ki OTP kodu test edilebilsin.
+        logger.error("[SMS] Verimor bilgileri eksik - GONDERILMEDI. Hedef: %s | Mesaj: %s", phone, message)
         return False
 
     phone_clean = _normalize_sms_phone(phone)
