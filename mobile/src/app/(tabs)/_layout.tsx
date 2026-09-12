@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { Platform, Text } from 'react-native';
+import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCart } from '@/lib/cart-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,6 +12,7 @@ function TabIcon({ symbol }: { symbol: string }) {
 export default function TabsLayout() {
   const theme = useTheme();
   const { totalQty } = useCart();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -18,7 +20,14 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.tint,
         tabBarInactiveTintColor: theme.textSecondary,
-        tabBarStyle: { backgroundColor: theme.backgroundElement, borderTopColor: theme.border, height: 60, paddingBottom: 8, paddingTop: 6 },
+        tabBarShowLabel: true,
+        tabBarStyle: {
+          backgroundColor: theme.backgroundElement,
+          borderTopColor: theme.border,
+          height: 54 + insets.bottom,
+          paddingBottom: 8 + insets.bottom,
+          paddingTop: 6,
+        },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
