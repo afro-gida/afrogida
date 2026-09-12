@@ -40,3 +40,20 @@ export async function fetchOrders(): Promise<{ orders: Order[]; error: string | 
     return { orders: [], error: 'Bağlantı hatası. Backend çalışıyor mu?' };
   }
 }
+
+/**
+ * Gerçek sipariş oluşturur (sunucu fiyatı/tutarı kendi hesaplar). Şimdilik
+ * sadece Gel-Al + tezgahta ödeme akışı var (kart ödemesi henüz bağlı değil).
+ */
+export async function createOrder(items: { id: string; qty: number }[]): Promise<{ tx_id: string } | { error: string }> {
+  try {
+    const res = await api.post<{ success: boolean; tx_id: string }>('/orders', {
+      items,
+      delivery_type: 'gel_al',
+    });
+    return { tx_id: res.tx_id };
+  } catch (err) {
+    if (err instanceof ApiError) return { error: err.message };
+    return { error: 'Bağlantı hatası. Backend çalışıyor mu?' };
+  }
+}

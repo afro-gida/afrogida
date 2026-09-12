@@ -1,17 +1,41 @@
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
+import { createOrder } from '@/lib/orders';
 import { Spacing } from '@/constants/theme';
 import type { CartLine } from '@/lib/types';
 
 export default function CartScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { lines, setQty, removeItem, totalPrice } = useCart();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const { lines, setQty, removeItem, clear, totalPrice } = useCart();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCheckout() {
+    if (!user) {
+      router.push('/giris');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    const result = await createOrder(lines.map((l) => ({ id: l.product.id, qty: l.qty })));
+    setSubmitting(false);
+    if ('error' in result) {
+      setError(result.error);
+      return;
+    }
+    clear();
+    router.push(`/pazar/${id}/siparislerim`);
+  }
 
   return (
     <Screen>
@@ -65,17 +89,30 @@ export default function CartScreen() {
             )}
           />
           <View style={[styles.footer, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+            {!user && (
+              <ThemedText themeColor="textSecondary" type="small">
+                Sipariş verebilmek için giriş yapmalısın.
+              </ThemedText>
+            )}
+            {error && (
+              <ThemedText themeColor="danger" type="small">
+                {error}
+              </ThemedText>
+            )}
             <View style={styles.totalRow}>
               <ThemedText type="smallBold">Toplam</ThemedText>
               <ThemedText type="smallBold">{totalPrice.toFixed(2)} ₺</ThemedText>
             </View>
             <Pressable
               style={[styles.checkoutBtn, { backgroundColor: theme.tint }]}
-              onPress={() => router.push('/giris')}
+              onPress={handleCheckout}
+              disabled={submitting}
             >
-              <ThemedText style={{ color: '#fff' }} type="smallBold">
-                Ödemeye Geç
-              </ThemedText>
+              {submitting ? <ActivityIndicator color="#fff" /> : (
+                <ThemedText style={{ color: '#fff' }} type="smallBold">
+                  {user ? 'Siparişi Ver (Gel-Al · Tezgahta Ödeme)' : 'Giriş Yap ve Devam Et'}
+                </ThemedText>
+              )}
             </Pressable>
           </View>
         </>
