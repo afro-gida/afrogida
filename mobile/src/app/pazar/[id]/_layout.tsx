@@ -1,4 +1,5 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,10 +10,21 @@ function TabIcon({ symbol }: { symbol: string }) {
   return <Text style={{ fontSize: 20 }}>{symbol}</Text>;
 }
 
-export default function TabsLayout() {
+/**
+ * Bir pazara "Siparişe Başla" ile girince açılan alışveriş bölümü.
+ * Sekme çubuğu: Kampanyalar / Sepet / Profil. Ürün listesi (index) sekme
+ * çubuğunda GÖRÜNMEZ (href:null) — buraya sadece pazar kartından girilir,
+ * geri dönmek için ürün listesindeki geri okunu kullanır.
+ */
+export default function ShopTabsLayout() {
   const theme = useTheme();
-  const { totalQty } = useCart();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { totalQty, enterMarket } = useCart();
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (id) enterMarket(id);
+  }, [id]);
 
   return (
     <Tabs
@@ -31,9 +43,11 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="siparislerim" options={{ href: null }} />
       <Tabs.Screen
-        name="index"
-        options={{ title: 'Pazarlar', tabBarIcon: () => <TabIcon symbol="🏪" /> }}
+        name="kampanyalar"
+        options={{ title: 'Kampanyalar', tabBarIcon: () => <TabIcon symbol="🎉" /> }}
       />
       <Tabs.Screen
         name="sepet"
@@ -44,12 +58,8 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="siparislerim"
-        options={{ title: 'Siparişlerim', tabBarIcon: () => <TabIcon symbol="📦" /> }}
-      />
-      <Tabs.Screen
-        name="hesabim"
-        options={{ title: 'Hesabım', tabBarIcon: () => <TabIcon symbol="👤" /> }}
+        name="profil"
+        options={{ title: 'Profil', tabBarIcon: () => <TabIcon symbol="👤" /> }}
       />
     </Tabs>
   );

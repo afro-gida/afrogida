@@ -13,6 +13,12 @@ import type { Market } from '@/lib/types';
 const WALLPAPER_CARD = require('@/assets/brand/wallpaper-light.jpg');
 const LOGO = require('@/assets/brand/logo.png');
 
+/**
+ * "Olduğumuz Pazarlar" — uygulamanın kök ekranı. Sekme çubuğu YOK; üye
+ * olmayan biri sadece bu ekranı görür. Bir pazarda "Siparişe Başla"'ya
+ * basınca /pazar/[id] altındaki sekmeli (Kampanyalar/Sepet/Profil) alışveriş
+ * bölümüne girilir.
+ */
 export default function MarketsScreen() {
   const theme = useTheme();
   const router = useRouter();

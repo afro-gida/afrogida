@@ -25,7 +25,7 @@ export default function RootLayout() {
           <ProductsProvider>
             <CartProvider>
               <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="index" />
                 <Stack.Screen name="pazar/[id]" options={{ headerShown: false }} />
                 <Stack.Screen name="urun/[id]" options={{ headerShown: true, title: 'Ürün', ...headerOptions }} />
                 <Stack.Screen name="giris" options={{ presentation: 'modal', headerShown: false }} />

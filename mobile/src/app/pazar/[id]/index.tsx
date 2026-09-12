@@ -28,12 +28,19 @@ export default function MarketProductsScreen() {
   return (
     <Screen edges={['bottom']}>
       <View style={[styles.header, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="subtitle">{market?.name ?? 'Ürünler'}</ThemedText>
-        {market && (
-          <ThemedText themeColor="textSecondary" type="small">
-            {market.day} · {market.location}
-          </ThemedText>
-        )}
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => router.replace('/')} hitSlop={12} style={styles.backBtn}>
+            <ThemedText style={styles.backArrow}>←</ThemedText>
+          </Pressable>
+          <View style={styles.flex}>
+            <ThemedText type="subtitle">{market?.name ?? 'Ürünler'}</ThemedText>
+            {market && (
+              <ThemedText themeColor="textSecondary" type="small">
+                {market.day} · {market.location}
+              </ThemedText>
+            )}
+          </View>
+        </View>
       </View>
 
       <FlatList
@@ -137,6 +144,9 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { padding: Spacing.three, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, gap: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  backBtn: { padding: Spacing.one },
+  backArrow: { fontSize: 20 },
   chipList: { flexGrow: 0, flexShrink: 0, height: 48 },
   chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, alignItems: 'center', height: 48 },
   chip: {
