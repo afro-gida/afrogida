@@ -42,10 +42,14 @@ export default function MarketsScreen() {
 
         <View style={styles.pillRow}>
           <View style={[styles.infoPill, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="small">🏪 Pazar saati: 00:00-22:00</ThemedText>
+            <ThemedText type="small" numberOfLines={1} style={styles.pillText}>
+              🏪 Pazar: 00:00-22:00
+            </ThemedText>
           </View>
           <View style={[styles.infoPill, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="small">🕐 Gel-Al saati: 11:00-19:00</ThemedText>
+            <ThemedText type="small" numberOfLines={1} style={styles.pillText}>
+              🕐 Gel-Al: 11:00-19:00
+            </ThemedText>
           </View>
         </View>
 
@@ -143,8 +147,9 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   title: { fontSize: 24, lineHeight: 28 },
   memberBtn: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one + 2 },
-  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  infoPill: { borderRadius: 10, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one + 2, flexShrink: 1 },
+  pillRow: { flexDirection: 'row', gap: Spacing.two },
+  infoPill: { flex: 1, borderRadius: 10, paddingHorizontal: Spacing.one + 2, paddingVertical: Spacing.one + 2, alignItems: 'center' },
+  pillText: { fontSize: 12 },
   ctaBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: 14, padding: Spacing.two },
   ctaIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.three, gap: Spacing.three, paddingTop: 0 },
