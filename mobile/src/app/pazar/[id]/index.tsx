@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { CATEGORIES } from '@/data/sample';
 import { useProducts } from '@/lib/products-context';
 import { useMarkets } from '@/lib/markets-context';
+import { fetchSettings, type StoreSettings } from '@/lib/settings';
 import { Spacing } from '@/constants/theme';
 import type { Product } from '@/lib/types';
 
@@ -19,6 +20,22 @@ export default function MarketProductsScreen() {
   const { products: allProducts, loading } = useProducts();
   const { markets } = useMarkets();
   const market = markets.find((m) => m.id === id);
+  const [settings, setSettings] = useState<StoreSettings>({});
+
+  useEffect(() => {
+    fetchSettings().then(setSettings);
+  }, []);
+
+  const infoItems = useMemo(() => {
+    const items: string[] = ['🕐 Gel-Al: 11:00-19:00'];
+    if (settings.free_delivery_min_amount) {
+      items.push(`🎁 ${settings.free_delivery_min_amount.toFixed(0)}₺ üzeri ücretsiz teslimat`);
+    }
+    if (settings.delivery_fee) {
+      items.push(`🚚 Teslimat ücreti: ${settings.delivery_fee.toFixed(0)}₺`);
+    }
+    return items;
+  }, [settings]);
 
   const products = useMemo(() => {
     if (activeCategory === 'Tümü') return allProducts;
@@ -42,6 +59,22 @@ export default function MarketProductsScreen() {
           </View>
         </View>
       </View>
+
+      <FlatList
+        horizontal
+        style={styles.infoList}
+        showsHorizontalScrollIndicator={false}
+        data={infoItems}
+        keyExtractor={(t) => t}
+        contentContainerStyle={styles.infoRow}
+        renderItem={({ item }) => (
+          <View style={[styles.infoPill, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="small" numberOfLines={1}>
+              {item}
+            </ThemedText>
+          </View>
+        )}
+      />
 
       <FlatList
         horizontal
@@ -147,6 +180,9 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   backBtn: { padding: Spacing.one },
   backArrow: { fontSize: 20 },
+  infoList: { flexGrow: 0, flexShrink: 0, height: 44, marginTop: Spacing.two },
+  infoRow: { paddingHorizontal: Spacing.three, gap: Spacing.two },
+  infoPill: { borderRadius: 10, paddingHorizontal: Spacing.two, height: 32, justifyContent: 'center' },
   chipList: { flexGrow: 0, flexShrink: 0, height: 48 },
   chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, alignItems: 'center', height: 48 },
   chip: {

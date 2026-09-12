@@ -12,9 +12,9 @@ function TabIcon({ symbol }: { symbol: string }) {
 
 /**
  * Bir pazara "Siparişe Başla" ile girince açılan alışveriş bölümü.
- * Sekme çubuğu: Kampanyalar / Sepet / Profil. Ürün listesi (index) sekme
- * çubuğunda GÖRÜNMEZ (href:null) — buraya sadece pazar kartından girilir,
- * geri dönmek için ürün listesindeki geri okunu kullanır.
+ * Sekme sırası: Kampanyalar / Ürünler / Sepet / Siparişlerim / Profil.
+ * Varsayılan (giriş) sekme yine Ürünler (index) — initialRouteName ile
+ * sekme sırasından bağımsız ayarlanır.
  */
 export default function ShopTabsLayout() {
   const theme = useTheme();
@@ -28,6 +28,7 @@ export default function ShopTabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.tint,
@@ -40,14 +41,16 @@ export default function ShopTabsLayout() {
           paddingBottom: 8 + insets.bottom,
           paddingTop: 6,
         },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="siparislerim" options={{ href: null }} />
       <Tabs.Screen
         name="kampanyalar"
         options={{ title: 'Kampanyalar', tabBarIcon: () => <TabIcon symbol="🎉" /> }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{ title: 'Ürünler', tabBarIcon: () => <TabIcon symbol="🥬" /> }}
       />
       <Tabs.Screen
         name="sepet"
@@ -56,6 +59,10 @@ export default function ShopTabsLayout() {
           tabBarIcon: () => <TabIcon symbol="🛒" />,
           tabBarBadge: totalQty > 0 ? totalQty : undefined,
         }}
+      />
+      <Tabs.Screen
+        name="siparislerim"
+        options={{ title: 'Siparişlerim', tabBarIcon: () => <TabIcon symbol="📦" /> }}
       />
       <Tabs.Screen
         name="profil"

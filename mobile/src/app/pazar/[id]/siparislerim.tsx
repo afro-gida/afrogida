@@ -47,9 +47,6 @@ export default function OrdersScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <ThemedText style={styles.backArrow}>←</ThemedText>
-        </Pressable>
         <ThemedText type="subtitle">Siparişlerim</ThemedText>
       </View>
 
@@ -108,9 +105,7 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
-  backBtn: { padding: Spacing.one },
-  backArrow: { fontSize: 20 },
+  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
   list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.four },
   card: { borderWidth: 1, borderRadius: 14, padding: Spacing.three, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

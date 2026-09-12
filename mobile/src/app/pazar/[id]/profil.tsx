@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -7,19 +7,18 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { Spacing } from '@/constants/theme';
 
+// Siparişlerim artık ayrı bir alt sekme (bkz. _layout.tsx) — burada tekrar linklenmiyor.
+const LINKS = [
+  { label: 'Adreslerim', icon: '📍' },
+  { label: 'Kuponlarım', icon: '🎟️' },
+  { label: 'KVKK Aydınlatma Metni', icon: '📄' },
+  { label: 'Yardım & Destek', icon: '💬' },
+];
+
 export default function AccountScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
   const { user, logout, loading } = useAuth();
-
-  const links = [
-    { label: 'Siparişlerim', icon: '📦', onPress: () => router.push(`/pazar/${id}/siparislerim`) },
-    { label: 'Adreslerim', icon: '📍', onPress: () => {} },
-    { label: 'Kuponlarım', icon: '🎟️', onPress: () => {} },
-    { label: 'KVKK Aydınlatma Metni', icon: '📄', onPress: () => {} },
-    { label: 'Yardım & Destek', icon: '💬', onPress: () => {} },
-  ];
 
   return (
     <Screen>
@@ -55,11 +54,10 @@ export default function AccountScreen() {
         )}
 
         <View style={[styles.links, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          {links.map((l, i) => (
+          {LINKS.map((l, i) => (
             <Pressable
               key={l.label}
-              onPress={l.onPress}
-              style={[styles.linkRow, i < links.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
+              style={[styles.linkRow, i < LINKS.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
             >
               <ThemedText style={styles.linkIcon}>{l.icon}</ThemedText>
               <ThemedText style={styles.flex}>{l.label}</ThemedText>
