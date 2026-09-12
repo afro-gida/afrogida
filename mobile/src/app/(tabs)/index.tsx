@@ -90,14 +90,27 @@ export default function MarketsScreen() {
 function MarketCard({ market }: { market: Market }) {
   const theme = useTheme();
   const router = useRouter();
+  const [imageFailed, setImageFailed] = useState(false);
   const hasDelivery = market.active_eve_servis && (market.delivery_neighborhoods?.length ?? 0) > 0;
   const mapUrl = market.google_maps_url || market.location_url;
+  const showRealImage = market.image_url && !imageFailed;
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View style={styles.card}>
       <View style={styles.cardImageWrap}>
-        <Image source={WALLPAPER_CARD} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        <Image source={LOGO} style={styles.cardLogo} resizeMode="contain" />
+        {showRealImage ? (
+          <Image
+            source={{ uri: market.image_url! }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <>
+            <Image source={WALLPAPER_CARD} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <Image source={LOGO} style={styles.cardLogo} resizeMode="contain" />
+          </>
+        )}
         <View style={[styles.dayBadge, { backgroundColor: theme.tint }]}>
           <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
             ✓ {market.day}
@@ -106,7 +119,7 @@ function MarketCard({ market }: { market: Market }) {
       </View>
 
       <View style={styles.cardBody}>
-        <ThemedText type="smallBold" style={styles.marketName}>
+        <ThemedText type="smallBold" style={[styles.marketName, styles.onDark]}>
           {market.name}
         </ThemedText>
         {hasDelivery && (
@@ -116,7 +129,7 @@ function MarketCard({ market }: { market: Market }) {
         )}
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionBtn, { backgroundColor: market.orders_enabled ? theme.tint : theme.border }]}
+            style={[styles.actionBtn, { backgroundColor: market.orders_enabled ? theme.tint : '#2a2f2c' }]}
             disabled={!market.orders_enabled}
             onPress={() => router.push(`/pazar/${market.id}`)}
           >
@@ -125,12 +138,12 @@ function MarketCard({ market }: { market: Market }) {
             </ThemedText>
           </Pressable>
           {mapUrl ? (
-            <Pressable style={[styles.actionBtnOutline, { borderColor: theme.border }]} onPress={() => Linking.openURL(mapUrl)}>
-              <ThemedText type="small">📍 Konum</ThemedText>
+            <Pressable style={styles.actionBtnOutline} onPress={() => Linking.openURL(mapUrl)}>
+              <ThemedText type="small" style={styles.onDark}>📍 Konum</ThemedText>
             </Pressable>
           ) : (
-            <View style={[styles.actionBtnOutline, { borderColor: theme.border }]}>
-              <ThemedText type="small" themeColor="textSecondary">
+            <View style={styles.actionBtnOutline}>
+              <ThemedText type="small" style={styles.onDarkSecondary}>
                 📍 Konum
               </ThemedText>
             </View>
@@ -153,15 +166,19 @@ const styles = StyleSheet.create({
   ctaBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: 14, padding: Spacing.two },
   ctaIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.three, gap: Spacing.three, paddingTop: 0 },
-  card: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  card: { borderRadius: 18, borderWidth: 1, borderColor: '#2a2f2c', overflow: 'hidden' },
   cardImageWrap: { height: 130, alignItems: 'center', justifyContent: 'center' },
   cardLogo: { width: 88, height: 88, borderRadius: 44 },
   dayBadge: { position: 'absolute', top: Spacing.two, right: Spacing.two, borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 4 },
-  cardBody: { padding: Spacing.three, gap: 6 },
+  // Kart alt bilgi şeridi her zaman koyu — fotoğrafın üstündeki kontrast için,
+  // açık/koyu tema seçiminden bağımsız (gerçek sitedeki gibi).
+  cardBody: { padding: Spacing.three, gap: 6, backgroundColor: '#0d1410' },
+  onDark: { color: '#f2f5ef' },
+  onDarkSecondary: { color: '#9aa39c' },
   marketName: { fontSize: 17 },
   underline: { textDecorationLine: 'underline' },
   actionRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
   actionBtn: { flex: 1, borderRadius: 999, paddingVertical: Spacing.two, alignItems: 'center' },
-  actionBtnOutline: { flex: 1, borderRadius: 999, borderWidth: 1.5, paddingVertical: Spacing.two, alignItems: 'center' },
+  actionBtnOutline: { flex: 1, borderRadius: 999, borderWidth: 1.5, borderColor: '#3a423b', paddingVertical: Spacing.two, alignItems: 'center' },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', margin: Spacing.three },
 });
