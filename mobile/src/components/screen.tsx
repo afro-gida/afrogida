@@ -28,7 +28,7 @@ export function Screen({
   return (
     <ImageBackground
       source={wallpaper}
-      resizeMode="contain"
+      resizeMode="stretch"
       style={[styles.flex, { backgroundColor: theme.wallpaperBg }]}
     >
       <SafeAreaView style={[styles.flex, style]} edges={edges}>
