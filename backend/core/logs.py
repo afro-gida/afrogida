@@ -140,20 +140,37 @@ async def _log_payment_restriction(action: str, user_id: str, details: str,
 
 
 async def _record_visit(request_data=None, current_user=None):
-    """Ziyaret kaydı - sadece member/musteri rolündeki kullanıcılar için kaydedilir."""
-    if current_user:
-        role = current_user.get("role")
-        if role not in ["member", "musteri"]:
-            return {"success": True, "skipped": True, "reason": "non_member_role"}
+    """Ziyaret kaydı. Personel rolleri (admin/esnaf/kurye vb.) hiç sayılmaz.
+    Üyeler GÜNDE 1 KEZ sayılır (upsert — aynı gün tekrar ziyarette yeni kayıt
+    oluşturmaz, sayıyı şişirmez); üye olmayan (misafir) ziyaretçiler ayrı ve
+    ham (tekilleştirilmeden) sayılır. `/admin/visits/report` bu ikisini
+    ayrı sütunlar olarak döner (ana sayaç = üyeler)."""
+    role = current_user.get("role") if current_user else None
+    if current_user and role not in ("member", "musteri"):
+        return {"success": True, "skipped": True, "reason": "non_member_role"}
 
     today = now_utc().date().isoformat()
-    doc = {
-        "id": new_id("visit"),
-        "date": today,
-        "created_at": now_utc(),
-        "user_id": current_user.get("user_id") if current_user else None,
-        "role": current_user.get("role") if current_user else None,
-        "payload": request_data or {},
-    }
-    await db.daily_visits.insert_one(doc)
+    if current_user:
+        await db.daily_visits.update_one(
+            {"user_id": current_user.get("user_id"), "date": today, "kind": "member"},
+            {"$setOnInsert": {
+                "id": new_id("visit"),
+                "kind": "member",
+                "date": today,
+                "created_at": now_utc(),
+                "user_id": current_user.get("user_id"),
+                "role": role,
+            }},
+            upsert=True,
+        )
+    else:
+        await db.daily_visits.insert_one({
+            "id": new_id("visit"),
+            "kind": "guest",
+            "date": today,
+            "created_at": now_utc(),
+            "user_id": None,
+            "role": None,
+            "payload": request_data or {},
+        })
     return {"success": True, "date": today}

@@ -18,6 +18,7 @@ isteniyor, neden.
 
 | # | İstek | Neden | Durum |
 |---|---|---|---|
+| 1 | **Eve Servis ayarlarını pazar bazlı yap.** Şu an teslimat saati, minimum sepet tutarı, pazar saati, gel-al saati TEK bir global ayar (`global_settings` — `market_hours`, `pickup_order_hours`, `delivery_order_hours`, `min_pickup_amount`, `min_delivery_amount`) — hepsi tüm pazarlar için aynı değeri paylaşıyor. Kullanıcı bunun her pazarda AYRI ayarlanabilmesini istiyor. | Farklı pazarların farklı çalışma saatleri/minimum tutarları olabilir. | açık — BÜYÜK değişiklik: `Market` modeline bu alanları taşımak (global_settings'ten çıkarmak) + `services/orders.py`'deki sipariş kabul mantığını (şu an global settings okuyor) pazar bazlı okuyacak şekilde güncellemek + mobile/'nin ilgili ekranlarını (ana sayfa "Pazar/Gel-Al saati" etiketleri, sepet min tutar kontrolü) pazar verisinden okuyacak şekilde değiştirmek gerekiyor. Ne zaman ele alınacağına birlikte karar verilecek — admin_staff.py/mobile'a dokunan oturumlarla koordine edilmeli. |
 
 ## Kurye sistemi
 

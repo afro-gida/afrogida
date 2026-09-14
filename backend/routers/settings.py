@@ -13,12 +13,33 @@ router = APIRouter(prefix="/api")
 
 @router.get("/admin/visits/report")
 async def admin_visits_report(current_admin: dict = Depends(get_current_admin)):
+    """Günlük ziyaret raporu — üyeler (ana sayaç, günde 1 kez sayılır) ve
+    misafirler (ham sayı) ayrı sütunlarda. `kind` alanı olmayan eski kayıtlar
+    (bu özellik eklenmeden önce yazılmış) `role`'e göre sınıflandırılır."""
     pipeline = [
-        {"$group": {"_id": "$date", "count": {"$sum": 1}}},
-        {"$sort": {"_id": -1}},
+        {"$addFields": {
+            "_kind": {"$ifNull": [
+                "$kind",
+                {"$cond": [{"$in": ["$role", ["member", "musteri"]]}, "member", "guest"]},
+            ]},
+        }},
+        {"$group": {"_id": {"date": "$date", "kind": "$_kind"}, "count": {"$sum": 1}}},
+        {"$sort": {"_id.date": -1}},
     ]
-    rows = await db.daily_visits.aggregate(pipeline).to_list(2000)
-    return [{"date": r["_id"], "count": r["count"]} for r in rows if r.get("_id")]
+    rows = await db.daily_visits.aggregate(pipeline).to_list(4000)
+    by_date: dict = {}
+    for r in rows:
+        d = (r.get("_id") or {}).get("date")
+        if not d:
+            continue
+        entry = by_date.setdefault(d, {"date": d, "member_count": 0, "guest_count": 0, "count": 0})
+        kind = (r.get("_id") or {}).get("kind")
+        if kind == "member":
+            entry["member_count"] = r["count"]
+        else:
+            entry["guest_count"] = r["count"]
+        entry["count"] = entry["member_count"] + entry["guest_count"]
+    return sorted(by_date.values(), key=lambda x: x["date"], reverse=True)
 
 
 @router.get("/settings")

@@ -87,16 +87,26 @@ orada.
 debug için) — ikinci bir kopyasını başlatmaya çalışma, port 8000 çakışır.
 İhtiyacın varsa bana haber ver.
 
-## 4. Admin girişi / kimlik doğrulama
+## 4. Admin girişi / kimlik doğrulama — DÜZELTİLDİ (gerçek endpoint adları)
 
-Yönetici girişi normal üye girişinden FARKLI ve daha güvenli:
-- `POST /api/admin/login` (telefon + parola) → başarılıysa 2FA tetiklenir.
-- Yönetici 2FA: HER girişte (cihazdan bağımsız) SMS kodu gönderilir
-  (`ADMIN_2FA_PHONE`'a — güvenlik ekibinin telefonuna, giriş yapan kişiye
-  değil). `POST /api/admin/2fa/verify` ile tamamlanır.
+Önceki sürümde yanlış bir endpoint adı vardı (`/api/admin/login` diye bir
+uç YOK). Gerçek akış, admin paneli için KULLANILACAK olan:
+
+1. `POST /api/auth/admin` — body: `{"username": ..., "password": ...}`.
+   (`/api/auth/login` de var — telefon+şifre, admin rolüyse otomatik 2FA'ya
+   düşüyor — ama admin paneli için `/api/auth/admin`'i kullan: admin
+   hesapları ayrı bir `username` alanıyla giriş yapıyor, panel formunda da
+   "kullanıcı adı" alanı olmalı, telefon değil.)
+2. Başarılıysa 2FA tetiklenir (`_start_admin_2fa`) — cevapta muhtemelen bir
+   `challenge_id` dönüyor (tam response şekli için `/docs`'a bak).
+3. Yönetici 2FA: HER girişte (cihazdan bağımsız) SMS kodu gönderilir
+   (`ADMIN_2FA_PHONE`'a — güvenlik ekibinin telefonuna, giriş yapan kişiye
+   değil). `POST /api/auth/admin/verify-2fa` — body:
+   `{"challenge_id": ..., "code": ...}` ile tamamlanır, oturum token'ı döner.
 - Oturum süresi normalden kısa (`ADMIN_SESSION_HOURS`, varsayılan 12 saat).
-- Tam akış için `routers/auth.py` içindeki admin login/2FA endpoint'lerine
-  bak.
+- Tam akış (tüm response şekilleri) için `routers/auth.py` içindeki
+  `auth_admin`, `auth_admin_verify_2fa` fonksiyonlarına veya
+  `localhost:8000/docs`'a bak.
 
 ## 5. Sınırlar / kurallar
 

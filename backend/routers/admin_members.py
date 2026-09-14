@@ -40,14 +40,26 @@ async def admin_members_count(admin=Depends(get_current_admin)):
 
 
 @router.get("/admin/members/{user_id}")
-async def admin_get_member(user_id: str, admin=Depends(get_current_admin)):
-    """Üye Detayı ekranı için tek üyenin tüm (hassas olmayan) bilgilerini döndürür."""
+async def admin_get_member(user_id: str, admin=Depends(get_current_admin), request: Request = None):
+    """Üye Detayı ekranı için tek üyenin tüm (hassas olmayan) bilgilerini döndürür.
+    Bu ekran üyenin adresini de gösterdiği için her görüntüleme KVKK/denetim
+    amacıyla log_admin'e kaydedilir (Üye Detayı'ndaki İşlem Geçmişi'nde
+    "Adres görüntülendi" olarak görünür)."""
     member = await db.users.find_one(
         {"user_id": user_id, "role": {"$in": ["musteri", "member"]}},
         {"_id": 0, "password_hash": 0, "username": 0},
     )
     if not member:
         raise HTTPException(status_code=404, detail="Üye bulunamadı")
+    await _insert_log("log_admin", {
+        "admin_id": admin["user_id"],
+        "admin_name": admin.get("name", ""),
+        "action": "member_address_viewed",
+        "target_type": "user",
+        "target_id": user_id,
+        "change_details": None,
+        "admin_note": "",
+    }, request)
     # No-show ceza durumunu türet
     try:
         ns = _evaluate_no_show_restriction(member)
@@ -115,6 +127,12 @@ _MEMBER_LOG_LABELS = {
     "cash_blocked": "Nakit ödeme kısıtlandı",
     "cash_unblocked": "Nakit kısıtlaması kaldırıldı",
     "undelivered_warning": "Teslim alınmadı uyarısı",
+    # Yönetici işlemleri (log_admin, target_type=user) — KVKK/denetim
+    "member_address_viewed": "Adres görüntülendi (yönetici)",
+    "user_edited": "Üye bilgisi güncellendi (yönetici)",
+    "user_deleted": "Üye hesabı kapatıldı (yönetici)",
+    "penalty_manual_lift": "Ceza/kısıtlama kaldırıldı (yönetici)",
+    "penalty_exception": "Mücbir sebep istisnası uygulandı (yönetici)",
 }
 
 def _member_log_label(action: str) -> str:
@@ -188,6 +206,11 @@ async def admin_get_member_logs(user_id: str, limit: int = 300, admin=Depends(ge
             "label": r.get("action") and _member_log_label(r.get("action")) or (r.get("reason") or "Kısıtlama"),
             "reason": r.get("reason") or r.get("description") or "",
         })
+    # Yönetici işlemleri (adres görüntüleme, bilgi güncelleme, ceza kaldırma vb. —
+    # KVKK/denetim: "kim, hangi üyeye, ne zaman ne yaptı")
+    admin_q = {"target_type": "user", "target_id": user_id}
+    for r in await db.log_admin.find(admin_q, {"_id": 0}).sort("created_at", -1).to_list(limit):
+        _add("admin_action", r, {"admin_name": r.get("admin_name") or ""})
     # Sözleşme onayları
     for r in await db.legal_agreement_logs.find(q, {"_id": 0}).sort("created_at", -1).to_list(limit):
         _add("agreement", r, {
