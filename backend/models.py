@@ -200,6 +200,20 @@ class Market(BaseModel):
     active_eve_servis: bool = False
     active_gel_al: bool = True
     delivery_neighborhoods: List[str] = []
+    # Pazar bazlı Eve Servis / Gel-Al / ödeme ayarları (eskiden global_settings'te
+    # tek/ortak bir kayıttı — artık her pazarın kendi ayarı var). services/orders.py
+    # sipariş hazırlarken artık bunları okuyacak (bkz. CHANGES.md, Admin sistemi #1).
+    eve_servis_urun_gorunurlugu: bool = True
+    eve_servis_min_tutar: float = 0
+    eve_servis_saati: str = "00:00-23:59"
+    kapida_nakit_odeme_enabled: bool = True
+    nakit_tezgah_limit_enabled: bool = False
+    nakit_tezgah_maksimum_tutari: float = 0
+    gel_al_min_tutar: float = 0
+    teslimat_ucreti: float = 0
+    ucretsiz_teslimat_alt_limiti: float = 0
+    pazar_saati: str = "00:00-23:59"
+    gel_al_saati: str = "00:00-23:59"
     created_at: datetime = Field(default_factory=now_utc)
 
 
@@ -218,6 +232,17 @@ class MarketInput(BaseModel):
     active_eve_servis: bool = False
     active_gel_al: bool = True
     delivery_neighborhoods: List[str] = []
+    eve_servis_urun_gorunurlugu: bool = True
+    eve_servis_min_tutar: float = 0
+    eve_servis_saati: str = "00:00-23:59"
+    kapida_nakit_odeme_enabled: bool = True
+    nakit_tezgah_limit_enabled: bool = False
+    nakit_tezgah_maksimum_tutari: float = 0
+    gel_al_min_tutar: float = 0
+    teslimat_ucreti: float = 0
+    ucretsiz_teslimat_alt_limiti: float = 0
+    pazar_saati: str = "00:00-23:59"
+    gel_al_saati: str = "00:00-23:59"
 
 
 # ---------------- Üye / personel / kurye yönetimi ----------------

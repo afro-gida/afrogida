@@ -335,12 +335,22 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
         raise HTTPException(status_code=400, detail="Sepet boş")
 
     subtotal = money_d(subtotal)
-    settings = await db.settings.find_one({"id": "global_settings"}, {"_id": 0}) or {}
+    # Eve Servis/Gel-Al/ödeme ayarları artık PAZAR BAZLI (bkz. CHANGES.md, Admin
+    # sistemi #1; alanlar models.Market'ta tanımlı). Pazar bulunamazsa/market_id
+    # yoksa YENİ/tanımlanmamış bir pazarmış gibi davranılır (Market model'in
+    # varsayılanlarıyla aynı) — sipariş asla bu yüzden reddedilmez.
+    _market_id = data.get("market_id") or data.get("stall_id")
+    _market = await db.markets.find_one({"id": _market_id}, {"_id": 0}) if _market_id else None
+    _market = _market or {}
+
+    def _msetting(key, default):
+        val = _market.get(key)
+        return default if val is None else val
 
     delivery_fee = Decimal("0")
     if delivery_type == "eve_servis" and subtotal > 0:
-        fee_cfg = money_d(settings.get("delivery_fee") or 0)
-        free_min = money_d(settings.get("free_delivery_min_amount") or 0)
+        fee_cfg = money_d(_msetting("teslimat_ucreti", 0))
+        free_min = money_d(_msetting("ucretsiz_teslimat_alt_limiti", 0))
         if fee_cfg > 0 and (free_min <= 0 or subtotal < free_min):
             delivery_fee = fee_cfg
 
@@ -390,7 +400,7 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
     if c_fee is not None and not _num_close(c_fee, delivery_fee):
         cf = money_d(c_fee)
         if cf < delivery_fee:
-            free_min = money_d(settings.get("free_delivery_min_amount") or 0)
+            free_min = money_d(_msetting("ucretsiz_teslimat_alt_limiti", 0))
             cs = money_d(c_subtotal) if c_subtotal is not None else subtotal
             if free_min > 0 and cs >= free_min:
                 stale.append({"type": "fee_low_stale", "client_fee": str(cf), "server_fee": str(delivery_fee), "client_subtotal": str(cs)})
@@ -439,7 +449,7 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
     if payment_method == "online_card" and amount < 1:
         raise HTTPException(status_code=400, detail="Online ödeme için tutar en az 1₺ olmalıdır")
 
-    min_amount = money_d(settings.get("min_pickup_amount" if delivery_type == "gel_al" else "min_delivery_amount") or 0)
+    min_amount = money_d(_msetting("gel_al_min_tutar" if delivery_type == "gel_al" else "eve_servis_min_tutar", 0))
     if subtotal < min_amount:
         raise HTTPException(status_code=400, detail=f"Minimum sipariş tutarı: {min_amount:.0f}₺")
 
@@ -455,8 +465,8 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
                 detail=no_show["message"] or "Hesabınız yalnızca online ödeme kullanabilir. Lütfen online ödeme seçin.",
             )
 
-    if payment_method in ("cash_on_delivery", "pay_at_counter") and settings.get("cash_payment_limit_enabled"):
-        max_cash = money_d(settings.get("cash_payment_max_amount") or 0)
+    if payment_method in ("cash_on_delivery", "pay_at_counter") and _msetting("nakit_tezgah_limit_enabled", False):
+        max_cash = money_d(_msetting("nakit_tezgah_maksimum_tutari", 0))
         if max_cash > 0 and amount > max_cash:
             raise HTTPException(status_code=400, detail=f"Bu tutar için yalnızca online ödeme kabul edilir. Nakit/tezgah ödeme limiti: {max_cash:.0f}₺")
 

@@ -610,6 +610,31 @@
             "title": "Delivery Neighborhoods",
             "type": "array"
           },
+          "eve_servis_min_tutar": {
+            "default": 0,
+            "title": "Eve Servis Min Tutar",
+            "type": "number"
+          },
+          "eve_servis_saati": {
+            "default": "00:00-23:59",
+            "title": "Eve Servis Saati",
+            "type": "string"
+          },
+          "eve_servis_urun_gorunurlugu": {
+            "default": true,
+            "title": "Eve Servis Urun Gorunurlugu",
+            "type": "boolean"
+          },
+          "gel_al_min_tutar": {
+            "default": 0,
+            "title": "Gel Al Min Tutar",
+            "type": "number"
+          },
+          "gel_al_saati": {
+            "default": "00:00-23:59",
+            "title": "Gel Al Saati",
+            "type": "string"
+          },
           "google_maps_url": {
             "anyOf": [
               {
@@ -641,6 +666,11 @@
             "title": "Is Open",
             "type": "boolean"
           },
+          "kapida_nakit_odeme_enabled": {
+            "default": true,
+            "title": "Kapida Nakit Odeme Enabled",
+            "type": "boolean"
+          },
           "location": {
             "anyOf": [
               {
@@ -662,6 +692,16 @@
               }
             ],
             "title": "Location Url"
+          },
+          "nakit_tezgah_limit_enabled": {
+            "default": false,
+            "title": "Nakit Tezgah Limit Enabled",
+            "type": "boolean"
+          },
+          "nakit_tezgah_maksimum_tutari": {
+            "default": 0,
+            "title": "Nakit Tezgah Maksimum Tutari",
+            "type": "number"
           },
           "name": {
             "title": "Name",
@@ -687,6 +727,21 @@
             "default": false,
             "title": "Orders Enabled",
             "type": "boolean"
+          },
+          "pazar_saati": {
+            "default": "00:00-23:59",
+            "title": "Pazar Saati",
+            "type": "string"
+          },
+          "teslimat_ucreti": {
+            "default": 0,
+            "title": "Teslimat Ucreti",
+            "type": "number"
+          },
+          "ucretsiz_teslimat_alt_limiti": {
+            "default": 0,
+            "title": "Ucretsiz Teslimat Alt Limiti",
+            "type": "number"
           }
         },
         "required": [
@@ -730,6 +785,31 @@
             "title": "Delivery Neighborhoods",
             "type": "array"
           },
+          "eve_servis_min_tutar": {
+            "default": 0,
+            "title": "Eve Servis Min Tutar",
+            "type": "number"
+          },
+          "eve_servis_saati": {
+            "default": "00:00-23:59",
+            "title": "Eve Servis Saati",
+            "type": "string"
+          },
+          "eve_servis_urun_gorunurlugu": {
+            "default": true,
+            "title": "Eve Servis Urun Gorunurlugu",
+            "type": "boolean"
+          },
+          "gel_al_min_tutar": {
+            "default": 0,
+            "title": "Gel Al Min Tutar",
+            "type": "number"
+          },
+          "gel_al_saati": {
+            "default": "00:00-23:59",
+            "title": "Gel Al Saati",
+            "type": "string"
+          },
           "google_maps_url": {
             "anyOf": [
               {
@@ -752,6 +832,11 @@
             ],
             "title": "Image Url"
           },
+          "kapida_nakit_odeme_enabled": {
+            "default": true,
+            "title": "Kapida Nakit Odeme Enabled",
+            "type": "boolean"
+          },
           "location": {
             "anyOf": [
               {
@@ -773,6 +858,16 @@
               }
             ],
             "title": "Location Url"
+          },
+          "nakit_tezgah_limit_enabled": {
+            "default": false,
+            "title": "Nakit Tezgah Limit Enabled",
+            "type": "boolean"
+          },
+          "nakit_tezgah_maksimum_tutari": {
+            "default": 0,
+            "title": "Nakit Tezgah Maksimum Tutari",
+            "type": "number"
           },
           "name": {
             "title": "Name",
@@ -798,6 +893,21 @@
             "default": false,
             "title": "Orders Enabled",
             "type": "boolean"
+          },
+          "pazar_saati": {
+            "default": "00:00-23:59",
+            "title": "Pazar Saati",
+            "type": "string"
+          },
+          "teslimat_ucreti": {
+            "default": 0,
+            "title": "Teslimat Ucreti",
+            "type": "number"
+          },
+          "ucretsiz_teslimat_alt_limiti": {
+            "default": 0,
+            "title": "Ucretsiz Teslimat Alt Limiti",
+            "type": "number"
           }
         },
         "required": [

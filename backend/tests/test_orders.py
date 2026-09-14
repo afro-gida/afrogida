@@ -90,3 +90,77 @@ def test_order_inactive_product_blocked(client, make_user, db, product):
         assert r.status_code == 400
     finally:
         db.products.update_one({"id": product["id"]}, {"$set": {"in_stock": True}})
+
+
+# ---------------- Pazar bazlı ayarlar (Market.gel_al_min_tutar vb.) ----------------
+# Eve Servis/Gel-Al/ödeme ayarları artık global_settings'te DEĞİL, her pazarın
+# kendi dokümanında (bkz. CHANGES.md, Admin sistemi #1). market_id gönderilmezse
+# (yukarıdaki testler gibi) Market modelinin varsayılanları (hepsi 0/kapalı)
+# kullanılır — bu yüzden eski testler hiç etkilenmedi.
+
+@pytest.fixture
+def market_with_limits(db):
+    doc = {
+        "id": "market_test_limits",
+        "name": "Test Pazarı", "day": "Pazartesi",
+        "active": True, "orders_enabled": True, "delivery_enabled": True,
+        "active_eve_servis": True, "active_gel_al": True,
+        "gel_al_min_tutar": 50.0,
+        "eve_servis_min_tutar": 100.0,
+        "teslimat_ucreti": 20.0,
+        "ucretsiz_teslimat_alt_limiti": 200.0,
+        "nakit_tezgah_limit_enabled": True,
+        "nakit_tezgah_maksimum_tutari": 30.0,
+    }
+    db.markets.delete_one({"id": doc["id"]})
+    db.markets.insert_one(doc)
+    yield doc
+    db.markets.delete_one({"id": doc["id"]})
+
+
+def test_market_min_amount_gel_al_enforced(client, make_user, product, market_with_limits):
+    _, h = make_user()
+    # ürün fiyatı (24.90) < pazarın gel_al_min_tutar (50) -> reddedilir
+    r = _order(client, h, [{"id": product["id"], "qty": 1}], market_id="market_test_limits")
+    assert r.status_code == 400
+    assert "minimum" in r.text.lower()
+
+
+def test_market_min_amount_does_not_affect_other_markets(client, make_user, product, market_with_limits):
+    """Aynı sepet, market_id verilmeden (veya farklı bir pazarla) hâlâ geçmeli —
+    bir pazarın limiti başka pazarları/market_id'siz siparişleri etkilemiyor."""
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}])  # market_id yok
+    assert r.status_code == 200, r.text
+
+
+def test_market_delivery_fee_and_free_threshold(client, make_user, product, market_with_limits):
+    _, h = make_user()
+    # subtotal (5 adet) pazarın eve_servis_min_tutar (100) şartını geçer ama
+    # ücretsiz teslimat eşiğinin (200) altında kalır -> teslimat ücreti (20) eklenir
+    qty = 5
+    subtotal = product["price"] * qty
+    assert 100 < subtotal < 200  # test varsayımını doğrula
+    r = _order(client, h, [{"id": product["id"], "qty": qty}],
+               market_id="market_test_limits", delivery_type="eve_servis", address="Test Mah. Test Sk. No:1",
+               payment_method="online_card")
+    assert r.status_code == 200, r.text
+    order = r.json()["order"]
+    assert order["delivery_fee"] == pytest.approx(20.0)
+    assert order["amount"] == pytest.approx(subtotal + 20.0)
+
+
+def test_market_cash_limit_enforced(client, make_user, db, product, market_with_limits):
+    _, h = make_user()
+    # 3 adet: pazarın gel_al_min_tutar'ını (50) geçer AMA nakit limitini (30) de aşar
+    qty = 3
+    subtotal = product["price"] * qty
+    assert 50 < subtotal  # min tutarı geçiyor
+    r = _order(client, h, [{"id": product["id"], "qty": qty}],
+               market_id="market_test_limits", payment_method="pay_at_counter")
+    assert r.status_code == 400
+    assert "nakit" in r.text.lower() or "online" in r.text.lower()
+
+    # aynı sepet market_id olmadan (limit yok) geçmeli
+    r2 = _order(client, h, [{"id": product["id"], "qty": qty}])
+    assert r2.status_code == 200, r2.text
