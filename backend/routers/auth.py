@@ -1,7 +1,7 @@
 """Kimlik doğrulama endpoint'leri: kayıt, giriş, yönetici 2FA, oturum,
 profil/parola, adresler, telefon OTP, parola sıfırlama.
 
-Yardımcılar: issue_welcome_coupon, _is_admin_role, _start_admin_2fa,
+Yardımcılar: _is_admin_role, _start_admin_2fa,
 _normalize_address_payload/_validate_address_payload (adres) — hepsi burada.
 """
 import asyncio
@@ -10,7 +10,6 @@ import hmac
 import logging
 import re
 import secrets
-import uuid
 from datetime import timedelta, timezone
 from typing import List, Optional
 
@@ -18,7 +17,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from core.config import (
-    EMERGENT_SESSION_API, WELCOME_DISCOUNT_AMOUNT, WELCOME_MIN_AMOUNT,
+    EMERGENT_SESSION_API,
     ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS, ADMIN_2FA_ALLOW_UNSENT_SMS,
 )
 from core.crypto import _hmac_hex
@@ -35,7 +34,7 @@ from core.serializers import _public_user_doc
 from core.util import now_utc, to_aware, new_id, _clean_text, _norm_limit
 from models import (
     GoogleSessionInput, PhoneLoginInput, RegisterInput, LoginInput, AdminLoginInput,
-    Admin2FAVerifyInput, Coupon,
+    Admin2FAVerifyInput,
 )
 from services.sms import send_sms_verimor, _normalize_sms_phone, _generate_sms_code
 
@@ -108,27 +107,6 @@ async def auth_phone(payload: PhoneLoginInput, request: Request = None):
     return {"token": token, "user": _public_user_doc(user)}
 
 
-async def issue_welcome_coupon(user_id: str) -> str:
-    """Auto-issue a single-use welcome coupon to a new member. Returns coupon code."""
-    _wc_code = f"HG{uuid.uuid4().hex[:6].upper()}"
-    coupon = Coupon(
-        code=_wc_code,
-        title="Hoş Geldin Kuponu",
-        description="İlk alışverişinizde 500₺ ve üzeri için 50₺ indirim. Kodu tezgahta gösterin.",
-        discount_percent=0,
-        discount_amount=WELCOME_DISCOUNT_AMOUNT,
-        min_amount=WELCOME_MIN_AMOUNT,
-        members_only=True,
-        assigned_user_ids=[user_id],
-        single_use=True,
-        used=False,
-        auto_issued=True,
-        active=True,
-    )
-    await db.coupons.insert_one(coupon.dict())
-    return _wc_code
-
-
 @router.post("/auth/register")
 async def auth_register(payload: RegisterInput, request: Request = None):
     phone = payload.phone.strip()
@@ -176,7 +154,6 @@ async def auth_register(payload: RegisterInput, request: Request = None):
     })
     # Kullanılan OTP kodunu işaretle (tekrar kullanılamasın)
     await db.otp_codes.update_one({"_id": otp_doc["_id"]}, {"$set": {"used": True}})
-    _wc_code = await issue_welcome_coupon(user_id)
     # --- LOG: auth register ---
     await _insert_log("log_auth", {"user_id": user_id, "phone_masked": _mask_phone(phone), "action": "register", "change_details": None}, request)
     for _ct, _dn in [("kvkk_aydinlatma","KVKK Aydınlatma Metni"),("gizlilik_politikasi","Gizlilik Politikası"),("uyelik_sozlesmesi","Üyelik Sözleşmesi")]:
@@ -185,8 +162,11 @@ async def auth_register(payload: RegisterInput, request: Request = None):
     _mk = getattr(payload, "marketing_consent", None)
     if _mk is not None:
         await _insert_log("log_consents", {"user_id": user_id, "consent_type": "ticari_ileti_izni", "action": "accepted" if _mk else "declined", "document_version": "initial", "document_name": "Ticari İleti İzni", "document_url": ""}, request)
-    await _insert_log("log_coupons", {"coupon_id": None, "coupon_code": _wc_code, "user_id": user_id, "action": "coupon_created", "order_id": None, "discount_amount": WELCOME_DISCOUNT_AMOUNT, "discount_type": "fixed_amount", "original_total": None, "final_total": None, "performed_by": "system", "admin_id": None, "admin_note": "Hoş geldin kuponu otomatik verildi"}, request)
-    # Ayarlarda "yeni üyelere tanımlanacak kupon" seçiliyse, belirlenen kullanım hakkıyla ata
+    # Yeni üyeye verilecek kupon TAMAMEN admin ayarına bağlı (Kuponlar ekranı
+    # "Yeni Üyelere Kupon Tanımla" — global_settings.new_member_coupon_id).
+    # Ayar boşsa/kaldırılmışsa YENİ ÜYEYE HİÇBİR KUPON VERİLMEZ (eskiden burada
+    # koşulsuz sabit bir "Hoş Geldin Kuponu" oluşturuluyordu — admin panelden
+    # kapatılamıyordu, bu yüzden kaldırıldı).
     try:
         _st = await db.settings.find_one({"id": "global_settings"}, {"_id": 0}) or {}
         _nm_id = _st.get("new_member_coupon_id")
@@ -203,6 +183,7 @@ async def auth_register(payload: RegisterInput, request: Request = None):
                                   "assigned_user_ids": [a["user_id"] for a in _asg],
                                   "members_only": True}},
                     )
+                    await _insert_log("log_coupons", {"coupon_id": _nm_id, "coupon_code": _nm.get("code"), "user_id": user_id, "action": "coupon_assigned", "order_id": None, "discount_amount": _nm.get("discount_amount"), "discount_type": "fixed_amount" if _nm.get("discount_amount") else "percentage", "original_total": None, "final_total": None, "performed_by": "system", "admin_id": None, "admin_note": "Yeni üye kuponu (admin ayarı) otomatik atandı"}, request)
     except Exception as _e:
         logging.warning(f"Yeni üye kupon ataması başarısız: {_e}")
     token = await create_session(user_id)
