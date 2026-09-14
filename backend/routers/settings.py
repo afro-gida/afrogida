@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 
 from core.db import db
 from core.logs import _insert_log
-from core.security import get_current_admin
+from core.security import get_current_admin, security_alarm
 from core.util import now_utc
 
 router = APIRouter(prefix="/api")
@@ -62,6 +62,20 @@ async def compat_update_admin_settings(data: dict, current_admin: dict = Depends
         _sov = _old_settings.get(_sf)
         if _sov != _snv:
             await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name",""), "action": "system_settings_changed", "target_type": "system", "target_id": "global_settings", "change_details": {"field": _sf, "old_value": _sov, "new_value": _snv}, "admin_note": ""}, request)
+    # Kupon anomali tespiti aç/kapa — biri bu güvenlik izlemesini sessizce
+    # kapatırsa (kötüye kullanım göstergesi olabilir) MUTLAKA haber verilmeli,
+    # o yüzden bypass_throttle=True: normal 10dk'lık SMS kısıtlamasına tabi
+    # DEĞİL, her değişiklikte ayrı ayrı bildirir.
+    if "coupon_anomaly_detection_enabled" in data:
+        _old_enabled = bool(_old_settings.get("coupon_anomaly_detection_enabled", True))
+        _new_enabled = bool(data["coupon_anomaly_detection_enabled"])
+        if _old_enabled != _new_enabled:
+            await security_alarm(
+                "coupon_anomaly_detection_toggled",
+                {"summary": f"Kupon anomali tespiti {'ACILDI' if _new_enabled else 'KAPATILDI'} - {current_admin.get('name','')}",
+                 "enabled": _new_enabled, "admin_id": current_admin["user_id"], "admin_name": current_admin.get("name", "")},
+                request, current_admin, severity="high", notify=True, bypass_throttle=True,
+            )
     return {"success": True, "settings": await db.settings.find_one({"id": "global_settings"}, {"_id": 0})}
 
 

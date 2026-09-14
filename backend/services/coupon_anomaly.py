@@ -29,10 +29,19 @@ COUPON_USER_USE_LIMIT_24H = 3            # aynı kişi 24 saatte bu sayının Ü
 COUPON_ADMIN_ACTION_LIMIT_1H = 5         # bir admin 1 saatte bu sayının ÜZERİNDE kupon oluşturur/atarsa uyar
 COUPON_DAILY_TOTAL_MULTIPLIER = 3        # günlük toplam indirim, 30 günlük ortalamanın kaç katını geçerse uyarılsın
 
+# Admin panelinden açılıp/kapatılabilir (global_settings.coupon_anomaly_detection_enabled,
+# GET /api/settings + PUT /api/admin/settings ile — bkz. routers/settings.py). Alan
+# hiç ayarlanmamışsa (eski kayıtlar) VARSAYILAN AÇIK sayılır.
+async def _detection_enabled() -> bool:
+    settings = await db.settings.find_one({"id": "global_settings"}, {"_id": 0, "coupon_anomaly_detection_enabled": 1})
+    return bool((settings or {}).get("coupon_anomaly_detection_enabled", True))
+
 
 async def check_high_value_coupon(coupon: dict, admin: dict = None, request=None, action: str = "coupon_created"):
     """Kural 4: kupon 500TL+ indirimle oluşturulduysa/güncellendiyse hemen bildir."""
     try:
+        if not await _detection_enabled():
+            return
         amt = float(coupon.get("discount_amount") or 0)
         if amt < COUPON_HIGH_DISCOUNT_THRESHOLD:
             return
@@ -51,6 +60,8 @@ async def check_high_value_coupon(coupon: dict, admin: dict = None, request=None
 async def check_admin_coupon_burst(admin: dict, request=None):
     """Kural 3: bir admin 1 saatte 5'ten fazla kupon oluşturma/atama işlemi yaptıysa uyar."""
     try:
+        if not await _detection_enabled():
+            return
         admin_id = (admin or {}).get("user_id")
         if not admin_id:
             return
@@ -74,6 +85,8 @@ async def check_admin_coupon_burst(admin: dict, request=None):
 async def check_user_coupon_use_burst(user: dict, request=None):
     """Kural 1: aynı müşteri 24 saatte 3'ten fazla kupon kullandıysa uyar."""
     try:
+        if not await _detection_enabled():
+            return
         uid = (user or {}).get("user_id")
         if not uid:
             return
@@ -96,6 +109,8 @@ async def check_daily_coupon_total_anomaly(request=None):
     """Kural 2: bugünkü toplam kupon indirimi, son 30 günün günlük
     ortalamasının COUPON_DAILY_TOTAL_MULTIPLIER katını geçtiyse uyar."""
     try:
+        if not await _detection_enabled():
+            return
         now = now_utc()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         window_start = today_start - timedelta(days=30)

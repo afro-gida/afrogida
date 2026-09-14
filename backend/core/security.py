@@ -43,11 +43,18 @@ _SECURITY_LABELS = {
     "coupon_user_use_burst": "MUSTERI COK KUPON KULLANDI",
     "coupon_admin_burst": "ADMIN COK KUPON ISLEMI YAPTI",
     "coupon_daily_total_anomaly": "GUNLUK KUPON TOPLAMI ANORMAL",
+    "coupon_anomaly_detection_toggled": "KUPON ANOMALI TESPITI ACILDI/KAPATILDI",
 }
 
 
-async def security_alarm(event_type: str, details: dict, request=None, user=None, severity: str = "critical", notify: bool = True):
-    """Güvenlik olayını kaydeder, kullanıcıyı işaretler, yöneticiye SMS gönderir (10 dk'da 1 kez / olay tipi)."""
+async def security_alarm(event_type: str, details: dict, request=None, user=None, severity: str = "critical",
+                          notify: bool = True, bypass_throttle: bool = False):
+    """Güvenlik olayını kaydeder, kullanıcıyı işaretler, yöneticiye SMS gönderir (10 dk'da 1 kez / olay tipi).
+
+    bypass_throttle=True: bu 10 dk'lık kısıtlamayı atlar — SEYREK ve
+    KESİNLİKLE KAÇIRILMAMASI gereken tek seferlik olaylar için (ör. bir
+    güvenlik özelliğinin admin tarafından açılıp/kapatılması). Diğer tüm
+    çağrılarda varsayılan (False) davranış DEĞİŞMEDİ."""
     meta = _extract_request_meta(request)
     uid = (user or {}).get("user_id")
     try:
@@ -71,10 +78,11 @@ async def security_alarm(event_type: str, details: dict, request=None, user=None
     if not notify or not SECURITY_ADMIN_PHONE:
         return
     try:
-        since = now_utc() - timedelta(minutes=SECURITY_SMS_THROTTLE_MIN)
-        recent = await db.security_alarm_sms.find_one({"event_type": event_type, "sent_at": {"$gte": since}})
-        if recent:
-            return
+        if not bypass_throttle:
+            since = now_utc() - timedelta(minutes=SECURITY_SMS_THROTTLE_MIN)
+            recent = await db.security_alarm_sms.find_one({"event_type": event_type, "sent_at": {"$gte": since}})
+            if recent:
+                return
         label = _SECURITY_LABELS.get(event_type, event_type.upper())
         who = (user or {}).get("name") or "bilinmiyor"
         phone_m = _mask_phone((user or {}).get("phone") or "") if user else ""
