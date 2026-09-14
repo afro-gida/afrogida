@@ -79,7 +79,7 @@ export default function CampaignsScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
-  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.four },
+  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.four },
   card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   image: { width: '100%', height: 120 },
   body: { padding: Spacing.three, gap: 4 },

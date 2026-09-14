@@ -18,7 +18,9 @@ export const Colors = {
     backgroundElement: '#eafff4',
     backgroundSelected: '#cdeee0',
     textSecondary: '#4b6358',
-    tint: '#14B67E',
+    // Gerçek sitede açık modun aksan rengi TURUNCU'dur (rgb(251,140,60)),
+    // koyu modda YEŞİL'dir — bkz. "Duvar Kağıdı Sistemi" dökümanı, madde 3.
+    tint: '#fb8c3c',
     tintSoft: '#CCE6D1',
     border: '#cdeee0',
     danger: '#c0392b',
@@ -79,3 +81,12 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/** "#rrggbb" rengini verilen saydamlıkta "rgba(...)" stringine çevirir
+ *  (buzlu cam kart efekti gibi yarı saydam yüzeyler için). */
+export function withAlpha(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}

@@ -106,7 +106,7 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
-  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.four },
+  list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.four },
   card: { borderWidth: 1, borderRadius: 14, padding: Spacing.three, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statusPill: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 2 },

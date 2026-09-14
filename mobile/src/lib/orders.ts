@@ -41,17 +41,30 @@ export async function fetchOrders(): Promise<{ orders: Order[]; error: string | 
   }
 }
 
+export type DeliveryType = 'gel_al' | 'eve_servis';
+export type PaymentMethod = 'pay_at_counter' | 'online_card';
+
 /**
- * Gerçek sipariş oluşturur (sunucu fiyatı/tutarı kendi hesaplar). Şimdilik
- * sadece Gel-Al + tezgahta ödeme akışı var (kart ödemesi henüz bağlı değil).
+ * Gerçek sipariş oluşturur (sunucu fiyatı/tutarı kendi hesaplar).
+ * Ödeme yöntemi "online_card" ise backend'in kart ödemesini PayTR üzerinden
+ * BAŞLATMASI gerekiyor — bu yüzden o durumda /orders yerine /payments/init
+ * çağrılıyor (backend/routers/payments.py); dönen payment_url'e
+ * yönlendirilerek ödeme PayTR'nin kendi (hosted) sayfasında tamamlanır,
+ * kart bilgisi hiçbir zaman bizim uygulamadan geçmez.
  */
-export async function createOrder(items: { id: string; qty: number }[]): Promise<{ tx_id: string } | { error: string }> {
+export async function createOrder(
+  items: { id: string; qty: number }[],
+  opts: { deliveryType: DeliveryType; paymentMethod: PaymentMethod; address?: string }
+): Promise<{ tx_id: string; payment_url?: string } | { error: string }> {
   try {
-    const res = await api.post<{ success: boolean; tx_id: string }>('/orders', {
+    const path = opts.paymentMethod === 'online_card' ? '/payments/init' : '/orders';
+    const res = await api.post<{ success: boolean; tx_id: string; payment_url?: string }>(path, {
       items,
-      delivery_type: 'gel_al',
+      delivery_type: opts.deliveryType,
+      payment_method: opts.paymentMethod,
+      ...(opts.address ? { address: opts.address } : {}),
     });
-    return { tx_id: res.tx_id };
+    return { tx_id: res.tx_id, payment_url: res.payment_url };
   } catch (err) {
     if (err instanceof ApiError) return { error: err.message };
     return { error: 'Bağlantı hatası. Backend çalışıyor mu?' };

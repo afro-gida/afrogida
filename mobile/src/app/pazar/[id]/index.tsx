@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -8,8 +8,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { CATEGORIES } from '@/data/sample';
 import { useProducts } from '@/lib/products-context';
 import { useMarkets } from '@/lib/markets-context';
+import { useCart } from '@/lib/cart-context';
 import { fetchSettings, type StoreSettings } from '@/lib/settings';
-import { Spacing } from '@/constants/theme';
+import { Spacing, withAlpha } from '@/constants/theme';
 import type { Product } from '@/lib/types';
 
 export default function MarketProductsScreen() {
@@ -68,7 +69,7 @@ export default function MarketProductsScreen() {
         keyExtractor={(t) => t}
         contentContainerStyle={styles.infoRow}
         renderItem={({ item }) => (
-          <View style={[styles.infoPill, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.infoPill, { backgroundColor: withAlpha(theme.backgroundElement, 0.6), borderColor: theme.tint }]}>
             <ThemedText type="small" numberOfLines={1}>
               {item}
             </ThemedText>
@@ -126,13 +127,22 @@ export default function MarketProductsScreen() {
 
 function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
   const theme = useTheme();
+  const { addItem } = useCart();
   const outOfStock = !product.in_stock;
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.image_url && !imageFailed;
+  // Buzlu cam kart: yarı saydam zemin + (web'de) arkadan duvar kağıdının
+  // bulanık görünmesi için backdrop-filter — bkz. DESIGN-BRIEF.md 4. madde.
+  const glassStyle: any =
+    Platform.OS === 'web' ? { backdropFilter: 'blur(14px) saturate(1.3)' } : null;
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+      style={[
+        styles.card,
+        glassStyle,
+        { backgroundColor: withAlpha(theme.backgroundElement, 0.72), borderColor: theme.tint },
+      ]}
     >
       <View style={[styles.cardImageWrap, { backgroundColor: theme.tintSoft }]}>
         {showImage ? (
@@ -152,24 +162,35 @@ function ProductCard({ product, onPress }: { product: Product; onPress: () => vo
             </ThemedText>
           </View>
         )}
-        {!!product.campaign_discount_percent && (
-          <View style={[styles.discountBadge, { backgroundColor: theme.accentOrange }]}>
-            <ThemedText type="small" style={styles.badgeText}>
-              %{product.campaign_discount_percent} indirim
-            </ThemedText>
-          </View>
-        )}
       </View>
+      {!!product.campaign_discount_percent && (
+        <View style={[styles.discountBadge, { backgroundColor: theme.accentOrange }]}>
+          <ThemedText type="small" style={styles.discountBadgeText}>
+            %{product.campaign_discount_percent}
+          </ThemedText>
+        </View>
+      )}
       <ThemedText type="smallBold" numberOfLines={1} style={styles.cardTitle}>
         {product.name}
       </ThemedText>
-      <ThemedText themeColor="tint" type="smallBold">
-        {product.gel_al_price ? `${product.gel_al_price.toFixed(0)} ₺` : 'Fiyat yok'}
-        <ThemedText themeColor="textSecondary" type="small">
-          {' '}
-          / {product.unit}
+      <View style={styles.cardBottomRow}>
+        <ThemedText themeColor="tint" type="smallBold">
+          {product.gel_al_price ? `${product.gel_al_price.toFixed(0)} ₺` : 'Fiyat yok'}
+          <ThemedText themeColor="textSecondary" type="small">
+            {' '}
+            / {product.unit}
+          </ThemedText>
         </ThemedText>
-      </ThemedText>
+        {!outOfStock && (
+          <Pressable
+            onPress={() => addItem(product)}
+            hitSlop={8}
+            style={[styles.addBtn, { backgroundColor: theme.tint }]}
+          >
+            <ThemedText style={styles.addBtnText}>+ Ekle</ThemedText>
+          </Pressable>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -182,7 +203,13 @@ const styles = StyleSheet.create({
   backArrow: { fontSize: 20 },
   infoList: { flexGrow: 0, flexShrink: 0, height: 44, marginTop: Spacing.two },
   infoRow: { paddingHorizontal: Spacing.three, gap: Spacing.two },
-  infoPill: { borderRadius: 10, paddingHorizontal: Spacing.two, height: 32, justifyContent: 'center' },
+  infoPill: {
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    height: 32,
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
   chipList: { flexGrow: 0, flexShrink: 0, height: 48 },
   chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, alignItems: 'center', height: 48 },
   chip: {
@@ -193,17 +220,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  grid: { padding: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six },
+  grid: { padding: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.four },
   row: { gap: Spacing.two },
-  card: { flex: 1, borderRadius: 16, borderWidth: 1, padding: Spacing.two, gap: 4 },
+  card: { flex: 1, borderRadius: 16, borderWidth: 1.5, padding: Spacing.two, gap: 4 },
   cardImageWrap: { height: 110, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cardImageFallback: { fontSize: 36 },
   cardTitle: { marginTop: 4 },
+  cardBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   badgeText: { color: '#fff', fontWeight: '700' },
   outOfStockBadge: {
     position: 'absolute', bottom: 6, left: 6, right: 6,
     backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 6, paddingVertical: 3, alignItems: 'center',
   },
-  discountBadge: { position: 'absolute', top: 6, right: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  // Görsel köşesine binen yuvarlak indirim rozeti (kartın kendisine, resim
+  // katmanının üstüne bindirilmiş — bkz. hedef site tasarımı).
+  discountBadge: {
+    position: 'absolute', top: Spacing.one, right: Spacing.one,
+    minWidth: 30, height: 22, borderRadius: 11, paddingHorizontal: 6,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
+  addBtn: { borderRadius: 999, paddingHorizontal: Spacing.two, height: 26, alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two },
 });

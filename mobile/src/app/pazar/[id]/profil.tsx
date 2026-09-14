@@ -72,7 +72,7 @@ export default function AccountScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { paddingBottom: Spacing.five },
+  scroll: { paddingBottom: Spacing.six + Spacing.four },
   header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
   loginCard: { marginHorizontal: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
   loginText: { marginBottom: Spacing.one },
