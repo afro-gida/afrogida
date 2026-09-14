@@ -11,22 +11,43 @@ müşteri uygulamasıyla aynı pakette/bundle'da olmayacak.** Sebep: müşteri
 uygulaması herkesin indirebileceği bir pakettir (web bundle veya app store) —
 içine admin kodu/route'ları gömülürse, biri o paketi indirip inceleyerek
 admin panelinin yapısını (endpoint'ler, ekranlar, iş mantığı) öğrenebilir.
-Admin kodu SADECE panel.afrogida.com.tr adresinde, ayrı bir derleme/deploy
-olarak yayınlanacak. Ayrıca admin paneli **hiçbir zaman** app store'a
-(Google Play / App Store) konulmayacak — sadece web.
+Admin kodu **hiçbir public adreste barındırılmayacak** — güncellenen karar
+için 2. bölüme bak (USB ile dağıtılan Windows/Android uygulaması). Ayrıca
+admin paneli **hiçbir zaman** app store'a (Google Play / App Store) da
+konulmayacak.
 
-## 2. Teknik karar (ben verdim, gerekçesiyle)
+## 2. Teknik karar (ben verdim, gerekçesiyle) — GÜNCELLENDİ
+
+**ÖNEMLİ DEĞİŞİKLİK (kullanıcı kararı):** Admin paneli **hiçbir public web
+adresinde barındırılmayacak** (panel.afrogida.com.tr YOK, hiçbir yerde
+duyurulmayacak/DNS'e konmayacak). Bunun yerine **masaüstü/tablet uygulaması
+olarak paketlenip yalnızca USB flash bellekle elden ele dağıtılacak** —
+mağazaya (Play Store vb.) da KESİNLİKLE konmayacak. Gerekçe: bir web adresi
+olursa (izole/duyurulmamış bile olsa) taranıp bulunabilir; USB ile elden
+dağıtımda ortada taranacak bir adres yok — fiziksel erişim olmadan uygulamanın
+kendisine ulaşmak mümkün değil. Uygulamanın içindeki arayüz kodu görülse bile
+(her uygulamada olduğu gibi kaçınılmaz), gerçek işlemler yine backend'deki
+parola + SMS 2FA girişinden geçmeden yapılamıyor — bu kısım değişmedi.
 
 - **Ayrı klasör:** `admin/` (repo kökünde, `backend/` ve `mobile/` ile
-  kardeş).
-- **Yığın: Vite + React + TypeScript** (Expo DEĞİL). Gerekçe: admin paneli
-  sadece web'de çalışacak, telefon/tablet native özelliği (kamera, push
-  bildirim vb.) gerekmiyor — Expo'nun mobil-öncelikli makinesi burada
-  gereksiz ağırlık. Vite daha hafif, daha hızlı derlenir, tablo/liste ağırlıklı
-  bir yönetim panosu için daha standart bir seçim.
-- **Deploy hedefi:** `panel.afrogida.com.tr` (ayrı subdomain, ayrı nginx
-  bloğu, ayrı statik dosya kökü — `mobile/`nin web derlemesiyle KARIŞMAZ).
-  Bu adres henüz DNS'te tanımlı değil, deploy aşamasında ele alınacak.
+  kardeş) — bu, admin arayüzünün WEB KODU (React). Aşağıdaki iki "sarmalayıcı"
+  bu kodu native uygulamaya çevirir, kendi kodunu yazmaz.
+- **Web arayüz yığını: Vite + React + TypeScript.** Gerekçe: tablo/liste
+  ağırlıklı bir yönetim panosu için standart, hızlı derlenen bir seçim; aynı
+  kod hem Windows hem Android sarmalayıcısına beslenir (tek kod tabanı, iki
+  paket).
+- **Windows paketleme: Electron.** Gerekçe: proje zaten Node/npm tabanlı
+  (mobile/ de öyle), Electron ek bir dil/araç zinciri (ör. Rust) gerektirmiyor,
+  iyi belgelenmiş, taşınabilir tek `.exe` üretebiliyor (kurulum gerektirmeden
+  USB'den çalıştırılabilir — "portable" build).
+- **Android (tablet) paketleme: Capacitor.** Gerekçe: aynı Vite+React web
+  kodunu gerçek bir Android APK'ya sarar, Play Store'a hiç uğramadan `.apk`
+  dosyasını USB ile tablete kopyalayıp "bilinmeyen kaynaklardan yükle" ile
+  kurmak yeterli.
+- Uygulama yine de çalışırken gerçek backend'e (internet üzerinden, aynı API)
+  bağlanacak — USB'de olan SADECE arayüz kodu/kurulum paketi, canlı veri için
+  yine sunucuya bağlanması gerekiyor. Yani "tamamen offline" değil; "gizli
+  dağıtım, normal (online) çalışma".
 - Kod stili/dizin yapısı konusunda `mobile/`deki desenlerden (ör. tema
   sabitleri, API istemcisi yapısı) esinlenebilirsin ama birebir kopyalamak
   zorunda değilsin — bu ayrı bir proje.
@@ -38,11 +59,13 @@ Backend'i ben modülerleştirdim, admin'in kullanacağı uçların hepsi
 veya `get_current_staff` ile korumalı):
 
 - `admin_members.py` — üye listesi/arama, detay, işlem geçmişi, güncelle, sil,
-  kapıda ödeme kısıtlaması kaldır/istisna. **(şu an ben bitiriyorum, birkaç
-  dakika içinde hazır olur)**
-- Üye/esnaf/kurye atama, `/admin/staff`, `/admin/courier*`,
-  `/admin/supplier-groups` — bunlar da server.py'den routers'a taşınıyor,
-  ben bitirince haber veririm.
+  kapıda ödeme kısıtlaması kaldır/istisna.
+- `admin_staff.py` — esnaf/kurye atama, `/admin/staff`, `/admin/courier*`,
+  `/admin/supplier-groups`.
+- `uploads.py` — resim yükleme (`/admin/upload`).
+
+**Backend modülerleştirme tamamen bitti** (server.py 6888→224 satır),
+push edildi — tüm admin uçları için tam liste `localhost:8000/docs`'ta.
 - `admin_orders.py` — sipariş listesi/detay/güncelle/iade/teslim kodu.
 - `logs.py` — admin log ekranları (sipariş/ödeme/güvenlik/auth logları).
 - `catalog.py` — kategori/tedarikçi/pazar-tedarikçi eşlemesi (yönetici
@@ -97,3 +120,20 @@ Yönetici girişi normal üye girişinden FARKLI ve daha güvenli:
    için xxzar-47'ye gönderdiğim mesaja bak: market_hours, pickup_order_hours,
    delivery_order_hours, min_pickup_amount, min_delivery_amount).
 7. Loglar (güvenlik, ödeme, sipariş, auth).
+
+## 7. Paketleme (native uygulama) — Windows + Android
+
+Önce `admin/` içinde normal bir Vite+React web uygulaması olarak çalışır
+hale getir (tarayıcıda test edilebilir), paketleme EN SONA bırakılabilir —
+ekran/akış işi bittikten sonra:
+
+- **Windows:** Electron ile sar, "portable" (kurulumsuz, tek `.exe`) build
+  al. Elden dağıtım USB'ye o `.exe` kopyalanarak yapılır.
+- **Android:** Capacitor ile sar (`npx cap add android`), Android Studio ile
+  `.apk` üret. USB'ye kopyalanıp tablette "bilinmeyen kaynaklardan yükle"
+  ile kurulur.
+- İkisi de AYNI `admin/` web koduna dayanır — ayrı ayrı yeniden yazmana
+  gerek yok, sadece iki farklı "sarma" adımı.
+- Hiçbir aşamada bir web sunucusuna (panel.afrogida.com.tr vb.) deploy
+  ETME — sadece yerel derleme çıktıları (`.exe`, `.apk`) üretilecek, bunlar
+  kullanıcıya elden/USB ile verilecek.
