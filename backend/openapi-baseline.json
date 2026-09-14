@@ -5067,6 +5067,60 @@
         "summary": "Update Market"
       }
     },
+    "/api/admin/markets/{market_id}/reset-campaigns": {
+      "post": {
+        "description": "'İndirimleri Sıfırla' — PAZAR BAZLI hali. Global /admin/products/\nreset-campaigns TÜM ürünleri sıfırlıyordu; bu uç sadece bu pazarda\naktif olan tedarikçilerin (catalog_config.supplier_markets'te bu\npazarın adı geçen supplier_group'lar) ürünlerini sıfırlar.",
+        "operationId": "reset_market_campaigns_api_admin_markets__market_id__reset_campaigns_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "market_id",
+            "required": true,
+            "schema": {
+              "title": "Market Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Market Campaigns"
+      }
+    },
     "/api/admin/members": {
       "get": {
         "operationId": "admin_list_members_api_admin_members_get",

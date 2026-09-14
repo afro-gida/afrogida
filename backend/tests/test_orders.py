@@ -1,5 +1,14 @@
 """Sipariş hesaplama — SUNUCU tek doğruluk kaynağı, manipülasyon reddedilir."""
+from datetime import datetime, timedelta
+
 import pytest
+import pytz
+
+
+def _closed_window():
+    """Şu an KESİNLİKLE dışında olunan 1 dakikalık bir HH:MM-HH:MM penceresi."""
+    later = datetime.now(pytz.timezone("Europe/Istanbul")) + timedelta(hours=2)
+    return f"{later.strftime('%H:%M')}-{(later + timedelta(minutes=1)).strftime('%H:%M')}"
 
 
 @pytest.fixture
@@ -164,3 +173,122 @@ def test_market_cash_limit_enforced(client, make_user, db, product, market_with_
     # aynı sepet market_id olmadan (limit yok) geçmeli
     r2 = _order(client, h, [{"id": product["id"], "qty": qty}])
     assert r2.status_code == 200, r2.text
+
+
+# ---------------- Pazar/Gel-Al/Eve Servis saatleri + kapıda nakit aç/kapa ----------------
+# (kullanıcı onayıyla GERÇEK kısıtlamaya çevrildi — eskiden sadece bilgi amaçlıydı)
+
+@pytest.fixture
+def market_closed_now(db):
+    doc = {
+        "id": "market_test_closed", "name": "Kapalı Test Pazarı", "day": "Salı",
+        "active": True, "orders_enabled": True, "active_gel_al": True,
+        "pazar_saati": _closed_window(),
+    }
+    db.markets.delete_one({"id": doc["id"]})
+    db.markets.insert_one(doc)
+    yield doc
+    db.markets.delete_one({"id": doc["id"]})
+
+
+def test_market_closed_hours_rejects_order(client, make_user, product, market_closed_now):
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}], market_id="market_test_closed")
+    assert r.status_code == 400
+    assert "saat" in r.text.lower()
+
+
+@pytest.fixture
+def market_gel_al_closed(db):
+    doc = {
+        "id": "market_test_gelal_closed", "name": "Gel-Al Kapalı Test", "day": "Çarşamba",
+        "active": True, "orders_enabled": True, "active_gel_al": True, "active_eve_servis": True,
+        "gel_al_saati": _closed_window(),  # gel_al kapalı
+        # pazar_saati varsayılan (00:00-23:59) -> genel olarak açık
+    }
+    db.markets.delete_one({"id": doc["id"]})
+    db.markets.insert_one(doc)
+    yield doc
+    db.markets.delete_one({"id": doc["id"]})
+
+
+def test_gel_al_specific_window_rejects_only_gel_al(client, make_user, product, market_gel_al_closed):
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}],
+               market_id="market_test_gelal_closed", delivery_type="gel_al")
+    assert r.status_code == 400
+    assert "saat" in r.text.lower()
+    # eve servis için ayrı bir saat kısıtı yok, o hâlâ geçmeli
+    r2 = _order(client, h, [{"id": product["id"], "qty": 1}],
+                market_id="market_test_gelal_closed", delivery_type="eve_servis",
+                address="Test Mah. No:1", payment_method="online_card")
+    assert r2.status_code == 200, r2.text
+
+
+@pytest.fixture
+def market_no_cash_on_delivery(db):
+    doc = {
+        "id": "market_test_no_cod", "name": "Nakit Kapalı Test", "day": "Perşembe",
+        "active": True, "orders_enabled": True, "active_eve_servis": True,
+        "kapida_nakit_odeme_enabled": False,
+    }
+    db.markets.delete_one({"id": doc["id"]})
+    db.markets.insert_one(doc)
+    yield doc
+    db.markets.delete_one({"id": doc["id"]})
+
+
+def test_kapida_nakit_disabled_rejects_cash_on_delivery(client, make_user, product, market_no_cash_on_delivery):
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}],
+               market_id="market_test_no_cod", delivery_type="eve_servis",
+               address="Test Mah. No:1", payment_method="cash_on_delivery")
+    assert r.status_code == 400
+    assert "nakit" in r.text.lower()
+
+
+def test_kapida_nakit_disabled_does_not_block_pay_at_counter(client, make_user, product, market_no_cash_on_delivery):
+    """kapida_nakit_odeme_enabled SADECE 'kapıda nakit' (eve servis) ödemesini
+    kapatır — tezgahta ödeme (gel_al) ayrı bir alan (nakit_tezgah_*), etkilenmez."""
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}],
+               market_id="market_test_no_cod", delivery_type="gel_al", payment_method="pay_at_counter")
+    assert r.status_code == 200, r.text
+
+
+# ---------------- Pazar bazlı "İndirimleri Sıfırla" ----------------
+
+def test_market_reset_campaigns_scopes_by_supplier(client, make_user, db):
+    admin_uid, admin_h = make_user(role="yonetici")
+    market_id = "market_test_reset"
+    db.markets.insert_one({"id": market_id, "name": "Reset Test Pazarı", "day": "Cuma", "active": True})
+    db.products.insert_one({
+        "id": "prod_reset_in", "name": "İçerideki Ürün", "category": "Sebze", "price": 10,
+        "unit": "kg", "supplier_group": "Reset Tedarikçi", "campaign_discount_percent": 20, "campaign_min_qty": 3,
+    })
+    db.products.insert_one({
+        "id": "prod_reset_out", "name": "Dışarıdaki Ürün", "category": "Sebze", "price": 10,
+        "unit": "kg", "supplier_group": "Başka Tedarikçi", "campaign_discount_percent": 15, "campaign_min_qty": 2,
+    })
+    original_cfg = db.catalog_config.find_one({})
+    cfg = dict(original_cfg) if original_cfg else {"id": "catalog_config"}
+    cfg.pop("_id", None)
+    cfg["supplier_markets"] = {"Reset Tedarikçi": ["Reset Test Pazarı"], "Başka Tedarikçi": ["Başka Pazar"]}
+    db.catalog_config.update_one({}, {"$set": cfg}, upsert=True)
+    try:
+        r = client.post(f"/api/admin/markets/{market_id}/reset-campaigns", headers=admin_h)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["suppliers"] == ["Reset Tedarikçi"]
+        assert body["modified"] == 1
+
+        assert db.products.find_one({"id": "prod_reset_in"})["campaign_discount_percent"] == 0
+        assert db.products.find_one({"id": "prod_reset_out"})["campaign_discount_percent"] == 15  # etkilenmedi
+    finally:
+        db.markets.delete_one({"id": market_id})
+        db.products.delete_many({"id": {"$in": ["prod_reset_in", "prod_reset_out"]}})
+        if original_cfg:
+            original_cfg.pop("_id", None)
+            db.catalog_config.update_one({}, {"$set": original_cfg})
+        else:
+            db.catalog_config.delete_many({})

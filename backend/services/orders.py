@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
+import pytz
 from fastapi import HTTPException, Request
 
 from core.config import _AFRO_DOC_NAME_TR
@@ -69,6 +70,28 @@ def _normalize_payment_method(data: dict) -> str:
     if raw in ("online", "online_card", "kredi_karti", "credit_card", "card"):
         return "online_card"
     return raw or "pay_at_counter"
+
+
+def _in_time_window(window: str, now_tr: datetime) -> bool:
+    """"HH:MM-HH:MM" formatındaki bir pazar/teslimat saat aralığında `now_tr`
+    (Europe/Istanbul, tz-aware) var mı? Aralık gece yarısını geçiyorsa
+    (ör. "22:00-02:00") doğru şekilde sarmalanır. Format bozuksa GÜVENLİ
+    VARSAYILAN olarak True döner (yanlış yapılandırma tüm siparişleri
+    durdurmasın) — bu yüzden admin panelinde saat alanı boş/hatalı
+    bırakılırsa pazar kapanmaz, sadece kısıtlama uygulanmaz."""
+    try:
+        start_s, end_s = str(window or "").split("-", 1)
+        sh, sm = (int(x) for x in start_s.strip().split(":"))
+        eh, em = (int(x) for x in end_s.strip().split(":"))
+        start = now_tr.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        # bitiş dakikasının TAMAMI dahil (ör. "00:00-23:59" tüm günü kapsasın,
+        # 23:59:00-23:59:59 arası yanlışlıkla "kapalı" görünmesin)
+        end = now_tr.replace(hour=eh, minute=em, second=59, microsecond=999999)
+        if end <= start:
+            return now_tr >= start or now_tr <= end  # gece yarısını geçen aralık
+        return start <= now_tr <= end
+    except Exception:
+        return True
 
 
 def _as_float(value, default=0.0) -> float:
@@ -244,6 +267,33 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
     if len(items_in) > 60:
         raise HTTPException(status_code=400, detail="Sepette çok fazla kalem var")
 
+    # Eve Servis/Gel-Al/ödeme ayarları PAZAR BAZLI (bkz. CHANGES.md, Admin
+    # sistemi #1; alanlar models.Market'ta tanımlı). Pazar bulunamazsa/market_id
+    # yoksa YENİ/tanımlanmamış bir pazarmış gibi davranılır (Market model'in
+    # varsayılanlarıyla aynı — hepsi açık/0) — sipariş asla SADECE bu yüzden
+    # reddedilmez; sadece pazarın KENDİ ayarladığı kısıtlamalar uygulanır.
+    _market_id = data.get("market_id") or data.get("stall_id")
+    _market = await db.markets.find_one({"id": _market_id}, {"_id": 0}) if _market_id else None
+    _market = _market or {}
+
+    def _msetting(key, default):
+        val = _market.get(key)
+        return default if val is None else val
+
+    # Pazar/Gel-Al/Eve Servis çalışma saatleri — kullanıcı onayıyla artık
+    # GERÇEK kısıtlama (eskiden sadece ana ekranda bilgi amaçlı gösteriliyordu).
+    _tr_now = now_utc().astimezone(pytz.timezone("Europe/Istanbul"))
+    if not _in_time_window(_msetting("pazar_saati", "00:00-23:59"), _tr_now):
+        raise HTTPException(status_code=400, detail="Bu pazar şu anda sipariş kabul saatleri dışında.")
+    _type_window = _msetting("gel_al_saati" if delivery_type == "gel_al" else "eve_servis_saati", "00:00-23:59")
+    _type_label = "Gel-Al" if delivery_type == "gel_al" else "Eve Servis"
+    if not _in_time_window(_type_window, _tr_now):
+        raise HTTPException(status_code=400, detail=f"{_type_label} şu anda bu pazar için sipariş kabul saatleri dışında.")
+
+    # Kapıda nakit ödeme (eve servis, kapıda nakit) pazar bazında kapatılabilir.
+    if payment_method == "cash_on_delivery" and not _msetting("kapida_nakit_odeme_enabled", True):
+        raise HTTPException(status_code=400, detail="Bu pazarda kapıda nakit ödeme kabul edilmiyor. Lütfen online ödeme seçin.")
+
     tamper = []
     stale = []
 
@@ -335,17 +385,6 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
         raise HTTPException(status_code=400, detail="Sepet boş")
 
     subtotal = money_d(subtotal)
-    # Eve Servis/Gel-Al/ödeme ayarları artık PAZAR BAZLI (bkz. CHANGES.md, Admin
-    # sistemi #1; alanlar models.Market'ta tanımlı). Pazar bulunamazsa/market_id
-    # yoksa YENİ/tanımlanmamış bir pazarmış gibi davranılır (Market model'in
-    # varsayılanlarıyla aynı) — sipariş asla bu yüzden reddedilmez.
-    _market_id = data.get("market_id") or data.get("stall_id")
-    _market = await db.markets.find_one({"id": _market_id}, {"_id": 0}) if _market_id else None
-    _market = _market or {}
-
-    def _msetting(key, default):
-        val = _market.get(key)
-        return default if val is None else val
 
     delivery_fee = Decimal("0")
     if delivery_type == "eve_servis" and subtotal > 0:
