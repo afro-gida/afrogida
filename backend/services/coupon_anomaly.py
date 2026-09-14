@@ -12,8 +12,10 @@ işlemini asla durdurmamalı).
      COUPON_DAILY_TOTAL_MULTIPLIER katını geçerse
   3) Bir admin 1 saatte COUPON_ADMIN_ACTION_LIMIT_1H'ten fazla kupon
      oluşturma/atama işlemi yaparsa
-  4) Bir kupon COUPON_HIGH_DISCOUNT_THRESHOLD TL ve üzeri indirimle
-     oluşturulur/güncellenirse (en somut/acil olanı)
+  4) Bir kupon eşik tutarı (varsayılan COUPON_HIGH_DISCOUNT_THRESHOLD=500TL,
+     admin panelden global_settings.coupon_anomaly_discount_threshold ile
+     değiştirilebilir) ve üzeri indirimle oluşturulur/güncellenirse
+     (en somut/acil olanı)
 """
 import logging
 from datetime import timedelta
@@ -24,7 +26,7 @@ from core.util import now_utc
 
 logger = logging.getLogger("afro.coupon_anomaly")
 
-COUPON_HIGH_DISCOUNT_THRESHOLD = 500.0   # TL — bu tutar ve üzeri kupon oluşturma/güncelleme HEMEN bildirilir
+COUPON_HIGH_DISCOUNT_THRESHOLD = 500.0   # TL — VARSAYILAN eşik (admin panelden değiştirilebilir, bkz. check_high_value_coupon)
 COUPON_USER_USE_LIMIT_24H = 3            # aynı kişi 24 saatte bu sayının ÜZERİNDE kupon kullanırsa uyar
 COUPON_ADMIN_ACTION_LIMIT_1H = 5         # bir admin 1 saatte bu sayının ÜZERİNDE kupon oluşturur/atarsa uyar
 COUPON_DAILY_TOTAL_MULTIPLIER = 3        # günlük toplam indirim, 30 günlük ortalamanın kaç katını geçerse uyarılsın
@@ -38,19 +40,31 @@ async def _detection_enabled() -> bool:
 
 
 async def check_high_value_coupon(coupon: dict, admin: dict = None, request=None, action: str = "coupon_created"):
-    """Kural 4: kupon 500TL+ indirimle oluşturulduysa/güncellendiyse hemen bildir."""
+    """Kural 4: kupon eşik tutarı ve üzeri indirimle oluşturulduysa/güncellendiyse
+    hemen bildir. Eşik admin panelden ayarlanabilir (global_settings.
+    coupon_anomaly_discount_threshold — GET /api/settings + PUT /api/admin/
+    settings, yeni endpoint yok); hiç ayarlanmamışsa COUPON_HIGH_DISCOUNT_THRESHOLD
+    (500TL) varsayılan olarak kullanılır."""
     try:
-        if not await _detection_enabled():
+        settings = await db.settings.find_one(
+            {"id": "global_settings"},
+            {"_id": 0, "coupon_anomaly_detection_enabled": 1, "coupon_anomaly_discount_threshold": 1},
+        ) or {}
+        if not bool(settings.get("coupon_anomaly_detection_enabled", True)):
             return
+        try:
+            threshold = float(settings.get("coupon_anomaly_discount_threshold") or COUPON_HIGH_DISCOUNT_THRESHOLD)
+        except (TypeError, ValueError):
+            threshold = COUPON_HIGH_DISCOUNT_THRESHOLD
         amt = float(coupon.get("discount_amount") or 0)
-        if amt < COUPON_HIGH_DISCOUNT_THRESHOLD:
+        if amt < threshold:
             return
         fiil = "güncellendi" if action == "coupon_updated" else "oluşturuldu"
         await security_alarm(
             "coupon_high_discount",
-            {"summary": f"{coupon.get('code','')} kuponu {amt:.0f}TL indirimle {fiil}",
+            {"summary": f"{coupon.get('code','')} kuponu {amt:.0f}TL indirimle {fiil} (eşik: {threshold:.0f}TL)",
              "coupon_id": coupon.get("id"), "coupon_code": coupon.get("code"),
-             "discount_amount": amt, "action": action},
+             "discount_amount": amt, "threshold": threshold, "action": action},
             request, admin, severity="high", notify=True,
         )
     except Exception as exc:

@@ -131,3 +131,29 @@ def test_toggle_sends_alarm_every_time_not_throttled(client, make_user, db):
     assert db.log_security.count_documents({"event_type": "coupon_anomaly_detection_toggled"}) == before + 3
     # kapalı kalan durumu tekrar aç (sonraki testleri etkilemesin)
     client.put("/api/admin/settings", json={"coupon_anomaly_detection_enabled": True}, headers=admin_h)
+
+
+def test_high_value_threshold_is_configurable(client, make_user, db):
+    """coupon_anomaly_discount_threshold ayarlanırsa 500TL sabiti değil o
+    kullanılır (admin panelden değiştirilebilsin isteği)."""
+    _, admin_h = make_user(role="yonetici")
+    try:
+        r = client.put("/api/admin/settings", json={"coupon_anomaly_discount_threshold": 50}, headers=admin_h)
+        assert r.status_code == 200, r.text
+
+        before = db.log_security.count_documents({"event_type": "coupon_high_discount"})
+        # eskiden alarm üretmeyecek kadar düşüktü (100TL < eski 500TL eşik), yeni (50TL) eşikte artık üretmeli
+        r2 = client.post("/api/admin/coupons", json=_coupon_payload(discount_amount=100), headers=admin_h)
+        assert r2.status_code == 200, r2.text
+        after = db.log_security.count_documents({"event_type": "coupon_high_discount"})
+        assert after == before + 1
+        alarm = db.log_security.find_one({"event_type": "coupon_high_discount"}, sort=[("created_at", -1)])
+        assert alarm["details"]["threshold"] == 50.0
+
+        # eşiğin altında kalan bir kupon hâlâ alarm üretmemeli
+        r3 = client.post("/api/admin/coupons", json=_coupon_payload(discount_amount=20), headers=admin_h)
+        assert r3.status_code == 200, r3.text
+        assert db.log_security.count_documents({"event_type": "coupon_high_discount"}) == before + 1
+    finally:
+        # eşiği varsayılana geri döndür (sonraki testleri etkilemesin)
+        client.put("/api/admin/settings", json={"coupon_anomaly_discount_threshold": None}, headers=admin_h)
