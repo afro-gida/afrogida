@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core.db import db
 from core.logs import _mask_phone, _insert_log, _log_payment_restriction
-from core.security import get_current_admin
-from core.util import now_utc, _clean_text, _norm_limit
+from core.security import get_current_admin, hash_password
+from core.util import now_utc, new_id, _clean_text, _norm_limit
 from models import MemberOut, MemberUpdateInput
 from services.admin_logs import _afro_status_tr, _afro_iso, _afro_dt_tr
 from services.noshow import (
@@ -21,6 +21,51 @@ router = APIRouter(prefix="/api")
 
 
 # ---------------- Member (customer) management ----------------
+@router.post("/admin/users")
+async def admin_create_user(data: dict, current_admin: dict = Depends(get_current_admin), request: Request = None):
+    """Admin, hesabı olmayan biri için SMS-OTP doğrulaması OLMADAN çıplak bir
+    üye hesabı açar — ör. tedarikçi/kurye onboarding'i sırasında (kişi zaten
+    admin'in karşısında/telefonda, ayrıca SMS doğrulaması gereksiz).
+    /auth/register ile AYNI hesap şeması (role: member) — tek fark OTP
+    kontrolünün atlanması. Sonrasında admin/staff/assign veya
+    admin/courier/assign ile esnaf/kurye rolü verilir (bu uç sadece çıplak
+    hesabı açar, rol atamaz)."""
+    name = _clean_text((data or {}).get("name") or "")
+    phone = str((data or {}).get("phone") or "").strip()
+    password = (data or {}).get("password") or None
+    if not name:
+        raise HTTPException(status_code=400, detail="Ad girin")
+    if len(phone) < 7:
+        raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası girin")
+    existing = await db.users.find_one({"phone": phone}, {"_id": 0, "user_id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Bu numara zaten kayıtlı")
+    user_id = new_id("user")
+    await db.users.insert_one({
+        "user_id": user_id,
+        "name": name,
+        "email": None,
+        "picture": None,
+        "phone": phone,
+        "role": "member",
+        "auth_type": "phone",
+        "password_hash": hash_password(password) if password else None,
+        "created_at": now_utc(),
+        "created_by_admin": current_admin["user_id"],
+    })
+    await _insert_log("log_admin", {
+        "admin_id": current_admin["user_id"],
+        "admin_name": current_admin.get("name", ""),
+        "action": "user_created_by_admin",
+        "target_type": "user",
+        "target_id": user_id,
+        "change_details": {"phone_masked": _mask_phone(phone), "name": name, "password_set": bool(password)},
+        "admin_note": "OTP'siz elle hesap oluşturuldu (onboarding)",
+    }, request)
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    return {"success": True, "user": user}
+
+
 @router.get("/admin/members", response_model=List[MemberOut])
 async def admin_list_members(search: Optional[str] = None, admin=Depends(get_current_admin)):
     query: dict = {"role": {"$in": ["musteri", "member"]}}

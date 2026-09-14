@@ -7351,6 +7351,63 @@
         "summary": "Afro Admin Upload Pdf"
       }
     },
+    "/api/admin/users": {
+      "post": {
+        "description": "Admin, hesabı olmayan biri için SMS-OTP doğrulaması OLMADAN çıplak bir\nüye hesabı açar — ör. tedarikçi/kurye onboarding'i sırasında (kişi zaten\nadmin'in karşısında/telefonda, ayrıca SMS doğrulaması gereksiz).\n/auth/register ile AYNI hesap şeması (role: member) — tek fark OTP\nkontrolünün atlanması. Sonrasında admin/staff/assign veya\nadmin/courier/assign ile esnaf/kurye rolü verilir (bu uç sadece çıplak\nhesabı açar, rol atamaz).",
+        "operationId": "admin_create_user_api_admin_users_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Data",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Create User"
+      }
+    },
     "/api/admin/visits/report": {
       "get": {
         "description": "Günlük ziyaret raporu — üyeler (ana sayaç, günde 1 kez sayılır) ve\nmisafirler (ham sayı) ayrı sütunlarda. `kind` alanı olmayan eski kayıtlar\n(bu özellik eklenmeden önce yazılmış) `role`'e göre sınıflandırılır.",
