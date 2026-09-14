@@ -28,6 +28,14 @@ os.environ["PAYTR_TEST_MODE"] = "1"
 os.environ["VERIMOR_USERNAME"] = ""
 os.environ["VERIMOR_PASSWORD"] = ""
 os.environ["ADMIN_2FA_ALLOW_UNSENT_SMS"] = "1"
+# admin/ panelinin Vite dev sunucusu (npm run dev, sabit port 5183) buradan
+# CORS izni alır; server.py'deki varsayılan listeye ekliyoruz, üretim .env'i
+# bu değişkeni tanımlamıyor -> orada davranış değişmiyor.
+os.environ["AFRO_ALLOWED_ORIGINS"] = (
+    "https://afrogida.com.tr,https://www.afrogida.com.tr,"
+    "http://localhost:3000,http://localhost:8081,http://localhost:19006,"
+    "http://localhost:5183,capacitor://localhost,http://localhost"
+)
 
 import uvicorn  # noqa: E402
 
