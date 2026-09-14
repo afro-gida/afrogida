@@ -10,7 +10,7 @@ from core.db import db
 from core.security import get_current_admin, SUPPLIER_ROLES, _yonetici_only
 from core.serializers import _public_user_doc
 from core.util import now_utc, _afro_norm
-from models import StaffAssignInput, StaffAssignByIdInput, CourierAssignInput
+from models import StaffAssignInput, StaffAssignByIdInput, CourierAssignInput, PazarSorumlusuAssignInput
 from services.catalog import _read_catalog_config
 
 router = APIRouter(prefix="/api")
@@ -119,6 +119,57 @@ async def admin_assign_courier_post(payload: CourierAssignInput, admin=Depends(g
     if mkts is None and payload.courier_market is not None:
         mkts = [payload.courier_market] if payload.courier_market else []
     return await _assign_courier_by_identifier(payload.identifier, mkts)
+
+
+# ---------------------------------------------------------------------
+# PAZAR SORUMLUSU ATAMA — SADECE tam admin/yönetici yapabilir. DİKKAT:
+# role="pazar_sorumlusu" ile role="yonetici" TAMAMEN FARKLI şeyler — "yonetici"
+# DB'de zaten tam admin anlamına gelir (gerçek üretim admin hesabı bu rolde);
+# "pazar_sorumlusu" ise sadece managed_markets'teki pazar(lar)ın tedarikçilerini
+# yönetebilen, admin panelinin geri kalanına hiç erişemeyen YENİ, dar rol.
+# managed_markets boş verilirse rol kaldırılıp normal üyeye (musteri) döner.
+# ---------------------------------------------------------------------
+async def _assign_pazar_sorumlusu_by_identifier(identifier: str, managed_markets_list: Optional[List[str]]):
+    ident = (identifier or "").strip()
+    if not ident:
+        raise HTTPException(status_code=400, detail="Telefon veya user_id girin")
+    mkt_ids = [m.strip() for m in (managed_markets_list or []) if (m or "").strip()]
+    user = await db.users.find_one({"$or": [{"user_id": ident}, {"phone": ident}]})
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    if user.get("role") in ("admin", "yonetici"):
+        raise HTTPException(status_code=400, detail="Yönetici hesabı pazar sorumlusu olarak atanamaz")
+    if user.get("role") in SUPPLIER_ROLES or user.get("role") == "kurye":
+        raise HTTPException(status_code=400, detail="Bu hesap zaten esnaf/kurye. Önce o rolü kaldırın.")
+    if mkt_ids:
+        valid_ids = {m["id"] async for m in db.markets.find({"id": {"$in": mkt_ids}}, {"_id": 0, "id": 1})}
+        unknown = [m for m in mkt_ids if m not in valid_ids]
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"Geçersiz pazar id'si: {', '.join(unknown)}")
+    new_role = "pazar_sorumlusu" if mkt_ids else "musteri"
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"role": new_role, "managed_markets": mkt_ids}},
+    )
+    updated = await db.users.find_one(
+        {"user_id": user["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0}
+    )
+    return {"success": True, "user": _public_user_doc(updated)}
+
+
+@router.post("/admin/pazar-sorumlusu/assign")
+async def admin_assign_pazar_sorumlusu(payload: PazarSorumlusuAssignInput, admin=Depends(get_current_admin)):
+    _yonetici_only(admin)
+    return await _assign_pazar_sorumlusu_by_identifier(payload.identifier, payload.managed_markets)
+
+
+@router.get("/admin/pazar-sorumlulari")
+async def admin_list_pazar_sorumlulari(admin=Depends(get_current_admin)):
+    """Tüm Pazar Sorumlusu hesapları (yönetici görünümü)."""
+    rows = await db.users.find(
+        {"role": "pazar_sorumlusu"}, {"_id": 0, "password_hash": 0, "username": 0}
+    ).to_list(500)
+    return [_public_user_doc(r) for r in rows]
 
 
 @router.get("/admin/couriers")

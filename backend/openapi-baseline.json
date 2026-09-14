@@ -1074,6 +1074,28 @@
         "title": "MemberUpdateInput",
         "type": "object"
       },
+      "PazarSorumlusuAssignInput": {
+        "description": "Pazar Sorumlusu ataması — role=\"pazar_sorumlusu\" (DİKKAT: \"yonetici\"\nrolüyle KARIŞTIRILMAMALI, o zaten tam admin anlamına geliyor).",
+        "properties": {
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          },
+          "managed_markets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Managed Markets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "identifier"
+        ],
+        "title": "PazarSorumlusuAssignInput",
+        "type": "object"
+      },
       "PhoneLoginInput": {
         "properties": {
           "name": {
@@ -5950,6 +5972,105 @@
         "summary": "Admin Verify Delivery Code"
       }
     },
+    "/api/admin/pazar-sorumlulari": {
+      "get": {
+        "description": "Tüm Pazar Sorumlusu hesapları (yönetici görünümü).",
+        "operationId": "admin_list_pazar_sorumlulari_api_admin_pazar_sorumlulari_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin List Pazar Sorumlulari"
+      }
+    },
+    "/api/admin/pazar-sorumlusu/assign": {
+      "post": {
+        "operationId": "admin_assign_pazar_sorumlusu_api_admin_pazar_sorumlusu_assign_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PazarSorumlusuAssignInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Assign Pazar Sorumlusu"
+      }
+    },
     "/api/admin/products": {
       "get": {
         "operationId": "admin_list_products_api_admin_products_get",
@@ -9547,6 +9668,264 @@
           }
         },
         "summary": "Paytr Callback"
+      }
+    },
+    "/api/pazar-sorumlusu/markets": {
+      "get": {
+        "description": "Kendine atanmış pazar(lar)ın listesi.",
+        "operationId": "pazar_sorumlusu_markets_api_pazar_sorumlusu_markets_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pazar Sorumlusu Markets"
+      }
+    },
+    "/api/pazar-sorumlusu/suppliers": {
+      "get": {
+        "description": "Kendine atanmış pazar(lar)dan herhangi birinde çalışan tedarikçiler\n(catalog_config.supplier_markets'e göre).",
+        "operationId": "pazar_sorumlusu_suppliers_api_pazar_sorumlusu_suppliers_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pazar Sorumlusu Suppliers"
+      }
+    },
+    "/api/pazar-sorumlusu/suppliers/assign": {
+      "post": {
+        "description": "Bir tedarikçiyi KENDİ pazarına ekler (catalog_config.supplier_markets'e\nbu pazarın adını ekler) — başka bir pazar sorumlusunun pazarına dokunamaz.",
+        "operationId": "pazar_sorumlusu_assign_supplier_api_pazar_sorumlusu_suppliers_assign_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Data",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pazar Sorumlusu Assign Supplier"
+      }
+    },
+    "/api/pazar-sorumlusu/suppliers/unassign": {
+      "post": {
+        "description": "Bir tedarikçiyi KENDİ pazarından kaldırır — başka bir pazar\nsorumlusunun pazarındaki atamaya dokunamaz.",
+        "operationId": "pazar_sorumlusu_unassign_supplier_api_pazar_sorumlusu_suppliers_unassign_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Data",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pazar Sorumlusu Unassign Supplier"
+      }
+    },
+    "/api/pazar-sorumlusu/suppliers/{supplier_group}/products": {
+      "get": {
+        "description": "Bir tedarikçinin ürünleri — SADECE o tedarikçi çağıranın atandığı\npazarlardan birinde çalışıyorsa (salt okunur, denetim amaçlı).",
+        "operationId": "pazar_sorumlusu_supplier_products_api_pazar_sorumlusu_suppliers__supplier_group__products_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "supplier_group",
+            "required": true,
+            "schema": {
+              "title": "Supplier Group",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pazar Sorumlusu Supplier Products"
       }
     },
     "/api/products": {

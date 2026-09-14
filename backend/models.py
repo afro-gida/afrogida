@@ -281,6 +281,13 @@ class CourierAssignInput(BaseModel):
     courier_market: Optional[str] = None          # geriye uyumluluk (tek pazar)
 
 
+class PazarSorumlusuAssignInput(BaseModel):
+    """Pazar Sorumlusu ataması — role="pazar_sorumlusu" (DİKKAT: "yonetici"
+    rolüyle KARIŞTIRILMAMALI, o zaten tam admin anlamına geliyor)."""
+    identifier: str
+    managed_markets: List[str] = []
+
+
 # ---------------- Tedarikçi ----------------
 class SupplierInput(BaseModel):
     name: str

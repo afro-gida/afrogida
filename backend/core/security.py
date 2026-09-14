@@ -326,6 +326,34 @@ async def get_current_admin(user=Depends(get_current_user)):
     return user
 
 
+PAZAR_SORUMLUSU_ROLES = ("pazar_sorumlusu",)
+
+
+async def get_current_pazar_sorumlusu(user=Depends(get_current_user)):
+    """Pazar Sorumlusu VEYA tam admin/yönetici erişebilir (admin denetim için
+    — get_current_courier ile aynı desen). ÖNEMLİ: "yonetici" rolü DB'de
+    zaten tam admin anlamına geliyor (gerçek üretim admin hesabı bu rolde) —
+    bu YENİ kısıtlı rol bilerek ayrı bir string ("pazar_sorumlusu") kullanır,
+    "yonetici" ile KARIŞTIRILMAMALI/birleştirilmemelidir."""
+    if user.get("role") not in ("admin", "yonetici", "pazar_sorumlusu"):
+        raise HTTPException(status_code=403, detail="Pazar sorumlusu yetkisi gerekli")
+    return user
+
+
+def is_pazar_sorumlusu_role(user: dict) -> bool:
+    return (user or {}).get("role") in PAZAR_SORUMLUSU_ROLES
+
+
+def get_user_managed_markets(user: dict) -> List[str]:
+    """Pazar Sorumlusu'nun yönettiği pazar ID'leri (kurye'deki courier_markets
+    ile aynı desen). Tam admin/yönetici için anlamsız (boş liste döner) —
+    onlar zaten /admin/* uçlarını kısıtlamasız kullanır."""
+    if not user:
+        return []
+    mkts = user.get("managed_markets")
+    return [m for m in mkts if m] if isinstance(mkts, list) else []
+
+
 async def get_current_supplier(user=Depends(get_current_user)):
     if user.get("role") not in ("esnaf", "supplier"):
         raise HTTPException(status_code=403, detail="Tedarikçi yetkisi gerekli")

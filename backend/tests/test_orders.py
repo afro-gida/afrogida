@@ -4,6 +4,15 @@ from datetime import datetime, timedelta
 import pytest
 import pytz
 
+import services.catalog as _catalog_mod
+
+
+def _reset_catalog_cache():
+    """services.catalog._read_catalog_config() 60sn'lik bellek-içi önbellek
+    tutuyor; testte doğrudan db.catalog_config'e yazdıktan sonra çağır."""
+    _catalog_mod._CACHE = None
+    _catalog_mod._CACHE_TS = 0
+
 
 def _closed_window():
     """Şu an KESİNLİKLE dışında olunan 1 dakikalık bir HH:MM-HH:MM penceresi."""
@@ -275,6 +284,7 @@ def test_market_reset_campaigns_scopes_by_supplier(client, make_user, db):
     cfg.pop("_id", None)
     cfg["supplier_markets"] = {"Reset Tedarikçi": ["Reset Test Pazarı"], "Başka Tedarikçi": ["Başka Pazar"]}
     db.catalog_config.update_one({}, {"$set": cfg}, upsert=True)
+    _reset_catalog_cache()
     try:
         r = client.post(f"/api/admin/markets/{market_id}/reset-campaigns", headers=admin_h)
         assert r.status_code == 200, r.text
@@ -292,3 +302,4 @@ def test_market_reset_campaigns_scopes_by_supplier(client, make_user, db):
             db.catalog_config.update_one({}, {"$set": original_cfg})
         else:
             db.catalog_config.delete_many({})
+        _reset_catalog_cache()
