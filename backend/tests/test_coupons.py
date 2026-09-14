@@ -85,3 +85,25 @@ def test_members_only_requires_login(client, db):
     c = _mk_coupon(db, members_only=True)
     r = client.post("/api/coupons/validate", json={"code": c["code"], "total": 100})
     assert r.status_code == 401
+
+
+def test_admin_member_coupons_includes_auto_issued(client, make_user, db):
+    """GET /admin/members/{id}/coupons denetim amaçlı TÜM kuponları döner —
+    admin_list_coupons'ın gizlediği auto_issued=True kuponlar dahil."""
+    uid, _h = make_user(role="musteri")
+    _admin_uid, admin_h = make_user(role="yonetici")
+    normal = _mk_coupon(db, assigned_user_ids=[uid], assignments=[{"user_id": uid, "limit": 2, "used_count": 1, "last_used_at": None}])
+    auto = _mk_coupon(db, title="Hoş Geldin Kuponu", auto_issued=True, single_use=True,
+                       assigned_user_ids=[uid], assignments=[{"user_id": uid, "limit": 1, "used_count": 0, "last_used_at": None}])
+
+    # Normal admin listesi auto_issued'ı gizler
+    admin_list = client.get("/api/admin/coupons", headers=admin_h).json()
+    assert not any(c["id"] == auto["id"] for c in admin_list)
+
+    r = client.get(f"/api/admin/members/{uid}/coupons", headers=admin_h)
+    assert r.status_code == 200
+    by_id = {c["coupon_id"]: c for c in r.json()}
+    assert normal["id"] in by_id and auto["id"] in by_id  # ikisi de görünüyor
+    assert by_id[auto["id"]]["auto_issued"] is True
+    assert by_id[normal["id"]]["used_count"] == 1
+    assert by_id[normal["id"]]["remaining"] == 1

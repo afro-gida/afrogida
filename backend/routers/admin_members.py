@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.db import db
 from core.logs import _mask_phone, _insert_log, _log_payment_restriction
 from core.security import get_current_admin
-from core.util import now_utc, _clean_text
+from core.util import now_utc, _clean_text, _norm_limit
 from models import MemberOut, MemberUpdateInput
 from services.admin_logs import _afro_status_tr, _afro_iso, _afro_dt_tr
 from services.noshow import (
@@ -88,6 +88,49 @@ async def admin_get_member(user_id: str, admin=Depends(get_current_admin), reque
     except Exception:
         member["no_show_logs"] = []
     return member
+
+
+@router.get("/admin/members/{user_id}/coupons")
+async def admin_get_member_coupons(user_id: str, admin=Depends(get_current_admin)):
+    """Üye Detayı ekranı için o üyeye tanımlı/atanmış TÜM kuponlar (denetim
+    amaçlı — otomatik verilen kuponlar (auto_issued, ör. eski Hoş Geldin
+    Kuponu kayıtları) da dahil; admin_list_coupons bunları bilerek gizler
+    ama burada gizlenmemeli). Her kupon için bu ÜYEYE ÖZEL kullanım hakkı/
+    kullanım/kalan bilgisi de döner (admin_coupon_details'teki mantığın
+    aynısı, kullanıcıdan kupona değil kupondan kullanıcıya bakıyor)."""
+    member = await db.users.find_one(
+        {"user_id": user_id, "role": {"$in": ["musteri", "member"]}}, {"_id": 0, "user_id": 1}
+    )
+    if not member:
+        raise HTTPException(status_code=404, detail="Üye bulunamadı")
+    coupons = await db.coupons.find({"assigned_user_ids": user_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for c in coupons:
+        assignments = c.get("assignments") or []
+        a = next((x for x in assignments if x.get("user_id") == user_id), None)
+        if not a and user_id in (c.get("assigned_user_ids") or []):
+            # Eski kayıtlar (yalnız assigned_user_ids var, assignments yok) için geriye dönük uyum
+            a = {"limit": _norm_limit(c.get("per_user_limit"), 1), "used_count": 0, "last_used_at": None}
+        lim = _norm_limit((a or {}).get("limit"), 1)
+        used = int((a or {}).get("used_count") or 0)
+        result.append({
+            "coupon_id": c.get("id"),
+            "code": c.get("code"),
+            "title": c.get("title"),
+            "discount_amount": c.get("discount_amount"),
+            "discount_percent": c.get("discount_percent"),
+            "min_amount": c.get("min_amount"),
+            "active": c.get("active", True),
+            "valid_until": c.get("valid_until"),
+            "auto_issued": bool(c.get("auto_issued")),
+            "single_use": bool(c.get("single_use")),
+            "used": bool(c.get("used")),  # tek kullanımlık kuponlarda genel kullanım bayrağı
+            "limit": lim,
+            "used_count": used,
+            "remaining": max(0, lim - used),
+            "last_used_at": (a or {}).get("last_used_at"),
+        })
+    return result
 
 
 # ----- Üye işlem geçmişi (birleşik log zaman çizelgesi) -----

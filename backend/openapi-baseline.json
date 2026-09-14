@@ -5234,6 +5234,60 @@
         "summary": "Admin Update Member"
       }
     },
+    "/api/admin/members/{user_id}/coupons": {
+      "get": {
+        "description": "Üye Detayı ekranı için o üyeye tanımlı/atanmış TÜM kuponlar (denetim\namaçlı — otomatik verilen kuponlar (auto_issued, ör. eski Hoş Geldin\nKuponu kayıtları) da dahil; admin_list_coupons bunları bilerek gizler\nama burada gizlenmemeli). Her kupon için bu ÜYEYE ÖZEL kullanım hakkı/\nkullanım/kalan bilgisi de döner (admin_coupon_details'teki mantığın\naynısı, kullanıcıdan kupona değil kupondan kullanıcıya bakıyor).",
+        "operationId": "admin_get_member_coupons_api_admin_members__user_id__coupons_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Get Member Coupons"
+      }
+    },
     "/api/admin/members/{user_id}/logs": {
       "get": {
         "description": "Bir üyenin tüm loglarını (sipariş, kupon, ödeme, ceza, oturum, sözleşme)\ntek bir zaman çizelgesinde birleştirip döndürür (Üye Detayı ekranı için).",
