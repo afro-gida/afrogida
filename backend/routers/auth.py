@@ -369,6 +369,25 @@ async def auth_me(user=Depends(get_current_user)):
     return _public_user_doc(user)
 
 
+@router.delete("/auth/me")
+async def auth_delete_me(current_user: dict = Depends(get_current_user), request: Request = None):
+    """Müşteri profilinden kendi hesabını kapatır ("Hesabımı Sil"). Mantık
+    admin_delete_member (routers/admin_members.py) ile aynı — sadece hedef,
+    admin'in verdiği user_id değil current_user'ın kendisi. Personel
+    rolleri (admin/esnaf/kurye) bu uçla silinemez; onlar rol atama
+    uçlarından yönetilir."""
+    user_id = current_user["user_id"]
+    if current_user.get("role") not in ("musteri", "member"):
+        raise HTTPException(status_code=403, detail="Bu hesap türü için hesap silme bu uçtan yapılamaz")
+    result = await db.users.delete_one({"user_id": user_id, "role": {"$in": ["musteri", "member"]}})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Hesap bulunamadı")
+    await db.user_sessions.delete_many({"user_id": user_id})
+    await _insert_log("log_auth", {"user_id": user_id, "phone_masked": _mask_phone(current_user.get("phone", "")), "action": "account_closed", "change_details": {"reason": "self_initiated"}}, request)
+    await _insert_log("log_data_deletion", {"user_id_anonymized": f"DELETED_USER_{user_id[-4:]}", "request_type": "self_initiated", "action_taken": "partial_anonymized", "data_categories_deleted": ["name", "phone", "address"], "data_categories_retained": ["anonymized_order_records", "payment_records"], "retention_reason": "Vergi Usul Kanunu gereği mali kayıtlar 10 yıl saklanır", "performed_by": "self"}, request)
+    return {"success": True}
+
+
 @router.post("/auth/logout")
 async def auth_logout(authorization: Optional[str] = Header(None), request: Request = None):
     _logout_uid = None

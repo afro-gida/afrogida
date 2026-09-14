@@ -7843,6 +7843,49 @@
       }
     },
     "/api/auth/me": {
+      "delete": {
+        "description": "Müşteri profilinden kendi hesabını kapatır (\"Hesabımı Sil\"). Mantık\nadmin_delete_member (routers/admin_members.py) ile aynı — sadece hedef,\nadmin'in verdiği user_id değil current_user'ın kendisi. Personel\nrolleri (admin/esnaf/kurye) bu uçla silinemez; onlar rol atama\nuçlarından yönetilir.",
+        "operationId": "auth_delete_me_api_auth_me_delete",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Auth Delete Me"
+      },
       "get": {
         "operationId": "auth_me_api_auth_me_get",
         "parameters": [
