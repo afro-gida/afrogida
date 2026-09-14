@@ -39,6 +39,10 @@ _SECURITY_LABELS = {
     "admin_session_ip_change": "YONETICI OTURUMU FARKLI IP'DEN KULLANILDI",
     "admin_session_hijack": "YONETICI OTURUMU ELE GECIRILMIS OLABILIR",
     "admin_watchdog_purge": "GUVENLIK TARAMASI: SAHTE YONETICI OTURUMU IMHA EDILDI",
+    "coupon_high_discount": "YUKSEK TUTARLI KUPON",
+    "coupon_user_use_burst": "MUSTERI COK KUPON KULLANDI",
+    "coupon_admin_burst": "ADMIN COK KUPON ISLEMI YAPTI",
+    "coupon_daily_total_anomaly": "GUNLUK KUPON TOPLAMI ANORMAL",
 }
 
 

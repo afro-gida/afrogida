@@ -19,6 +19,7 @@ from core.logs import _mask_phone
 from core.money import D, money_d, _num_close, _MILLI
 from core.security import security_alarm
 from core.util import now_utc, to_aware, new_id, _clean_text
+from services.coupon_anomaly import check_daily_coupon_total_anomaly, check_user_coupon_use_burst
 from services.noshow import _evaluate_no_show_restriction
 
 logger = logging.getLogger("afro.orders")
@@ -533,6 +534,9 @@ async def _consume_coupon_for_order(order: dict, request=None):
         if setu:
             await db.coupons.update_one({"id": coupon["id"]}, {"$set": setu})
         await db.transactions.update_one({"tx_id": order.get("tx_id")}, {"$set": {"coupon_consumed": True}})
+        # Kupon anomali kontrolleri (yalnız bildirim; sipariş asla engellenmez)
+        await check_user_coupon_use_burst({"user_id": uid, "name": order.get("user_name")}, request)
+        await check_daily_coupon_total_anomaly(request)
     except Exception as _e:
         logger.warning("Kupon kullanım sayacı güncellenemedi: %s", _e)
 

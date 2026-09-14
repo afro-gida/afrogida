@@ -9,6 +9,10 @@ from core.money import money_d
 from core.security import get_current_admin, get_optional_user, rate_limit
 from core.util import now_utc, _norm_limit
 from models import Coupon, CouponInput, RedeemInput
+from services.coupon_anomaly import (
+    check_admin_coupon_burst, check_daily_coupon_total_anomaly,
+    check_high_value_coupon, check_user_coupon_use_burst,
+)
 from services.orders import _evaluate_coupon
 
 router = APIRouter(prefix="/api")
@@ -128,6 +132,10 @@ async def admin_redeem_coupon(payload: RedeemInput, admin=Depends(get_current_ad
         "admin_id": admin.get("user_id"),
         "admin_note": "Tezgahta kupon okutuldu",
     }, request)
+    if target_uid:
+        _tu = await db.users.find_one({"user_id": target_uid}, {"_id": 0, "user_id": 1, "name": 1, "phone": 1})
+        await check_user_coupon_use_burst(_tu or {"user_id": target_uid}, request)
+    await check_daily_coupon_total_anomaly(request)
     return {"success": True, "code": code, "title": coupon.get("title"),
             "discount_amount": coupon.get("discount_amount"),
             "discount_percent": coupon.get("discount_percent"),
@@ -180,6 +188,7 @@ async def admin_assign_coupon_all(data: dict, admin=Depends(get_current_admin), 
         "change_details": {"coupon_code": coupon.get("code", ""), "member_count": len(user_ids), "limit": limit},
         "admin_note": "",
     }, request)
+    await check_admin_coupon_burst(admin, request)
     return {"success": True, "count": len(user_ids),
             "message": f"Kupon {len(user_ids)} üyeye {limit} kullanım hakkıyla tanımlandı"}
 
@@ -225,6 +234,7 @@ async def admin_assign_coupon_member(data: dict, admin=Depends(get_current_admin
         "change_details": {"coupon_code": coupon.get("code", ""), "user_id": user_id, "limit": limit},
         "admin_note": "",
     }, request)
+    await check_admin_coupon_burst(admin, request)
     return {"success": True,
             "message": f"Kupon {member.get('name', 'üye')} adlı üyeye {limit} kullanım hakkıyla tanımlandı"}
 
@@ -331,6 +341,8 @@ async def create_coupon(payload: CouponInput, admin=Depends(get_current_admin), 
     await db.coupons.insert_one(coupon.dict())
     await _insert_log("log_coupons", {"coupon_id": coupon.id, "coupon_code": coupon.code, "user_id": None, "action": "coupon_created", "order_id": None, "discount_amount": coupon.discount_amount, "discount_type": "fixed_amount", "original_total": None, "final_total": None, "performed_by": "admin", "admin_id": admin["user_id"], "admin_note": ""}, request)
     await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name",""), "action": "coupon_created", "target_type": "coupon", "target_id": coupon.id, "change_details": {"coupon_code": coupon.code, "discount_amount": coupon.discount_amount}, "admin_note": ""}, request)
+    await check_high_value_coupon(coupon.dict(), admin, request, action="coupon_created")
+    await check_admin_coupon_burst(admin, request)
     return coupon
 
 
@@ -342,6 +354,7 @@ async def update_coupon(coupon_id: str, payload: CouponInput, admin=Depends(get_
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")
     coupon = await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
+    await check_high_value_coupon(coupon, admin, request, action="coupon_updated")
     return coupon
 
 
