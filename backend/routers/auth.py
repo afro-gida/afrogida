@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from core.config import (
     EMERGENT_SESSION_API, WELCOME_DISCOUNT_AMOUNT, WELCOME_MIN_AMOUNT,
-    ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS,
+    ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS, ADMIN_2FA_ALLOW_UNSENT_SMS,
 )
 from core.crypto import _hmac_hex
 from core.db import db
@@ -244,7 +244,7 @@ async def _start_admin_2fa(user: dict, request, via: str) -> dict:
     await _insert_log("log_security", {"event_type": "admin_2fa_challenge", "source_ip": meta["ip_address"],
                                        "user_id": user["user_id"], "details": {"via": via, "sms_sent": bool(sent)},
                                        "severity": "low", "resolved": True}, request)
-    if not sent:
+    if not sent and not ADMIN_2FA_ALLOW_UNSENT_SMS:
         await db.admin_2fa.delete_one({"challenge_id": cid})
         raise HTTPException(status_code=503, detail="Doğrulama SMS'i gönderilemedi. Lütfen tekrar deneyin.")
     return {

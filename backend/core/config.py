@@ -54,6 +54,12 @@ ADMIN_SESSION_HOURS = int(os.environ.get("ADMIN_SESSION_HOURS") or 12)
 ADMIN_2FA_PHONE = (os.environ.get("ADMIN_2FA_PHONE") or SECURITY_ADMIN_PHONE).strip()
 ADMIN_2FA_TTL_SEC = int(os.environ.get("ADMIN_2FA_TTL_SEC") or 300)
 ADMIN_2FA_MAX_ATTEMPTS = 5
+# Yalnızca yerel geliştirme (bkz. run_dev_server.py): SMS bilgileri kasıtlı
+# boş olduğu için Verimor'a gönderim başarısız olur; normalde (üretimde) bu
+# durumda giriş 503 ile reddedilir (aşağıya bak). Bu bayrak SADECE dev
+# sunucusunda '1' yapılır, .env.example'da yok, üretim .env'inde YOK —
+# üretim davranışı bu bayrakla değişmez.
+ADMIN_2FA_ALLOW_UNSENT_SMS = (os.environ.get("ADMIN_2FA_ALLOW_UNSENT_SMS") or "").strip().lower() in ("1", "true")
 
 ENC_PREFIX = "enc:v1:"
 

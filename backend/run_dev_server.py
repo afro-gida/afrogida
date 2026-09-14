@@ -10,6 +10,10 @@ degerler `.env`'dekileri EZER:
   - VERIMOR_USERNAME/PASSWORD bos - SMS gonderilmez (GONDERILMEDI sayilir); OTP
     kodu dahil mesajin tam metni bu terminaldeki loglara yazilir, buradan okuyup
     uygulamaya elle girebilirsin.
+  - ADMIN_2FA_ALLOW_UNSENT_SMS=1 - SADECE bu dev sunucusunda: yonetici girisi
+    2FA kodu SMS ile "gonderilemedi" (yukarudaki sebepten) olsa bile 503 ile
+    REDDETMEZ, normal sekilde devam eder (kod yine bu terminale yazilir).
+    Uretimde bu bayrak set edilmedigi icin davranis degismez (hala 503).
 
 CORS: varsayilan AFRO_ALLOWED_ORIGINS zaten localhost:8081/19006 (Expo web)
 icerir, burada dokunulmadi.
@@ -23,6 +27,7 @@ os.environ["DB_NAME"] = "afrogida_dev"
 os.environ["PAYTR_TEST_MODE"] = "1"
 os.environ["VERIMOR_USERNAME"] = ""
 os.environ["VERIMOR_PASSWORD"] = ""
+os.environ["ADMIN_2FA_ALLOW_UNSENT_SMS"] = "1"
 
 import uvicorn  # noqa: E402
 
