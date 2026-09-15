@@ -8,6 +8,9 @@ type MarketsContextValue = {
   markets: Market[];
   isLive: boolean;
   loading: boolean;
+  /** Pazar listesini backend'den yeniden çeker (ör. ilk yüklemede bir ekran
+   *  henüz gelmemiş pazar id'sini arıyorsa tazelemek için). */
+  refetch: () => void;
 };
 
 const MarketsContext = createContext<MarketsContextValue | null>(null);
@@ -17,7 +20,7 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function load() {
     let cancelled = false;
     fetchMarkets().then((result) => {
       if (cancelled) return;
@@ -28,9 +31,15 @@ export function MarketsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }
 
-  return <MarketsContext.Provider value={{ markets, isLive, loading }}>{children}</MarketsContext.Provider>;
+  useEffect(load, []);
+
+  return (
+    <MarketsContext.Provider value={{ markets, isLive, loading, refetch: load }}>
+      {children}
+    </MarketsContext.Provider>
+  );
 }
 
 export function useMarkets() {

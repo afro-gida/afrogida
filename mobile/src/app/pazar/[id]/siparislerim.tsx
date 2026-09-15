@@ -1,14 +1,19 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { fetchOrders } from '@/lib/orders';
-import { Spacing } from '@/constants/theme';
+import { IconGreen, Spacing } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
+
+const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
+const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   talep_alindi: 'Talep Alındı',
@@ -22,6 +27,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 
 export default function OrdersScreen() {
   const theme = useTheme();
+  const scheme = useColorScheme();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -47,12 +53,17 @@ export default function OrdersScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <ThemedText type="subtitle">Siparişlerim</ThemedText>
+        <ThemedText type="subtitle" style={styles.flex}>Siparişlerim</ThemedText>
+        <Image
+          source={scheme === 'dark' ? MARKET_LOGO_DARK : MARKET_LOGO_LIGHT}
+          style={styles.logoBadge}
+          resizeMode="contain"
+        />
       </View>
 
       {!authLoading && !user ? (
         <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText style={{ fontSize: 32 }}>🔒</ThemedText>
+          <Ionicons name="lock-closed-outline" size={48} color={IconGreen} />
           <ThemedText themeColor="textSecondary" style={styles.emptyText}>
             Siparişlerini görmek için giriş yapmalısın.
           </ThemedText>
@@ -105,7 +116,8 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.two },
+  logoBadge: { width: 60, height: 60 },
   list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.four },
   card: { borderWidth: 1, borderRadius: 14, padding: Spacing.three, gap: 4 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

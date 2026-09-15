@@ -14,7 +14,23 @@ export const SAMPLE_PRODUCTS: Product[] = [
   { id: 'p4', name: 'Roka', category: 'Salata', unit: 'Demet', gel_al_price: 12, eve_servis_price: 14, in_stock: true, active: true },
   { id: 'p5', name: 'Sakız Kabağı', category: 'Kabak', unit: 'Kg', gel_al_price: 22, eve_servis_price: 25, in_stock: true, active: true },
   { id: 'p6', name: 'Kemer Patlıcan', category: 'Patlıcan', unit: 'Kg', gel_al_price: 28, eve_servis_price: 32, in_stock: false, active: true },
-  { id: 'p7', name: 'Çarliston Biber', category: 'Biber', unit: 'Kg', gel_al_price: 30, eve_servis_price: 34, in_stock: true, active: true, campaign_discount_percent: 10 },
+  {
+    id: 'p7', name: 'Çarliston Biber', category: 'Biber', unit: 'Kg', gel_al_price: 30, eve_servis_price: 34, in_stock: true, active: true,
+    campaign_discount_percent: 10, campaign_min_qty: 3,
+    customization_options: [
+      { title: 'Boyut', choices: [
+        { label: 'Büyük', price_delta: 10 },
+        { label: 'Orta', price_delta: 10 },
+        { label: 'Küçük', price_delta: 10 },
+        { label: 'İstemiyorum', price_delta: 0 },
+      ] },
+      { title: 'Şekil', choices: [
+        { label: '4 Burun', price_delta: 10 },
+        { label: '3 Burun', price_delta: 10 },
+        { label: 'İstemiyorum', price_delta: 0 },
+      ] },
+    ],
+  },
   { id: 'p8', name: 'Sivri Biber', category: 'Biber', unit: 'Kg', gel_al_price: 26, eve_servis_price: 30, in_stock: true, active: true },
   { id: 'p9', name: 'Kuru Fasulye', category: 'Fasulye & Bakliyat', unit: 'Kg', gel_al_price: 65, eve_servis_price: 70, in_stock: true, active: true },
   { id: 'p10', name: 'Nohut', category: 'Fasulye & Bakliyat', unit: 'Kg', gel_al_price: 55, eve_servis_price: 60, in_stock: true, active: true },

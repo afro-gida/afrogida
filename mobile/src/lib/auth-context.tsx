@@ -37,6 +37,7 @@ type AuthContextValue = {
   resetPassword: (phone: string, otpCode: string, newPassword: string) => Promise<void>;
   acceptContract: (documentCode: string, documentVersion: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<{ error?: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -126,9 +127,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingContracts([]);
   }
 
+  /** Hesabı kalıcı olarak siler (backend anonimleştirip kapatır). Başarılıysa
+   *  yerel oturumu da temizler — ayrıca /auth/logout çağırmaya gerek yok,
+   *  hesap zaten yok. */
+  async function deleteAccount(): Promise<{ error?: string }> {
+    try {
+      await api.del('/auth/me');
+    } catch (err) {
+      if (err instanceof ApiError) return { error: err.message };
+      return { error: 'Bağlantı hatası. Backend çalışıyor mu?' };
+    }
+    await AsyncStorage.removeItem(TOKEN_KEY);
+    setAuthToken(null);
+    setToken(null);
+    setUser(null);
+    setPendingContracts([]);
+    return {};
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, pendingContracts, sendOtp, register, login, resetPassword, acceptContract, logout }}
+      value={{ user, token, loading, pendingContracts, sendOtp, register, login, resetPassword, acceptContract, logout, deleteAccount }}
     >
       {children}
     </AuthContext.Provider>

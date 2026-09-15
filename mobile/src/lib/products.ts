@@ -18,6 +18,8 @@ function normalizeProduct(raw: any): Product {
     in_stock: !!raw.in_stock,
     active: !!raw.active,
     campaign_discount_percent: raw.campaign_discount_percent || null,
+    campaign_min_qty: raw.campaign_min_qty || null,
+    customization_options: Array.isArray(raw.customization_options) ? raw.customization_options : null,
   };
 }
 

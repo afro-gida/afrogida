@@ -7,3 +7,13 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Bu bir web sitesi değil, uygulama (app) gibi hissettirmeli — masaüstü
+   kaydırma çubukları (scrollbar) görünmesin, kaydırma yine çalışsın. */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* eski Edge/IE */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, yeni Edge */
+}

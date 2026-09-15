@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
-import { Spacing } from '@/constants/theme';
+import { IconGreen, Spacing } from '@/constants/theme';
 
 const LOGO = require('@/assets/brand/logo.png');
 
@@ -149,7 +150,7 @@ export default function RegisterScreen() {
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
             />
             <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
-              <ThemedText themeColor="textSecondary">{showPassword ? '🙈' : '👁️'}</ThemedText>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={27} color={IconGreen} />
             </Pressable>
           </View>
 

@@ -1,15 +1,24 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
 
 import { ContractGate } from '@/components/contract-gate';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthProvider } from '@/lib/auth-context';
 import { CartProvider } from '@/lib/cart-context';
 import { MarketsProvider } from '@/lib/markets-context';
 import { ProductsProvider } from '@/lib/products-context';
+import { ThemePreferenceProvider } from '@/lib/theme-preference';
 
 export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <RootLayoutInner />
+    </ThemePreferenceProvider>
+  );
+}
+
+function RootLayoutInner() {
   const colorScheme = useColorScheme();
   const theme = useTheme();
   const headerOptions = {

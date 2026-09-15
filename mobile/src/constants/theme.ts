@@ -44,6 +44,10 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/** Emoji yerine kullanılan çizgi ikonlar için sabit renk — temadan (açık/koyu)
+ *  bağımsız olarak her zaman yeşil (kullanıcı talimatı). */
+export const IconGreen = '#14B67E';
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

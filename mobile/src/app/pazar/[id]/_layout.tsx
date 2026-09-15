@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, useLocalSearchParams } from 'expo-router';
+import { Redirect, Tabs, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
+import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -13,7 +14,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 // aktif sekmenin ikonu aksan rengine (turuncu/yeşil) boyanıyor.
 const TAB_BAR_BG_DARK = 'rgba(8, 10, 9, 0.6)';
 const TAB_BAR_BG_LIGHT = 'rgba(255, 255, 255, 0.6)';
-const TAB_ICON_INACTIVE_DARK = 'rgba(190, 195, 192, 0.85)';
+const TAB_ICON_INACTIVE_DARK = 'rgba(130, 136, 133, 0.9)';
 const TAB_ICON_INACTIVE_LIGHT = 'rgba(20, 30, 25, 0.6)';
 
 const TABS: { name: string; title: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -43,7 +44,6 @@ function CustomTabBar({ state, navigation, insets }: any) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
-  const { totalQty } = useCart();
 
   const glassStyle: any =
     Platform.OS === 'web' ? { backdropFilter: 'blur(14px) saturate(1.3)' } : null;
@@ -99,24 +99,6 @@ function CustomTabBar({ state, navigation, insets }: any) {
             style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
           >
             <Ionicons name={tab.icon} size={32} color={color} />
-            {tab.name === 'sepet' && totalQty > 0 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -10,
-                  minWidth: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  paddingHorizontal: 3,
-                  backgroundColor: theme.danger,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{totalQty}</Text>
-              </View>
-            )}
           </Pressable>
         );
       })}
@@ -133,10 +115,19 @@ function CustomTabBar({ state, navigation, insets }: any) {
 export default function ShopTabsLayout() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { enterMarket } = useCart();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (id) enterMarket(id);
   }, [id]);
+
+  // Ürünleri görmek/sipariş vermek için üyelik zorunlu (kullanıcı talimatı) —
+  // doğrudan bağlantıyla (deep link) girişi de burada engelliyoruz, sadece
+  // pazar listesindeki butonu değil. Oturum kontrolü bitene kadar (authLoading)
+  // sekmeleri hiç göstermiyoruz ki üye olmayan biri anlık bir yanıp sönme ile
+  // ürünleri görmesin.
+  if (authLoading) return null;
+  if (!user) return <Redirect href="/giris" />;
 
   return (
     <Tabs

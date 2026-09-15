@@ -53,8 +53,23 @@ export type PaymentMethod = 'pay_at_counter' | 'online_card';
  * kart bilgisi hiçbir zaman bizim uygulamadan geçmez.
  */
 export async function createOrder(
-  items: { id: string; qty: number }[],
-  opts: { deliveryType: DeliveryType; paymentMethod: PaymentMethod; address?: string }
+  items: { id: string; qty: number; selected_options?: { title: string; label: string }[] }[],
+  opts: {
+    deliveryType: DeliveryType;
+    paymentMethod: PaymentMethod;
+    address?: string;
+    /** Gel-Al için seçilen saat dilimi, ör. "14:00-15:00". Boşsa "Şimdi" (en yakın uygun saat). */
+    pickupTime?: string;
+    /** Eve Servis için seçilen saat dilimi. İkisi de boşsa "Şimdi". */
+    deliverySlotStart?: string;
+    deliverySlotEnd?: string;
+    /** Uygulanan kupon kodu — indirim yine sunucuda yeniden hesaplanır. */
+    couponCode?: string;
+    /** Gel-Al/Eve Servis mesafeli satış sözleşmesi onay kutusu işaretlendiyse true. */
+    agreementsAccepted?: boolean;
+    /** backend/core/config.py _AFRO_DOC_NAME_TR ile eşleşen belge kodu ("pickup" | "home_delivery"). */
+    legalDocumentType?: string;
+  }
 ): Promise<{ tx_id: string; payment_url?: string } | { error: string }> {
   try {
     const path = opts.paymentMethod === 'online_card' ? '/payments/init' : '/orders';
@@ -63,6 +78,11 @@ export async function createOrder(
       delivery_type: opts.deliveryType,
       payment_method: opts.paymentMethod,
       ...(opts.address ? { address: opts.address } : {}),
+      ...(opts.pickupTime ? { pickup_time: opts.pickupTime } : {}),
+      ...(opts.deliverySlotStart ? { delivery_slot_start: opts.deliverySlotStart } : {}),
+      ...(opts.deliverySlotEnd ? { delivery_slot_end: opts.deliverySlotEnd } : {}),
+      ...(opts.couponCode ? { coupon_code: opts.couponCode } : {}),
+      ...(opts.agreementsAccepted ? { agreements_accepted: true, legal_document_type: opts.legalDocumentType } : {}),
     });
     return { tx_id: res.tx_id, payment_url: res.payment_url };
   } catch (err) {
