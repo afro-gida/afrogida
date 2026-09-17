@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { IconGreen, Spacing } from '@/constants/theme';
 
-const LOGO = require('@/assets/brand/logo.png');
+const LOGIN_BANNER = require('@/assets/brand/login-banner.jpg');
 
 export default function RegisterScreen() {
   const theme = useTheme();
@@ -78,13 +78,13 @@ export default function RegisterScreen() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.headerSpace}>
+          <Image source={LOGIN_BANNER} style={StyleSheet.absoluteFill} resizeMode="cover" />
           <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
             <ThemedText style={styles.backArrow}>←</ThemedText>
           </Pressable>
-          <Image source={LOGO} style={styles.logo} resizeMode="contain" />
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.card, { backgroundColor: theme.background }]}>
           <ThemedText type="title" style={styles.title}>
             Yeni Üyelik
           </ThemedText>
@@ -208,10 +208,9 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1 },
-  headerSpace: { height: 150, alignItems: 'center', justifyContent: 'center' },
+  headerSpace: { height: 190, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   backBtn: { position: 'absolute', top: Spacing.two, left: Spacing.three, zIndex: 1, padding: Spacing.one },
   backArrow: { fontSize: 22 },
-  logo: { width: 96, height: 96, borderRadius: 48 },
   card: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, padding: Spacing.three, gap: 6 },
   title: { fontSize: 26, lineHeight: 30 },
   subtitle: { marginBottom: Spacing.two },
