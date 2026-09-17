@@ -153,11 +153,13 @@ export default function Categories() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Ürünlerde asıl filtrelenen alan `category` ALT kategoridir (ör. "Domates"),
+  // ana kategori `subcategory` alanında tutulur - bkz. ProductsBySupplier.tsx save().
   function categoryProductCount(name: string) {
-    return products.filter((p) => p.category === name).length;
+    return products.filter((p) => p.subcategory === name).length;
   }
   function subcategoryProductCount(category: string, name: string) {
-    return products.filter((p) => p.category === category && p.subcategory === name).length;
+    return products.filter((p) => p.subcategory === category && p.category === name).length;
   }
   function supplierProductCount(name: string) {
     return products.filter((p) => p.supplier_group === name).length;

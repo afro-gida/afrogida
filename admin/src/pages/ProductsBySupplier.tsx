@@ -92,12 +92,25 @@ export default function ProductsBySupplier() {
     setShowForm(true);
   }
 
+  /** Müşteri tarafı (mobile/src/app/pazar/[id]/index.tsx) ürünleri `product.category`
+   * ALT kategori (ör. "Domates") olarak filtreler; ana kategoriyi ("Sebze") bu ağaçtan
+   * bulur. Bu yüzden burada Ana Kategori sadece "hangi alt kategori listesini göstereyim"
+   * için bir yardımcı - kaydederken alanlar ters çevrilip gönderiliyor, bkz. save(). */
+  function findMainCategory(leaf: string): string {
+    if (!catalog) return '';
+    for (const main of catalog.categories) {
+      if ((catalog.subcategories[main] ?? []).includes(leaf)) return main;
+    }
+    return catalog.categories[0] ?? '';
+  }
+
   function openEdit(p: Product) {
     setEditingId(p.id);
+    const mainCategory = findMainCategory(p.category) || p.subcategory || catalog?.categories?.[0] || '';
     setForm({
       name: p.name,
-      category: p.category,
-      subcategory: p.subcategory ?? 'Diğer',
+      category: mainCategory,
+      subcategory: p.category,
       unit: p.unit,
       supplier_price: p.supplier_price ?? '',
       price: p.price ?? '',
@@ -173,8 +186,8 @@ export default function ProductsBySupplier() {
   }
 
   async function save() {
-    if (!form.name.trim() || !form.category) {
-      setFormError('Ürün adı ve kategori zorunlu');
+    if (!form.name.trim() || !form.category || !form.subcategory) {
+      setFormError('Ürün adı, ana kategori ve alt kategori zorunlu');
       return;
     }
     setSaving(true);
@@ -189,8 +202,11 @@ export default function ProductsBySupplier() {
       .filter((g) => g.title && g.choices.length > 0);
     const payload = {
       name: form.name.trim(),
-      category: form.category,
-      subcategory: form.subcategory,
+      // Müşteri tarafı ürünleri ALT kategoriye (ör. "Domates") göre filtreler,
+      // ana kategoriyi ("Sebze") ağaçtan bulur - bu yüzden burada tersine çevrilip
+      // gönderiliyor. bkz. mobile/src/app/pazar/[id]/index.tsx + findMainCategory().
+      category: form.subcategory,
+      subcategory: form.category,
       supplier_group: group,
       unit: form.unit,
       supplier_price: form.supplier_price === '' ? 0 : Number(form.supplier_price),
@@ -227,7 +243,10 @@ export default function ProductsBySupplier() {
     }
   }
 
-  const subcatOptions = catalog?.subcategories?.[form.category] ?? [];
+  const rawSubcatOptions = catalog?.subcategories?.[form.category] ?? [];
+  const subcatOptions = rawSubcatOptions.includes(form.subcategory) || !form.subcategory
+    ? rawSubcatOptions
+    : [form.subcategory, ...rawSubcatOptions];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
@@ -422,7 +441,7 @@ export default function ProductsBySupplier() {
               <div>
                 <div style={{ fontWeight: 700 }}>{p.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {p.category} › {p.subcategory} · {p.unit}
+                  {p.subcategory} › {p.category} · {p.unit}
                 </div>
                 <div style={{ fontSize: 13, marginTop: 4 }}>
                   Alış: {formatMoney(p.supplier_price)} · Satış: {formatMoney(p.sale_price ?? p.price)} ·{' '}
