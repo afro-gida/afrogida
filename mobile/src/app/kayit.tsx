@@ -84,7 +84,7 @@ export default function RegisterScreen() {
           </Pressable>
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.background }]}>
+        <View style={[styles.card, { backgroundColor: theme.authCard }]}>
           <ThemedText type="title" style={styles.title}>
             Yeni Üyelik
           </ThemedText>

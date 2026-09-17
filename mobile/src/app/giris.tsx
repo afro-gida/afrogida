@@ -47,12 +47,12 @@ export default function LoginScreen() {
     <Screen edges={['bottom']}>
       <View style={styles.headerSpace}>
         <Image source={LOGIN_BANNER} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        <Pressable style={styles.closeBtn} onPress={() => router.back()} hitSlop={12}>
+        <Pressable style={styles.closeBtn} onPress={() => router.replace('/')} hitSlop={12}>
           <ThemedText style={styles.closeIcon}>✕</ThemedText>
         </Pressable>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.background }]}>
+      <View style={[styles.card, { backgroundColor: theme.authCard }]}>
         <ThemedText type="title" style={styles.title}>
           Giriş Yap
         </ThemedText>

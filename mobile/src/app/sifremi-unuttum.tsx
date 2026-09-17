@@ -58,7 +58,7 @@ export default function ForgotPasswordScreen() {
   if (done) {
     return (
       <Screen edges={['bottom']}>
-        <View style={[styles.body, { backgroundColor: theme.background }]}>
+        <View style={[styles.body, { backgroundColor: theme.authCard }]}>
           <ThemedText type="subtitle">Şifren güncellendi</ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.hint}>
             Yeni şifrenle giriş yapabilirsin.
@@ -75,7 +75,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <View style={[styles.body, { backgroundColor: theme.background }]}>
+      <View style={[styles.body, { backgroundColor: theme.authCard }]}>
         <ThemedText type="subtitle">Şifremi Unuttum</ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.hint}>
           Telefon numarana SMS ile doğrulama kodu göndereceğiz.

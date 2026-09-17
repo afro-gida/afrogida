@@ -26,6 +26,9 @@ export const Colors = {
     danger: '#c0392b',
     accentOrange: '#f97316',
     wallpaperBg: '#e2b676',
+    // Giriş/kayıt kartı: açık modda ayrı bir "siyah kart" tasarımı yok,
+    // normal kart rengiyle aynı kalsın.
+    authCard: '#eafff4',
   },
   dark: {
     text: '#eafff4',
@@ -39,6 +42,9 @@ export const Colors = {
     danger: '#f87171',
     accentOrange: '#fb8c3c',
     wallpaperBg: '#0d0d0d',
+    // Gerçek sitedeki giriş/kayıt kartı koyu modda YEŞİL değil, neredeyse
+    // SİYAH (kullanıcı talimatı) — bkz. Screenshot_20/22 karşılaştırması.
+    authCard: '#0d0d0d',
   },
 } as const;
 
