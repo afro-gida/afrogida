@@ -34,14 +34,13 @@ async def admin_supplier_groups(admin=Depends(get_current_admin)):
     """Tedarikçi (supplier_group) seçenekleri: SADECE katalog config'deki tedarikçiler.
     Eskiden ürünlerde kullanılan + suppliers koleksiyonu da birleştiriliyordu; bu yüzden
     silinmiş/eski tedarikçiler (Afro Sebze, Meyve, ...) listede görünmeye devam ediyordu.
-    Artık yalnızca catalog_config.suppliers döndürülür ki yönetici listeyi tam kontrol etsin."""
+    Artık yalnızca catalog_config.suppliers döndürülür ki yönetici listeyi tam kontrol etsin.
+    Sıra, yöneticinin Kategori Ayarları panelinde belirlediği sırayla AYNI kalır (alfabetik
+    karıştırılmaz) - yönetici müşteri tarafında görünecek sırayı burada kontrol edebilsin."""
     _yonetici_only(admin)
     cfg = await _read_catalog_config()
-    groups = set()
-    for g in (cfg.get("suppliers") or []):
-        if g:
-            groups.add(g)
-    return sorted(groups)
+    groups = list(dict.fromkeys(g for g in (cfg.get("suppliers") or []) if g))
+    return groups
 
 
 async def _assign_staff_by_identifier(identifier: str, supplier_group: Optional[str]):
