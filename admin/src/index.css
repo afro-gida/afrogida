@@ -127,6 +127,11 @@ a {
   color: #f97316;
 }
 
+.badge-blue {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
 .badge-red {
   background: rgba(239, 68, 68, 0.15);
   color: var(--danger);

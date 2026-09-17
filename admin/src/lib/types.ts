@@ -58,6 +58,12 @@ export interface MemberLogsResponse {
   logs: MemberLogEntry[];
 }
 
+export interface OrderItemSelectedOption {
+  title?: string;
+  label?: string;
+  price_delta?: number;
+}
+
 export interface OrderItem {
   product_name?: string;
   name?: string;
@@ -68,6 +74,8 @@ export interface OrderItem {
   total_price?: number;
   refunded?: boolean;
   refunded_amount?: number;
+  selected_options?: OrderItemSelectedOption[];
+  customization_note?: string;
 }
 
 export interface Order {

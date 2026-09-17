@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Order } from '../lib/types';
-import { formatDateTime, formatMoney, orderStatusBadgeClass, orderStatusLabel, paymentStatusLabel } from '../lib/format';
+import {
+  formatDateTime,
+  formatMoney,
+  orderStatusBadgeClass,
+  orderStatusLabel,
+  paymentStatusBadgeClass,
+  paymentStatusLabel,
+} from '../lib/format';
 
 const FILTERS: { value: string; label: string }[] = [
   { value: 'today', label: 'Bugün' },
@@ -155,7 +162,9 @@ export default function Orders() {
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                 <div style={{ fontWeight: 700 }}>{formatMoney(o.total_amount ?? o.amount)}</div>
                 <span className={`badge ${orderStatusBadgeClass(o.order_status)}`}>{orderStatusLabel(o.order_status)}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{paymentStatusLabel(o.payment_status)}</span>
+                <span className={`badge ${paymentStatusBadgeClass(o.payment_status)}`} style={{ fontSize: 11 }}>
+                  {paymentStatusLabel(o.payment_status)}
+                </span>
               </div>
             </div>
           </Link>

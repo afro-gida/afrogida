@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Order } from '../lib/types';
-import { formatDateTime, formatMoney, orderStatusBadgeClass, orderStatusLabel, paymentStatusLabel } from '../lib/format';
+import {
+  deliveryTypeLabel,
+  formatDateTime,
+  formatMoney,
+  orderStatusBadgeClass,
+  orderStatusLabel,
+  paymentStatusBadgeClass,
+  paymentStatusLabel,
+} from '../lib/format';
 
 export default function OrderDetail() {
   const { txId } = useParams<{ txId: string }>();
@@ -54,8 +62,10 @@ export default function OrderDetail() {
               <span className={`badge ${orderStatusBadgeClass(order.order_status)}`}>
                 {orderStatusLabel(order.order_status)}
               </span>
-              <span className="badge badge-muted">{paymentStatusLabel(order.payment_status)}</span>
-              {order.delivery_type && <span className="badge badge-muted">{order.delivery_type}</span>}
+              <span className={`badge ${paymentStatusBadgeClass(order.payment_status)}`}>
+                {paymentStatusLabel(order.payment_status)}
+              </span>
+              {order.delivery_type && <span className="badge badge-blue">{deliveryTypeLabel(order.delivery_type)}</span>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 14, marginTop: 6 }}>
               <div>
@@ -133,23 +143,39 @@ export default function OrderDetail() {
                   key={i}
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
+                    gap: 4,
                     fontSize: 14,
                     paddingBottom: 8,
                     borderBottom: '1px solid var(--surface-border)',
                   }}
                 >
-                  <div>
-                    {item.product_name ?? item.name ?? '—'}
-                    {item.quantity != null && (
-                      <span style={{ color: 'var(--text-muted)' }}>
-                        {' '}
-                        × {item.quantity} {item.unit ?? ''}
-                      </span>
-                    )}
-                    {item.refunded && <span className="badge badge-red" style={{ marginLeft: 8 }}>İade</span>}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      {item.product_name ?? item.name ?? '—'}
+                      {item.quantity != null && (
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          {' '}
+                          × {item.quantity} {item.unit ?? ''}
+                        </span>
+                      )}
+                      {item.refunded && <span className="badge badge-red" style={{ marginLeft: 8 }}>İade</span>}
+                    </div>
+                    <div style={{ fontWeight: 600 }}>{formatMoney(item.line_total ?? item.total_price)}</div>
                   </div>
-                  <div style={{ fontWeight: 600 }}>{formatMoney(item.line_total ?? item.total_price)}</div>
+                  {(item.selected_options ?? []).length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {item.selected_options!.map((opt, oi) => (
+                        <span key={oi} className="badge badge-muted">
+                          {opt.title ? `${opt.title}: ` : ''}{opt.label}
+                          {!!opt.price_delta && ` (+${formatMoney(opt.price_delta)})`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {item.customization_note && (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Not: {item.customization_note}</div>
+                  )}
                 </div>
               ))}
             </div>
