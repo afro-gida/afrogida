@@ -104,7 +104,7 @@ export default function LoginScreen() {
         </Pressable>
 
         <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgotLink}>
-          <ThemedText themeColor="accentOrange" type="small" style={styles.underline}>
+          <ThemedText themeColor="tint" type="small" style={styles.underline}>
             Şifremi Unuttum
           </ThemedText>
         </Pressable>
