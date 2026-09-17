@@ -24,6 +24,6 @@
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-text-fill-color: inherit;
+  -webkit-text-fill-color: currentColor !important;
   transition: background-color 600000s ease-in-out 0s;
 }
