@@ -88,6 +88,7 @@ export default function ForgotPasswordScreen() {
           placeholder="05XX XXX XX XX"
           placeholderTextColor={theme.textSecondary}
           keyboardType="phone-pad"
+          autoComplete="off"
           style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
         />
 
@@ -108,6 +109,7 @@ export default function ForgotPasswordScreen() {
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
+              autoComplete="off"
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <TextInput
@@ -116,6 +118,7 @@ export default function ForgotPasswordScreen() {
               placeholder="Yeni şifre (en az 6 karakter)"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry
+              autoComplete="off"
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleReset} disabled={submitting}>

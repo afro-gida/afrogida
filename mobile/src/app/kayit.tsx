@@ -100,6 +100,7 @@ export default function RegisterScreen() {
             onChangeText={setName}
             placeholder="Ad Soyad"
             placeholderTextColor={theme.textSecondary}
+            autoComplete="off"
             style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
           />
 
@@ -113,6 +114,7 @@ export default function RegisterScreen() {
               placeholder="05XX XXX XX XX"
               placeholderTextColor={theme.textSecondary}
               keyboardType="phone-pad"
+              autoComplete="off"
               style={[styles.input, styles.phoneInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <TextInput
@@ -122,6 +124,7 @@ export default function RegisterScreen() {
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
+              autoComplete="off"
               style={[styles.input, styles.otpInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable
@@ -147,6 +150,7 @@ export default function RegisterScreen() {
               placeholder="En az 6 karakter"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry={!showPassword}
+              autoComplete="off"
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>

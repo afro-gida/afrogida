@@ -69,6 +69,7 @@ export default function LoginScreen() {
           placeholder="05XX XXX XX XX"
           placeholderTextColor={theme.textSecondary}
           keyboardType="phone-pad"
+          autoComplete="off"
           style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
         />
 
@@ -82,6 +83,7 @@ export default function LoginScreen() {
             placeholder="Şifreniz"
             placeholderTextColor={theme.textSecondary}
             secureTextEntry={!showPassword}
+            autoComplete="off"
             style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
           />
           <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
