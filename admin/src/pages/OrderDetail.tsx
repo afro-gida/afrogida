@@ -165,8 +165,8 @@ export default function OrderDetail() {
                       {item.quantity != null && (
                         <span style={{ color: 'var(--text-muted)' }}>
                           {' '}
-                          × {item.quantity} {item.unit ?? ''}
-                          {unitPrice != null && ` · ${formatMoney(unitPrice)}/${item.unit ?? 'birim'}`}
+                          {unitPrice != null && `${formatMoney(unitPrice)} × `}
+                          {item.quantity} {item.unit ?? ''}
                         </span>
                       )}
                       {item.refunded && <span className="badge badge-red" style={{ marginLeft: 8 }}>İade</span>}
