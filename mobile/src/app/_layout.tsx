@@ -41,7 +41,15 @@ function RootLayoutInner() {
                 <Stack.Screen name="kayit" options={{ presentation: 'modal', headerShown: false }} />
                 <Stack.Screen
                   name="sifremi-unuttum"
-                  options={{ presentation: 'modal', headerShown: true, title: 'Şifremi Unuttum', ...headerOptions }}
+                  options={{
+                    presentation: 'modal',
+                    headerShown: true,
+                    title: 'Şifremi Unuttum',
+                    ...headerOptions,
+                    // Diğer ekranlarla (giriş/kayıt kartı) tutarlı olsun diye
+                    // bu ekranın üst çubuğu yeşil değil siyah.
+                    headerStyle: { backgroundColor: theme.authCard },
+                  }}
                 />
               </Stack>
               <ContractGate />
