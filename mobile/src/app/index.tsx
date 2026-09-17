@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 999, paddingVertical: Spacing.two },
   actionBtnOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 999, borderWidth: 1.5, borderColor: '#3a423b', paddingVertical: Spacing.two },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', margin: Spacing.three },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
+  modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
   modalCenterWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
   neighborhoodsBox: { width: '100%', maxWidth: 360, maxHeight: '70%', borderRadius: 18, borderWidth: 1.5, padding: Spacing.three },
   neighborhoodsHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
