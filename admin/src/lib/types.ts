@@ -70,6 +70,9 @@ export interface OrderItem {
   quantity?: number;
   unit?: string;
   unit_price?: number;
+  price?: number;
+  unit_price_snapshot?: number;
+  options_fee_unit?: number;
   line_total?: number;
   total_price?: number;
   refunded?: boolean;

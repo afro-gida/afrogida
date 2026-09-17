@@ -12,6 +12,13 @@ import {
   paymentStatusLabel,
 } from '../lib/format';
 
+/** Seçenek fiyat farklarıyla birleşik birim fiyat (ör. taban ₺100 + "Büyük" +₺5 = ₺105/Kg). */
+function combinedUnitPrice(item: { price?: number; unit_price_snapshot?: number; unit_price?: number; options_fee_unit?: number }) {
+  const base = item.price ?? item.unit_price_snapshot ?? item.unit_price;
+  if (base == null) return null;
+  return base + (item.options_fee_unit ?? 0);
+}
+
 export default function OrderDetail() {
   const { txId } = useParams<{ txId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
@@ -138,7 +145,9 @@ export default function OrderDetail() {
               {(order.items ?? []).length === 0 && (
                 <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Ürün bilgisi yok.</div>
               )}
-              {(order.items ?? []).map((item, i) => (
+              {(order.items ?? []).map((item, i) => {
+                const unitPrice = combinedUnitPrice(item);
+                return (
                 <div
                   key={i}
                   style={{
@@ -157,6 +166,7 @@ export default function OrderDetail() {
                         <span style={{ color: 'var(--text-muted)' }}>
                           {' '}
                           × {item.quantity} {item.unit ?? ''}
+                          {unitPrice != null && ` · ${formatMoney(unitPrice)}/${item.unit ?? 'birim'}`}
                         </span>
                       )}
                       {item.refunded && <span className="badge badge-red" style={{ marginLeft: 8 }}>İade</span>}
@@ -177,7 +187,8 @@ export default function OrderDetail() {
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Not: {item.customization_note}</div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </>
