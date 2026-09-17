@@ -88,6 +88,12 @@ export default function Layout() {
         <NavLink to="/settings" style={NAV_LINK_STYLE}>
           Ayarlar
         </NavLink>
+        <NavLink to="/supplier-contract" style={NAV_LINK_STYLE}>
+          Sözleşme
+        </NavLink>
+        <NavLink to="/logs" style={NAV_LINK_STYLE}>
+          Loglar
+        </NavLink>
       </nav>
       <main style={{ flex: 1, padding: 20, minWidth: 0, overflowX: 'hidden' }}>
         <Outlet />

@@ -20,6 +20,8 @@ import Markets from './pages/Markets';
 import MarketSettings from './pages/MarketSettings';
 import StaffAndCouriers from './pages/StaffAndCouriers';
 import SorumluDetail from './pages/SorumluDetail';
+import SupplierContract from './pages/SupplierContract';
+import Logs from './pages/Logs';
 import YoneticiLayout from './components/YoneticiLayout';
 import YoneticiHome from './pages/YoneticiHome';
 
@@ -79,6 +81,8 @@ function AppRoutes() {
                   <Route path="/markets/:marketId/settings" element={<MarketSettings />} />
                   <Route path="/staff" element={<StaffAndCouriers />} />
                   <Route path="/staff/sorumlu/:userId" element={<SorumluDetail />} />
+                  <Route path="/supplier-contract" element={<SupplierContract />} />
+                  <Route path="/logs" element={<Logs />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
