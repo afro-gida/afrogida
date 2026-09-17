@@ -12,6 +12,7 @@ import Campaigns from './pages/Campaigns';
 import Coupons from './pages/Coupons';
 import CouponDetail from './pages/CouponDetail';
 import Products from './pages/Products';
+import MarketSuppliers from './pages/MarketSuppliers';
 import ProductsBySupplier from './pages/ProductsBySupplier';
 import Categories from './pages/Categories';
 import Settings from './pages/Settings';
@@ -70,6 +71,7 @@ function AppRoutes() {
                   <Route path="/coupons" element={<Coupons />} />
                   <Route path="/coupons/:couponId" element={<CouponDetail />} />
                   <Route path="/products" element={<Products />} />
+                  <Route path="/products/market/:marketId" element={<MarketSuppliers />} />
                   <Route path="/products/:supplierGroup" element={<ProductsBySupplier />} />
                   <Route path="/categories" element={<Categories />} />
                   <Route path="/settings" element={<Settings />} />

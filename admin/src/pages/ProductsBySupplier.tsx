@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, BACKEND_ORIGIN, uploadFile } from '../lib/api';
 import type { CustomizationGroup, Product } from '../lib/product-types';
 import { formatMoney } from '../lib/format';
@@ -58,6 +58,7 @@ function profit(p: Product) {
 export default function ProductsBySupplier() {
   const { supplierGroup } = useParams<{ supplierGroup: string }>();
   const group = decodeURIComponent(supplierGroup ?? '');
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [catalog, setCatalog] = useState<CatalogConfig | null>(null);
@@ -251,9 +252,9 @@ export default function ProductsBySupplier() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Link to="/products" className="btn btn-outline" style={{ padding: '8px 14px' }}>
+        <button onClick={() => navigate(-1)} className="btn btn-outline" style={{ padding: '8px 14px' }}>
           ← Geri
-        </Link>
+        </button>
         <h1 style={{ fontSize: 20, margin: 0 }}>{group}</h1>
       </div>
 
