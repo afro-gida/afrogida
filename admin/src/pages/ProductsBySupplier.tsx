@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, ApiError } from '../lib/api';
-import type { Product } from '../lib/product-types';
+import { api, ApiError, BACKEND_ORIGIN, uploadFile } from '../lib/api';
+import type { CustomizationGroup, Product } from '../lib/product-types';
 import { formatMoney } from '../lib/format';
+
+function imageSrc(url?: string | null) {
+  if (!url) return '';
+  return url.startsWith('http') ? url : `${BACKEND_ORIGIN}${url}`;
+}
 
 const UNIT_OPTIONS = ['Kg', 'Adet', 'File', 'Demet'];
 
@@ -20,6 +25,10 @@ interface ProductForm {
   price: number | '';
   in_stock: boolean;
   active: boolean;
+  image_url: string;
+  campaign_discount_percent: number | '';
+  campaign_min_qty: number | '';
+  customization_options: CustomizationGroup[];
 }
 
 function emptyForm(defaultCategory: string): ProductForm {
@@ -32,6 +41,10 @@ function emptyForm(defaultCategory: string): ProductForm {
     price: '',
     in_stock: true,
     active: true,
+    image_url: '',
+    campaign_discount_percent: '',
+    campaign_min_qty: '',
+    customization_options: [],
   };
 }
 
@@ -56,6 +69,7 @@ export default function ProductsBySupplier() {
   const [form, setForm] = useState<ProductForm>(emptyForm(''));
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   function load() {
     setLoading(true);
@@ -89,9 +103,73 @@ export default function ProductsBySupplier() {
       price: p.price ?? '',
       in_stock: p.in_stock,
       active: p.active,
+      image_url: p.image_url ?? '',
+      campaign_discount_percent: p.campaign_discount_percent ?? '',
+      campaign_min_qty: p.campaign_min_qty ?? '',
+      customization_options: (p.customization_options ?? []).map((g) => ({
+        title: g.title,
+        choices: g.choices.map((c) => ({ ...c })),
+      })),
     });
     setFormError('');
     setShowForm(true);
+  }
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setFormError('');
+    try {
+      const res = await uploadFile(file);
+      setForm((f) => ({ ...f, image_url: res.url }));
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Yükleme başarısız');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function addOptionGroup() {
+    setForm((f) => ({ ...f, customization_options: [...f.customization_options, { title: '', choices: [{ label: '', price_delta: 0 }] }] }));
+  }
+
+  function removeOptionGroup(index: number) {
+    setForm((f) => ({ ...f, customization_options: f.customization_options.filter((_, i) => i !== index) }));
+  }
+
+  function updateOptionGroupTitle(index: number, title: string) {
+    setForm((f) => ({
+      ...f,
+      customization_options: f.customization_options.map((g, i) => (i === index ? { ...g, title } : g)),
+    }));
+  }
+
+  function addChoice(groupIndex: number) {
+    setForm((f) => ({
+      ...f,
+      customization_options: f.customization_options.map((g, i) =>
+        i === groupIndex ? { ...g, choices: [...g.choices, { label: '', price_delta: 0 }] } : g,
+      ),
+    }));
+  }
+
+  function removeChoice(groupIndex: number, choiceIndex: number) {
+    setForm((f) => ({
+      ...f,
+      customization_options: f.customization_options.map((g, i) =>
+        i === groupIndex ? { ...g, choices: g.choices.filter((_, ci) => ci !== choiceIndex) } : g,
+      ),
+    }));
+  }
+
+  function updateChoice(groupIndex: number, choiceIndex: number, patch: Partial<{ label: string; price_delta: number }>) {
+    setForm((f) => ({
+      ...f,
+      customization_options: f.customization_options.map((g, i) =>
+        i === groupIndex
+          ? { ...g, choices: g.choices.map((c, ci) => (ci === choiceIndex ? { ...c, ...patch } : c)) }
+          : g,
+      ),
+    }));
   }
 
   async function save() {
@@ -101,6 +179,14 @@ export default function ProductsBySupplier() {
     }
     setSaving(true);
     setFormError('');
+    const cleanOptions = form.customization_options
+      .map((g) => ({
+        title: g.title.trim(),
+        choices: g.choices
+          .filter((c) => c.label.trim())
+          .map((c) => ({ label: c.label.trim(), price_delta: Number(c.price_delta) || 0 })),
+      }))
+      .filter((g) => g.title && g.choices.length > 0);
     const payload = {
       name: form.name.trim(),
       category: form.category,
@@ -112,6 +198,10 @@ export default function ProductsBySupplier() {
       sale_price: form.price === '' ? 0 : Number(form.price),
       in_stock: form.in_stock,
       active: form.active,
+      image_url: form.image_url || null,
+      campaign_discount_percent: form.campaign_discount_percent === '' ? 0 : Number(form.campaign_discount_percent),
+      campaign_min_qty: form.campaign_min_qty === '' ? 0 : Number(form.campaign_min_qty),
+      customization_options: cleanOptions,
     };
     try {
       if (editingId) {
@@ -221,6 +311,92 @@ export default function ProductsBySupplier() {
               </select>
             </div>
           </div>
+          <div className="field">
+            <label>Ürün Fotoğrafı (Opsiyonel)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
+              disabled={uploading}
+            />
+            {uploading && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Yükleniyor…</span>}
+            {form.image_url && (
+              <img src={imageSrc(form.image_url)} alt="" style={{ maxWidth: 120, borderRadius: 10, marginTop: 6 }} />
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Kampanya İndirimi (%)</label>
+              <input
+                type="number"
+                placeholder="Örn: 10"
+                value={form.campaign_discount_percent}
+                onChange={(e) => setForm((f) => ({ ...f, campaign_discount_percent: e.target.value === '' ? '' : Number(e.target.value) }))}
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Min. Adet (kampanya için)</label>
+              <input
+                type="number"
+                placeholder="Örn: 3"
+                value={form.campaign_min_qty}
+                onChange={(e) => setForm((f) => ({ ...f, campaign_min_qty: e.target.value === '' ? '' : Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: 13, color: 'var(--text-muted)' }}>Seçenek Listesi (Opsiyonel)</label>
+              <button type="button" className="btn btn-outline" onClick={addOptionGroup}>+ Grup Ekle</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Örn: grup "Porsiyon", seçenekler "Küçük" (+0₺), "Büyük" (+5₺).
+            </div>
+            {form.customization_options.map((group, gi) => (
+              <div key={gi} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="field" style={{ flex: 1 }}>
+                    <input
+                      placeholder="Grup adı (örn: Porsiyon)"
+                      value={group.title}
+                      onChange={(e) => updateOptionGroupTitle(gi, e.target.value)}
+                    />
+                  </div>
+                  <button type="button" className="btn btn-outline" style={{ color: 'var(--danger)' }} onClick={() => removeOptionGroup(gi)}>
+                    Grubu Sil
+                  </button>
+                </div>
+                {group.choices.map((choice, ci) => (
+                  <div key={ci} style={{ display: 'flex', gap: 8 }}>
+                    <div className="field" style={{ flex: 2 }}>
+                      <input
+                        placeholder="Seçenek adı (örn: Büyük)"
+                        value={choice.label}
+                        onChange={(e) => updateChoice(gi, ci, { label: e.target.value })}
+                      />
+                    </div>
+                    <div className="field" style={{ flex: 1 }}>
+                      <input
+                        type="number"
+                        placeholder="Fiyat farkı (₺)"
+                        value={choice.price_delta}
+                        onChange={(e) => updateChoice(gi, ci, { price_delta: e.target.value === '' ? 0 : Number(e.target.value) })}
+                      />
+                    </div>
+                    <button type="button" className="btn btn-outline" style={{ color: 'var(--danger)' }} onClick={() => removeChoice(gi, ci)}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-outline" style={{ alignSelf: 'flex-start' }} onClick={() => addChoice(gi)}>
+                  + Seçenek Ekle
+                </button>
+              </div>
+            ))}
+          </div>
+
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
             <input type="checkbox" checked={form.in_stock} onChange={(e) => setForm((f) => ({ ...f, in_stock: e.target.checked }))} />
             Stokta
@@ -238,17 +414,30 @@ export default function ProductsBySupplier() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {products.map((p) => (
-          <div key={p.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{p.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {p.category} › {p.subcategory} · {p.unit}
+          <div key={p.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {p.image_url && (
+                <img src={imageSrc(p.image_url)} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+              )}
+              <div>
+                <div style={{ fontWeight: 700 }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {p.category} › {p.subcategory} · {p.unit}
+                </div>
+                <div style={{ fontSize: 13, marginTop: 4 }}>
+                  Alış: {formatMoney(p.supplier_price)} · Satış: {formatMoney(p.sale_price ?? p.price)} ·{' '}
+                  <span style={{ color: 'var(--primary)' }}>Kâr: {formatMoney(profit(p))}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  {!p.in_stock && <span className="badge badge-red">Stok Yok</span>}
+                  {!!p.campaign_discount_percent && (
+                    <span className="badge badge-orange">%{p.campaign_discount_percent} kampanya</span>
+                  )}
+                  {!!p.customization_options?.length && (
+                    <span className="badge badge-muted">{p.customization_options.length} seçenek grubu</span>
+                  )}
+                </div>
               </div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>
-                Alış: {formatMoney(p.supplier_price)} · Satış: {formatMoney(p.sale_price ?? p.price)} ·{' '}
-                <span style={{ color: 'var(--primary)' }}>Kâr: {formatMoney(profit(p))}</span>
-              </div>
-              {!p.in_stock && <span className="badge badge-red" style={{ marginTop: 4 }}>Stok Yok</span>}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-outline" onClick={() => openEdit(p)}>Düzenle</button>
