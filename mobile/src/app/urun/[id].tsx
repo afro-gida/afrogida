@@ -150,7 +150,8 @@ export default function ProductDetailScreen() {
           style={[styles.addBtn, { backgroundColor: product.in_stock ? theme.tint : theme.border }]}
           onPress={() => {
             addItem(product, qty, selectedOptions);
-            router.back();
+            if (router.canGoBack()) router.back();
+            else router.replace('/');
           }}
         >
           <ThemedText style={{ color: '#fff' }} type="smallBold" numberOfLines={1}>

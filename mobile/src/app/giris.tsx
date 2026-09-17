@@ -35,7 +35,8 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       await login(phone.trim(), password);
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {

@@ -66,7 +66,8 @@ export default function RegisterScreen() {
         otp_code: otpCode.trim(),
         marketing_consent: notifyOk,
       });
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
