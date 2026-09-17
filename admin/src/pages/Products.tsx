@@ -31,7 +31,12 @@ export default function Products() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
-      <h1 style={{ fontSize: 22, margin: 0 }}>Ürünler {!loading && `(${products.length} çeşit)`}</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <h1 style={{ fontSize: 22, margin: 0 }}>Ürünler {!loading && `(${products.length} çeşit)`}</h1>
+        <Link to="/categories" className="btn btn-outline" style={{ padding: '8px 14px', textDecoration: 'none' }}>
+          Kategoriler
+        </Link>
+      </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Karttan içeri gir, sonra ürünleri yönet.</div>
 
       {loading && <div style={{ color: 'var(--text-muted)' }}>Yükleniyor…</div>}

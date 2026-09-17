@@ -13,6 +13,7 @@ import Coupons from './pages/Coupons';
 import CouponDetail from './pages/CouponDetail';
 import Products from './pages/Products';
 import ProductsBySupplier from './pages/ProductsBySupplier';
+import Categories from './pages/Categories';
 import Settings from './pages/Settings';
 import Markets from './pages/Markets';
 import MarketSettings from './pages/MarketSettings';
@@ -69,6 +70,7 @@ function AppRoutes() {
                   <Route path="/coupons/:couponId" element={<CouponDetail />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/products/:supplierGroup" element={<ProductsBySupplier />} />
+                  <Route path="/categories" element={<Categories />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/markets" element={<Markets />} />
                   <Route path="/markets/:marketId/settings" element={<MarketSettings />} />

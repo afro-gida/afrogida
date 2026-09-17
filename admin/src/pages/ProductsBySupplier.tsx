@@ -4,6 +4,8 @@ import { api, ApiError } from '../lib/api';
 import type { Product } from '../lib/product-types';
 import { formatMoney } from '../lib/format';
 
+const UNIT_OPTIONS = ['Kg', 'Adet', 'File', 'Demet'];
+
 interface CatalogConfig {
   categories: string[];
   subcategories: Record<string, string[]>;
@@ -208,7 +210,15 @@ export default function ProductsBySupplier() {
             </div>
             <div className="field" style={{ flex: 1 }}>
               <label>Birim</label>
-              <input value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} />
+              <select
+                value={form.unit}
+                onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                style={{ background: '#0a130e', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
+              >
+                {(UNIT_OPTIONS.includes(form.unit) ? UNIT_OPTIONS : [form.unit, ...UNIT_OPTIONS]).map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
             </div>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
