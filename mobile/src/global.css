@@ -17,3 +17,13 @@
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari, yeni Edge */
 }
+
+/* Chrome/Edge şifre alanını (autofill algılayınca) beyaza boyuyor - RN
+   TextInput'un kendi arka plan rengini eziyor. Geçiş süresini aşırı
+   uzatarak tarayıcının bu boyamasını görünmez hale getiriyoruz. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: inherit;
+  transition: background-color 600000s ease-in-out 0s;
+}

@@ -88,7 +88,7 @@ export default function ForgotPasswordScreen() {
           placeholder="05XX XXX XX XX"
           placeholderTextColor={theme.textSecondary}
           keyboardType="phone-pad"
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
         />
 
         {!otpSent ? (
@@ -108,7 +108,7 @@ export default function ForgotPasswordScreen() {
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <TextInput
               value={newPassword}
@@ -116,7 +116,7 @@ export default function ForgotPasswordScreen() {
               placeholder="Yeni şifre (en az 6 karakter)"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleReset} disabled={submitting}>
               {submitting ? <ActivityIndicator color="#fff" /> : (

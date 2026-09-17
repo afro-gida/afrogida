@@ -29,6 +29,10 @@ export const Colors = {
     // Giriş/kayıt kartı: açık modda ayrı bir "siyah kart" tasarımı yok,
     // normal kart rengiyle aynı kalsın.
     authCard: '#eafff4',
+    // Yazı kutuları: uygulamanın geri kalanında (bkz. adreslerim.tsx) zaten
+    // kullanılan yarı saydam koyulaştırma - kartın üstüne oturunca hep
+    // aynı, tutarlı tonu verir.
+    inputBg: 'rgba(255,255,255,0.6)',
   },
   dark: {
     text: '#eafff4',
@@ -45,6 +49,7 @@ export const Colors = {
     // Gerçek sitedeki giriş/kayıt kartı koyu modda YEŞİL değil, neredeyse
     // SİYAH (kullanıcı talimatı) — bkz. Screenshot_20/22 karşılaştırması.
     authCard: '#0d0d0d',
+    inputBg: 'rgba(0,0,0,0.25)',
   },
 } as const;
 

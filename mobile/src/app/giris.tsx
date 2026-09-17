@@ -69,7 +69,7 @@ export default function LoginScreen() {
           placeholder="05XX XXX XX XX"
           placeholderTextColor={theme.textSecondary}
           keyboardType="phone-pad"
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
         />
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
@@ -82,7 +82,7 @@ export default function LoginScreen() {
             placeholder="Şifreniz"
             placeholderTextColor={theme.textSecondary}
             secureTextEntry={!showPassword}
-            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
           />
           <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
             <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={27} color={IconGreen} />
@@ -95,18 +95,18 @@ export default function LoginScreen() {
           </ThemedText>
         )}
 
+        <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgotLink}>
+          <ThemedText themeColor="tint" type="small" style={styles.underline}>
+            Şifremi Unuttum
+          </ThemedText>
+        </Pressable>
+
         <Pressable style={[styles.submitBtn, { backgroundColor: theme.tint }]} onPress={handleLogin} disabled={submitting}>
           {submitting ? <ActivityIndicator color="#fff" /> : (
             <ThemedText style={{ color: '#fff' }} type="smallBold">
               Giriş Yap
             </ThemedText>
           )}
-        </Pressable>
-
-        <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgotLink}>
-          <ThemedText themeColor="tint" type="small" style={styles.underline}>
-            Şifremi Unuttum
-          </ThemedText>
         </Pressable>
 
         <Pressable

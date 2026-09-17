@@ -100,7 +100,7 @@ export default function RegisterScreen() {
             onChangeText={setName}
             placeholder="Ad Soyad"
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
           />
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
@@ -113,7 +113,7 @@ export default function RegisterScreen() {
               placeholder="05XX XXX XX XX"
               placeholderTextColor={theme.textSecondary}
               keyboardType="phone-pad"
-              style={[styles.input, styles.phoneInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, styles.phoneInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <TextInput
               value={otpCode}
@@ -122,7 +122,7 @@ export default function RegisterScreen() {
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
-              style={[styles.input, styles.otpInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, styles.otpInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable
               style={[styles.codeBtn, { backgroundColor: theme.tint }]}
@@ -147,7 +147,7 @@ export default function RegisterScreen() {
               placeholder="En az 6 karakter"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry={!showPassword}
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }]}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
               <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={27} color={IconGreen} />
