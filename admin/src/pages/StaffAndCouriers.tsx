@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { maskPhone } from '../lib/format';
 import type { Market } from '../lib/market-types';
+import { MarketPicker } from '../components/MarketPicker';
 
 interface CourierUser {
   user_id: string;
@@ -167,19 +168,11 @@ export default function StaffAndCouriers() {
             </div>
             <div className="field">
               <label>Aktif Olacak Pazarlar (birden fazla seçilebilir)</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {marketOptions.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    className={selectedMarkets.includes(m) ? 'btn' : 'btn btn-outline'}
-                    style={{ fontSize: 13, padding: '6px 12px' }}
-                    onClick={() => toggleMarket(m)}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
+              <MarketPicker
+                options={marketOptions.map((m) => ({ key: m, label: m }))}
+                selected={selectedMarkets}
+                onToggle={toggleMarket}
+              />
             </div>
             {formError && <div className="error-text">{formError}</div>}
             <button className="btn" style={{ alignSelf: 'flex-start' }} disabled={saving} onClick={assignCourier}>
@@ -224,19 +217,11 @@ export default function StaffAndCouriers() {
             </div>
             <div className="field">
               <label>Sorumlu Olacağı Pazarlar (birden fazla seçilebilir)</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {allMarkets.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={selectedManagedMarketIds.includes(m.id) ? 'btn' : 'btn btn-outline'}
-                    style={{ fontSize: 13, padding: '6px 12px' }}
-                    onClick={() => toggleManagedMarket(m.id)}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
+              <MarketPicker
+                options={allMarkets.map((m) => ({ key: m.id, label: m.name }))}
+                selected={selectedManagedMarketIds}
+                onToggle={toggleManagedMarket}
+              />
             </div>
             {formError && <div className="error-text">{formError}</div>}
             <button className="btn" style={{ alignSelf: 'flex-start' }} disabled={saving} onClick={assignSorumlu}>

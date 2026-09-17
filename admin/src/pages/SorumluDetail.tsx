@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { maskPhone } from '../lib/format';
 import type { Market } from '../lib/market-types';
+import { MarketPicker } from '../components/MarketPicker';
 
 interface PazarSorumlusu {
   user_id: string;
@@ -168,19 +169,11 @@ export default function SorumluDetail() {
         </div>
         <div className="field">
           <label>Pazar (bu sorumlunun pazarları arasından, birden fazla seçilebilir)</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {managedMarketNames.map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={selectedAssignMarkets.includes(m) ? 'btn' : 'btn btn-outline'}
-                style={{ fontSize: 13, padding: '6px 12px' }}
-                onClick={() => toggleAssignMarket(m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <MarketPicker
+            options={managedMarketNames.map((m) => ({ key: m, label: m }))}
+            selected={selectedAssignMarkets}
+            onToggle={toggleAssignMarket}
+          />
         </div>
         {formError && <div className="error-text">{formError}</div>}
         <button className="btn" style={{ alignSelf: 'flex-start' }} disabled={saving} onClick={assignSupplier}>
