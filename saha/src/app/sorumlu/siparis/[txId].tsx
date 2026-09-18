@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -166,7 +166,16 @@ export default function SorumluSiparisDetay() {
 
   function openMap() {
     if (!order?.address) return;
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`);
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`;
+    // Web'de Linking.openURL yerine window.open kullanılmalı — tıklama olayı
+    // içinde senkron çağrılmazsa tarayıcı pop-up engelleyicisine takılıp
+    // sessizce hiçbir şey açmıyordu (kullanıcı talimatıyla bulunan hata:
+    // butonlar görünüyor ama tepkisizdi). bkz. tedarikci/index.tsx openPdf().
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(url);
+    }
   }
 
   return (
