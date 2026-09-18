@@ -77,7 +77,6 @@ export default function SorumluSiparisDetay() {
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyBusy, setNotifyBusy] = useState<string | null>(null);
   const [notifyDone, setNotifyDone] = useState('');
 
@@ -256,32 +255,33 @@ export default function SorumluSiparisDetay() {
 
             {order.delivery_type === 'eve_servis' && !isFinal && (
               <View style={[styles.card, { backgroundColor: theme.authCard }]}>
-                <Pressable onPress={() => setNotifyOpen((v) => !v)}>
-                  <ThemedText type="smallBold" style={{ color: NOTIFY_COLOR }}>🛵 Kuryeye Bildir</ThemedText>
-                </Pressable>
-                {notifyOpen && (
-                  <View style={{ gap: 6, marginTop: 4 }}>
-                    {couriers.length === 0 && <ThemedText type="small" themeColor="textSecondary">Pazarında kayıtlı kurye yok.</ThemedText>}
-                    {couriers.map((c) => (
-                      <Pressable
-                        key={c.user_id}
-                        style={[styles.rowBetween, styles.courierRow, { borderColor: theme.border }]}
-                        onPress={() => notify(c.user_id)}
-                        disabled={notifyBusy === c.user_id}
-                      >
-                        <View>
-                          <ThemedText type="small">{c.name || 'Kurye'}</ThemedText>
-                          <ThemedText type="small" themeColor={c.is_online ? 'tint' : 'textSecondary'}>
-                            {c.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}
-                          </ThemedText>
-                        </View>
-                        <ThemedText type="small" themeColor="tint">
-                          {notifyBusy === c.user_id ? 'Gönderiliyor…' : notifyDone === c.user_id ? 'Bildirildi ✓' : 'Bildir'}
+                <ThemedText type="smallBold" style={{ color: NOTIFY_COLOR }}>🛵 Kuryeye Bildir</ThemedText>
+                {/* Liste her zaman açık — önceden başlığa basınca açılan bir
+                    liste vardı ama o dokunuş bazı cihazlarda hiç tepki
+                    vermiyordu (kullanıcı talimatıyla bulunan hata, kesin
+                    kod nedeni bulunamadı) — bu adımı kaldırıp riski
+                    ortadan kaldırdık: artık tek dokunuşla bildiriliyor. */}
+                <View style={{ gap: 6, marginTop: 4 }}>
+                  {couriers.length === 0 && <ThemedText type="small" themeColor="textSecondary">Pazarında kayıtlı kurye yok.</ThemedText>}
+                  {couriers.map((c) => (
+                    <Pressable
+                      key={c.user_id}
+                      style={[styles.rowBetween, styles.courierRow, { borderColor: theme.border }]}
+                      onPress={() => notify(c.user_id)}
+                      disabled={notifyBusy === c.user_id}
+                    >
+                      <View>
+                        <ThemedText type="small">{c.name || 'Kurye'}</ThemedText>
+                        <ThemedText type="small" themeColor={c.is_online ? 'tint' : 'textSecondary'}>
+                          {c.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}
                         </ThemedText>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
+                      </View>
+                      <ThemedText type="small" themeColor="tint">
+                        {notifyBusy === c.user_id ? 'Gönderiliyor…' : notifyDone === c.user_id ? 'Bildirildi ✓' : 'Bildir'}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             )}
 
