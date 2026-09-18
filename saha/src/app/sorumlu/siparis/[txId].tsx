@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -72,6 +72,7 @@ function paymentColor(status: string): ThemeColor {
 
 export default function SorumluSiparisDetay() {
   const theme = useTheme();
+  const router = useRouter();
   const { txId } = useLocalSearchParams<{ txId: string }>();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -185,6 +186,24 @@ export default function SorumluSiparisDetay() {
 
   return (
     <Screen edges={['bottom']}>
+      <Stack.Screen
+        options={{
+          // Bu sayfa çoğu zaman sayfa yenileyerek (F5) doğrudan bu adrese
+          // girilerek açılıyor - o zaman tarayıcı/gezinme geçmişinde önceki
+          // bir ekran olmadığı için otomatik geri oku hiç görünmüyordu
+          // (kullanıcı talimatıyla bulunan hata). Elle bir geri oku koyup,
+          // gidilecek geçmiş yoksa sipariş listesine dönüyoruz.
+          headerLeft: () => (
+            <Pressable
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/sorumlu/siparisler'))}
+              hitSlop={10}
+              style={{ paddingRight: Spacing.two }}
+            >
+              <Ionicons name="arrow-back" size={22} color={theme.text} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
         {error && <ThemedText themeColor="danger">{error}</ThemedText>}
