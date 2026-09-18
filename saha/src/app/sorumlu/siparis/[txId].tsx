@@ -297,13 +297,18 @@ export default function SorumluSiparisDetay() {
                       onPress={() => changeStatus(s)}
                       style={[
                         styles.statusPill,
-                        { backgroundColor: 'transparent', borderColor: meta.color, borderWidth: active ? 2 : 1.5, opacity: tappable ? 1 : active ? 1 : 0.55 },
+                        {
+                          backgroundColor: active ? meta.color : 'transparent',
+                          borderColor: meta.color,
+                          borderWidth: 1.5,
+                          opacity: tappable || active ? 1 : 0.55,
+                        },
                       ]}
                     >
-                      <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
-                        <Ionicons name={meta.icon} size={13} color="#fff" />
+                      <View style={[styles.statusIcon, { backgroundColor: active ? '#fff' : meta.color }]}>
+                        <Ionicons name={meta.icon} size={13} color={active ? meta.color : '#fff'} />
                       </View>
-                      <ThemedText type="smallBold" style={{ color: meta.color }}>{STATUS_LABELS[s]}</ThemedText>
+                      <ThemedText type="smallBold" style={{ color: active ? '#fff' : meta.color }}>{STATUS_LABELS[s]}</ThemedText>
                     </Pressable>
                   );
                 })}
