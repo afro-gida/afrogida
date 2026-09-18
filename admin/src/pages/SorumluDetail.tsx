@@ -159,7 +159,7 @@ export default function SorumluDetail() {
           <select
             value={selectedSupplierGroup}
             onChange={(e) => setSelectedSupplierGroup(e.target.value)}
-            style={{ background: '#0a130e', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
+            style={{ background: '#0f0f0f', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
           >
             <option value="">Seçiniz…</option>
             {supplierGroups.map((g) => (

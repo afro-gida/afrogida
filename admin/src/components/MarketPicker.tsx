@@ -35,7 +35,7 @@ export function MarketPicker({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         style={{
-          background: '#0a130e',
+          background: '#0f0f0f',
           border: '1px solid var(--surface-border)',
           borderRadius: 10,
           padding: '10px 14px',

@@ -1,13 +1,20 @@
 :root {
-  --bg: #070b09;
-  --surface: #0e1a13;
-  --surface-border: #1c3326;
-  --primary: #22c55e;
-  --primary-dark: #16a34a;
+  /* Eski (Abacus) sistemdeki marka paletiyle hizalandı: nötr neredeyse-siyah
+     zeminler + Afro Gıda yeşili (#14b67e) tek vurgu rengi olarak - önceki
+     değerler (--bg/--surface/--text-muted) zeminlere de yeşil ton karıştırıp
+     istenmeyen bir "her yer yeşilimsi" görünüm veriyordu. */
+  --bg: #0a0a0a;
+  --surface: #1a1a1a;
+  --surface-elevated: #222222;
+  --surface-border: #2a2a2a;
+  --primary: #14b67e;
+  --primary-dark: #0f9268;
+  --accent: #0ea5e9;
   --danger: #ef4444;
   --danger-dark: #b91c1c;
-  --text: #f2f5f3;
-  --text-muted: #8ea395;
+  --text: #e5e5e5;
+  --text-muted: #9ca3af;
+  --text-faint: #6b7280;
   --radius: 14px;
   color-scheme: dark;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -92,7 +99,7 @@ a {
 
 .field input,
 .field select {
-  background: #0a130e;
+  background: #0f0f0f;
   border: 1px solid var(--surface-border);
   border-radius: 10px;
   padding: 12px 14px;
@@ -123,7 +130,7 @@ a {
 }
 
 .badge-green {
-  background: rgba(34, 197, 94, 0.15);
+  background: rgba(20, 182, 126, 0.15);
   color: var(--primary);
 }
 

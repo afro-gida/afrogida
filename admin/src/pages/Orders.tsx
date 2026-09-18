@@ -106,7 +106,7 @@ export default function Orders() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{
-          background: '#0a130e',
+          background: '#0f0f0f',
           border: '1px solid var(--surface-border)',
           borderRadius: 10,
           padding: '12px 14px',

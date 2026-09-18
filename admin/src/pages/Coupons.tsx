@@ -328,7 +328,7 @@ export default function Coupons() {
             <select
               value={targetCouponId}
               onChange={(e) => setTargetCouponId(e.target.value)}
-              style={{ background: '#0a130e', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
+              style={{ background: '#0f0f0f', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
             >
               <option value="">Seçiniz…</option>
               {items.map((c) => (
@@ -391,7 +391,7 @@ export default function Coupons() {
             <select
               value={defaultFormCouponId}
               onChange={(e) => setDefaultFormCouponId(e.target.value)}
-              style={{ background: '#0a130e', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
+              style={{ background: '#0f0f0f', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)' }}
             >
               <option value="">Seçiniz…</option>
               {items.map((c) => (

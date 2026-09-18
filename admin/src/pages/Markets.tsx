@@ -222,7 +222,7 @@ export default function Markets() {
               value={form.neighborhoods}
               onChange={(e) => setForm((f) => ({ ...f, neighborhoods: e.target.value }))}
               rows={4}
-              style={{ background: '#0a130e', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)', resize: 'vertical' }}
+              style={{ background: '#0f0f0f', border: '1px solid var(--surface-border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text)', resize: 'vertical' }}
               placeholder="Her satıra bir mahalle, ya da virgülle ayırarak yaz"
             />
           </div>
