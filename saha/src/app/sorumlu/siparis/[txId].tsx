@@ -33,6 +33,15 @@ const STATUS_LABELS: Record<string, string> = {
   teslim_edildi: 'Teslim Edildi',
   iptal_edildi: 'İptal Edildi',
 };
+const STATUS_META: Record<string, { icon: string; color: string }> = {
+  talep_alindi: { icon: '📄', color: '#9CA3AF' },
+  hazirlik_bekliyor: { icon: '🕐', color: '#F5A623' },
+  hazirlaniyor: { icon: '🧪', color: '#3B82F6' },
+  hazir: { icon: '📦', color: '#8B5CF6' },
+  yolda: { icon: '🛵', color: '#14B67E' },
+  teslim_edildi: { icon: '✅', color: '#22C55E' },
+  iptal_edildi: { icon: '❌', color: '#EF4444' },
+};
 const PAYMENT_LABELS: Record<string, string> = {
   paid: 'Ödendi',
   pending: 'Bekliyor',
@@ -214,24 +223,28 @@ export default function SorumluSiparisDetay() {
 
             <View style={[styles.card, { backgroundColor: theme.authCard }]}>
               <ThemedText type="smallBold">Durum</ThemedText>
-              <View style={styles.chipRow}>
-                {(CANCELLED.has(order.order_status) ? ['iptal_edildi'] : STATUS_FLOW).map((s) => {
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
+                {(CANCELLED.has(order.order_status) ? [...STATUS_FLOW, 'iptal_edildi'] : STATUS_FLOW).map((s) => {
                   const active = s === order.order_status;
+                  const meta = STATUS_META[s];
                   return (
                     <View
                       key={s}
                       style={[
-                        styles.pill,
-                        { borderColor: active ? theme.tint : theme.border, backgroundColor: active ? theme.tint : 'transparent' },
+                        styles.statusPill,
+                        { backgroundColor: theme.backgroundSelected, borderColor: active ? meta.color : 'transparent' },
                       ]}
                     >
-                      <ThemedText type="small" style={{ color: active ? '#fff' : theme.textSecondary }}>
+                      <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
+                        <ThemedText style={styles.statusIconText}>{meta.icon}</ThemedText>
+                      </View>
+                      <ThemedText type="small" style={{ fontWeight: active ? '700' : '500' }}>
                         {STATUS_LABELS[s]}
                       </ThemedText>
                     </View>
                   );
                 })}
-              </View>
+              </ScrollView>
             </View>
 
             {order.delivery_type === 'eve_servis' && !isFinal && (
@@ -344,8 +357,13 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   gridCell: { flexBasis: '47%', flexGrow: 1, borderRadius: 14, padding: Spacing.two, gap: 2 },
   card: { borderRadius: 16, padding: Spacing.three, gap: 8 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  pill: { borderWidth: 1.5, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  statusRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  statusPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999,
+    borderWidth: 1.5, paddingVertical: 6, paddingHorizontal: 12,
+  },
+  statusIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  statusIconText: { fontSize: 11, lineHeight: 14 },
   smallBtn: { borderRadius: 999, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   courierRow: { borderWidth: 1, borderRadius: 12, padding: Spacing.two },
