@@ -195,21 +195,21 @@ export default function SorumluSiparisDetay() {
             <View style={styles.grid}>
               <View style={[styles.gridCell, { backgroundColor: theme.authCard }]}>
                 <ThemedText type="small" themeColor="textSecondary">Toplam</ThemedText>
-                <ThemedText type="smallBold">{money(order.amount)}</ThemedText>
+                <ThemedText type="smallBold" style={styles.gridValue}>{money(order.amount)}</ThemedText>
               </View>
               <View style={[styles.gridCell, { backgroundColor: theme.authCard }]}>
                 <ThemedText type="small" themeColor="textSecondary">Ödeme</ThemedText>
-                <ThemedText type="smallBold" themeColor={paymentColor(order.payment_status)}>
+                <ThemedText type="smallBold" themeColor={paymentColor(order.payment_status)} style={styles.gridValue}>
                   {PAYMENT_LABELS[order.payment_status] ?? order.payment_status ?? '—'}
                 </ThemedText>
               </View>
               <View style={[styles.gridCell, { backgroundColor: theme.authCard }]}>
                 <ThemedText type="small" themeColor="textSecondary">Teslim</ThemedText>
-                <ThemedText type="smallBold">{order.delivery_type === 'eve_servis' ? 'Eve Servis' : 'Gel-Al'}</ThemedText>
+                <ThemedText type="smallBold" style={styles.gridValue}>{order.delivery_type === 'eve_servis' ? 'Eve Servis' : 'Gel-Al'}</ThemedText>
               </View>
               <View style={[styles.gridCell, { backgroundColor: theme.authCard }]}>
                 <ThemedText type="small" themeColor="textSecondary">Ödeme Şekli</ThemedText>
-                <ThemedText type="smallBold">{PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method ?? '—'}</ThemedText>
+                <ThemedText type="smallBold" style={styles.gridValue}>{PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method ?? '—'}</ThemedText>
               </View>
             </View>
 
@@ -241,9 +241,7 @@ export default function SorumluSiparisDetay() {
                       <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
                         <Ionicons name={meta.icon} size={13} color="#fff" />
                       </View>
-                      <ThemedText type="small" style={{ fontWeight: active ? '700' : '500' }}>
-                        {STATUS_LABELS[s]}
-                      </ThemedText>
+                      <ThemedText type="smallBold">{STATUS_LABELS[s]}</ThemedText>
                     </View>
                   );
                 })}
@@ -286,7 +284,7 @@ export default function SorumluSiparisDetay() {
                 <ThemedText type="smallBold">Ürünler</ThemedText>
                 {!isFinal && !order.return_request && (
                   <Pressable onPress={() => setReturnMode((v) => !v)}>
-                    <ThemedText type="small" themeColor="danger">
+                    <ThemedText type="smallBold" themeColor="danger">
                       {returnMode ? 'Vazgeç' : '↩ İade Talebi Oluştur'}
                     </ThemedText>
                   </Pressable>
@@ -359,6 +357,7 @@ const styles = StyleSheet.create({
   banner: { borderWidth: 1.5, borderRadius: 12, padding: Spacing.two },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   gridCell: { flexBasis: '47%', flexGrow: 1, borderRadius: 14, padding: Spacing.two, gap: 2 },
+  gridValue: { fontSize: 17, lineHeight: 22 },
   card: { borderRadius: 16, padding: Spacing.three, gap: 8 },
   statusRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   statusPill: {
