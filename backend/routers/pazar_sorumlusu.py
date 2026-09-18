@@ -7,15 +7,18 @@ tedarikçileri denetleyip atayabilen/kaldırabilen, admin panelinin geri kalanı
 HİÇ erişimi olmayan ayrı ve dar kapsamlı bir rol. Yetki sınırı her endpoint'te
 ayrı ayrı kontrol edilir (sadece frontend'de gizlemek yetmez — güvenlik burada).
 """
+from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from core.crypto import dec_str
 from core.db import db
 from core.logs import _insert_log
 from core.security import get_current_pazar_sorumlusu, get_user_managed_markets
-from core.util import _afro_norm
+from core.util import _afro_norm, now_utc
 from services.catalog import _read_catalog_config, _write_catalog_config
+from services.push import send_push_to_users
 
 router = APIRouter(prefix="/api/pazar-sorumlusu")
 
@@ -57,40 +60,171 @@ async def pazar_sorumlusu_suppliers(user: dict = Depends(get_current_pazar_sorum
     return result
 
 
-def _sorumlu_order_view(o: dict) -> dict:
+def _mask_phone(phone: str) -> str:
+    digits = "".join(c for c in (phone or "") if c.isdigit())
+    if len(digits) < 6:
+        return phone or ""
+    return f"{digits[:4]} *** **{digits[-2:]}"
+
+
+def _sorumlu_order_view(o: dict, detailed: bool = False) -> dict:
     items = []
     for it in (o.get("items") or []):
         items.append({
             "name": it.get("product_name_snapshot") or it.get("name") or it.get("product_name") or "Ürün",
             "qty": it.get("qty") or it.get("quantity") or 1,
             "unit": it.get("unit_snapshot") or it.get("unit") or "",
+            "note": it.get("note") or it.get("customization_note") or "",
+            "selected_options": it.get("selected_options") or [],
+            "supplier_group": it.get("supplier_group_snapshot") or it.get("supplier_group") or "",
         })
-    return {
+    out = {
         "tx_id": o.get("tx_id"),
         "order_status": o.get("order_status"),
+        "payment_status": o.get("payment_status"),
+        "payment_method": o.get("payment_method"),
         "delivery_type": o.get("delivery_type"),
         "market_name": o.get("market_name") or "",
         "amount": o.get("amount"),
+        "delivery_fee": o.get("delivery_fee"),
         "user_name": o.get("user_name") or "",
+        "customer_phone_masked": _mask_phone(o.get("user_phone") or o.get("customer_phone") or ""),
         "items": items,
         "created_at": o.get("created_at"),
+        "delivery_slot_start": o.get("delivery_slot_start"),
+        "delivery_slot_end": o.get("delivery_slot_end"),
+        "delivered_at": o.get("delivered_at"),
+        "courier_id": o.get("courier_id"),
+        "courier_name": o.get("courier_name"),
+        "refund_status": o.get("refund_status") or "",
+        "refund_amount": o.get("refund_amount"),
+        "cancel_reason": o.get("cancel_reason"),
+        "return_request": o.get("return_request"),
     }
+    if detailed:
+        out["delivery_neighborhood"] = o.get("delivery_neighborhood") or ""
+        out["address"] = dec_str(o.get("address")) if o.get("delivery_type") == "eve_servis" else None
+    return out
+
+
+def _order_date_filter(filter_type: str) -> dict:
+    now = now_utc()
+    if filter_type == "today":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif filter_type == "last_7_days":
+        start = now - timedelta(days=7)
+    elif filter_type == "last_1_month":
+        start = now - timedelta(days=30)
+    else:
+        return {}
+    return {"created_at": {"$gte": start}}
+
+
+async def _sorumlu_order_or_404(tx_id: str, managed_names: set) -> dict:
+    order = await db.transactions.find_one({"tx_id": tx_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+    if _afro_norm(order.get("market_name") or "") not in managed_names:
+        raise HTTPException(status_code=403, detail="Bu sipariş sizin pazarınıza ait değil")
+    return order
 
 
 @router.get("/orders")
-async def pazar_sorumlusu_orders(user: dict = Depends(get_current_pazar_sorumlusu)):
-    """Sorumlunun pazar(lar)ındaki siparişler (salt okunur takip amaçlı,
-    durum değiştirme yetkisi yok - o kurye/mutfak tarafında)."""
+async def pazar_sorumlusu_orders(filter_type: str = "today", user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Sorumlunun pazar(lar)ındaki siparişler (takip amaçlı liste)."""
     managed = await _managed_market_docs(user)
     managed_names = {_afro_norm(m.get("name") or "") for m in managed}
     if not managed_names:
         return []
-    orders = await db.transactions.find({}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    q = _order_date_filter(filter_type)
+    orders = await db.transactions.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return [
         _sorumlu_order_view(o)
         for o in orders
         if _afro_norm(o.get("market_name") or "") in managed_names
     ]
+
+
+@router.get("/orders/{tx_id}")
+async def pazar_sorumlusu_order_detail(tx_id: str, user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Sorumlunun kendi pazarındaki bir siparişin tam detayı."""
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    order = await _sorumlu_order_or_404(tx_id, managed_names)
+    return _sorumlu_order_view(order, detailed=True)
+
+
+@router.post("/orders/{tx_id}/return-request")
+async def pazar_sorumlusu_request_return(tx_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu doğrudan iade YAPAMAZ (para hareketi admin işidir) - sadece
+    hangi ürünler için, neden iade istendiğini işaretleyen bir TALEP oluşturur.
+    Admin bu talebi Loglar'dan görüp gerçek iadeyi kendisi işler."""
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    order = await _sorumlu_order_or_404(tx_id, managed_names)
+
+    item_indices = [int(i) for i in ((data or {}).get("item_indices") or [])]
+    reason = str((data or {}).get("reason") or "").strip()
+    if not item_indices:
+        raise HTTPException(status_code=400, detail="İade istenecek en az bir ürün seçilmelidir")
+
+    items = order.get("items") or []
+    item_names = [
+        (items[i].get("product_name_snapshot") or items[i].get("name") or "Ürün")
+        for i in item_indices if 0 <= i < len(items)
+    ]
+    return_request = {
+        "item_indices": item_indices,
+        "item_names": item_names,
+        "reason": reason,
+        "requested_by": user.get("user_id"),
+        "requested_by_name": user.get("name") or "",
+        "requested_at": now_utc(),
+    }
+    await db.transactions.update_one({"tx_id": tx_id}, {"$set": {"return_request": return_request}})
+
+    await _insert_log("log_admin", {
+        "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
+        "action": "pazar_sorumlusu_return_requested", "target_type": "order", "target_id": tx_id,
+        "change_details": {"items": item_names, "reason": reason},
+        "admin_note": "Sorumlu iade talebi oluşturdu - gerçek iade admin tarafından yapılmalı.",
+    }, request)
+    return {"success": True}
+
+
+@router.post("/orders/{tx_id}/notify-courier")
+async def pazar_sorumlusu_notify_courier(tx_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu bir siparişi doğrudan bir kuryeye ATAMAZ (kurye kendi pazarındaki
+    hazır siparişleri kendisi 'yola çıkar' ile üstlenir) - sadece o kuryeye bu
+    sipariş için bir bildirim göndererek yönlendirebilir."""
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    order = await _sorumlu_order_or_404(tx_id, managed_names)
+
+    courier_id = str((data or {}).get("courier_user_id") or "").strip()
+    if not courier_id:
+        raise HTTPException(status_code=400, detail="Kurye seçilmelidir")
+    courier = await db.users.find_one({"user_id": courier_id, "role": "kurye"}, {"_id": 0, "courier_markets": 1, "courier_market": 1, "name": 1})
+    if not courier:
+        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
+    mkts = courier.get("courier_markets") or ([courier.get("courier_market")] if courier.get("courier_market") else [])
+    if not any(_afro_norm(m) in managed_names for m in mkts):
+        raise HTTPException(status_code=403, detail="Bu kurye sizin pazarınızda değil")
+
+    sent = await send_push_to_users(
+        [courier_id],
+        "Sipariş bekliyor",
+        f"{order.get('market_name') or ''} pazarında bir sipariş sizi bekliyor (₺{order.get('amount') or 0}).",
+        {"type": "order_notify", "tx_id": tx_id},
+    )
+
+    await _insert_log("log_admin", {
+        "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
+        "action": "pazar_sorumlusu_notified_courier", "target_type": "order", "target_id": tx_id,
+        "change_details": {"courier_id": courier_id, "courier_name": courier.get("name") or "", "push_sent": sent > 0},
+        "admin_note": "",
+    }, request)
+    return {"success": True, "push_sent": sent > 0}
 
 
 @router.get("/couriers")
