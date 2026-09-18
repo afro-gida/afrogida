@@ -4,13 +4,13 @@ import { formatDateTime } from '../lib/format';
 
 interface Complaint {
   id: string;
+  user_name?: string;
   name?: string;
   customer_name?: string;
   phone?: string;
   message?: string;
   content?: string;
   text?: string;
-  status?: string;
   admin_response?: string;
   created_at?: string;
   [key: string]: unknown;
@@ -33,18 +33,6 @@ export default function Complaints() {
   }
 
   useEffect(load, []);
-
-  async function markResolved(id: string) {
-    setBusyId(id);
-    try {
-      await api.put(`/admin/complaints/${id}`, { status: 'resolved' });
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Güncellenemedi');
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   async function remove(id: string) {
     setBusyId(id);
@@ -71,23 +59,13 @@ export default function Complaints() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {items.map((c) => (
           <div key={c.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ fontWeight: 700 }}>{c.name ?? c.customer_name ?? c.phone ?? 'Bilinmeyen'}</div>
-              <span className={`badge ${c.status === 'resolved' ? 'badge-green' : 'badge-orange'}`}>
-                {c.status === 'resolved' ? 'Çözüldü' : 'Bekliyor'}
-              </span>
-            </div>
+            <div style={{ fontWeight: 700 }}>{c.user_name || c.name || c.customer_name || c.phone || 'Bilinmeyen'}</div>
             <div style={{ fontSize: 14 }}>{c.message ?? c.content ?? c.text ?? '—'}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDateTime(c.created_at)}</div>
             {c.admin_response && (
               <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Yanıt: {c.admin_response}</div>
             )}
             <div style={{ display: 'flex', gap: 8 }}>
-              {c.status !== 'resolved' && (
-                <button className="btn" disabled={busyId === c.id} onClick={() => markResolved(c.id)}>
-                  Çözüldü olarak işaretle
-                </button>
-              )}
               <button
                 className="btn btn-outline"
                 style={{ color: 'var(--danger)' }}
