@@ -57,6 +57,67 @@ async def pazar_sorumlusu_suppliers(user: dict = Depends(get_current_pazar_sorum
     return result
 
 
+def _sorumlu_order_view(o: dict) -> dict:
+    items = []
+    for it in (o.get("items") or []):
+        items.append({
+            "name": it.get("product_name_snapshot") or it.get("name") or it.get("product_name") or "Ürün",
+            "qty": it.get("qty") or it.get("quantity") or 1,
+            "unit": it.get("unit_snapshot") or it.get("unit") or "",
+        })
+    return {
+        "tx_id": o.get("tx_id"),
+        "order_status": o.get("order_status"),
+        "delivery_type": o.get("delivery_type"),
+        "market_name": o.get("market_name") or "",
+        "amount": o.get("amount"),
+        "user_name": o.get("user_name") or "",
+        "items": items,
+        "created_at": o.get("created_at"),
+    }
+
+
+@router.get("/orders")
+async def pazar_sorumlusu_orders(user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Sorumlunun pazar(lar)ındaki siparişler (salt okunur takip amaçlı,
+    durum değiştirme yetkisi yok - o kurye/mutfak tarafında)."""
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    if not managed_names:
+        return []
+    orders = await db.transactions.find({}, {"_id": 0}).sort("created_at", -1).to_list(300)
+    return [
+        _sorumlu_order_view(o)
+        for o in orders
+        if _afro_norm(o.get("market_name") or "") in managed_names
+    ]
+
+
+@router.get("/couriers")
+async def pazar_sorumlusu_couriers(user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Sorumlunun pazar(lar)ında çalışan kuryeler (salt okunur - atama/kaldırma admin işidir)."""
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    if not managed_names:
+        return []
+    couriers = await db.users.find(
+        {"role": "kurye"},
+        {"_id": 0, "user_id": 1, "name": 1, "phone": 1, "courier_is_online": 1, "courier_markets": 1, "courier_market": 1},
+    ).to_list(500)
+    result = []
+    for c in couriers:
+        mkts = c.get("courier_markets") or ([c.get("courier_market")] if c.get("courier_market") else [])
+        if any(_afro_norm(m) in managed_names for m in mkts):
+            result.append({
+                "user_id": c.get("user_id"),
+                "name": c.get("name") or "",
+                "phone": c.get("phone") or "",
+                "is_online": bool(c.get("courier_is_online")),
+                "markets": mkts,
+            })
+    return result
+
+
 @router.get("/suppliers/{supplier_group}/products")
 async def pazar_sorumlusu_supplier_products(supplier_group: str, user: dict = Depends(get_current_pazar_sorumlusu)):
     """Bir tedarikçinin ürünleri — SADECE o tedarikçi çağıranın atandığı

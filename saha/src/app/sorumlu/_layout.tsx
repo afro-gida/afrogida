@@ -11,6 +11,10 @@ export default function SorumluLayout() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ title: 'Pazarım', ...headerOptions }} />
+      <Stack.Screen name="siparisler" options={{ title: 'Sipariş Takip', ...headerOptions }} />
+      <Stack.Screen name="tedarikciler" options={{ title: 'Tedarikçiler', ...headerOptions }} />
+      <Stack.Screen name="tedarikci-ekle" options={{ title: 'Pazara Tedarikçi Ata', ...headerOptions }} />
+      <Stack.Screen name="kuryeler" options={{ title: 'Kuryeler', ...headerOptions }} />
     </Stack>
   );
 }
