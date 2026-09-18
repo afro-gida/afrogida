@@ -50,7 +50,7 @@ const PERIOD_FILTERS: { value: string; label: string }[] = [
 ];
 
 const STATUS_LABELS: Record<string, string> = {
-  talep_alindi: 'Talep Alındı',
+  talep_alindi: 'Sipariş Alındı',
   hazirlik_bekliyor: 'Hazırlık Bekliyor',
   hazirlaniyor: 'Hazırlanıyor',
   hazir: 'Hazır',

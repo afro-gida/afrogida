@@ -16,7 +16,7 @@ const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
 const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  talep_alindi: 'Talep Alındı',
+  talep_alindi: 'Sipariş Alındı',
   hazirlik_bekliyor: 'Hazırlık Bekliyor',
   hazirlaniyor: 'Hazırlanıyor',
   hazir: 'Hazır',

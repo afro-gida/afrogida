@@ -18,7 +18,7 @@ export function formatDateTime(value: string | undefined | null) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  talep_alindi: 'Talep Alındı',
+  talep_alindi: 'Sipariş Alındı',
   hazirlaniyor: 'Hazırlanıyor',
   hazir: 'Hazır',
   yola_cikti: 'Yolda',

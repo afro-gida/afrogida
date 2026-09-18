@@ -28,7 +28,7 @@ interface OrderDetail extends SorumluOrder {
 
 const STATUS_FLOW = ['talep_alindi', 'hazirlik_bekliyor', 'hazirlaniyor', 'hazir', 'yolda', 'teslim_edildi'];
 const STATUS_LABELS: Record<string, string> = {
-  talep_alindi: 'Talep Alındı',
+  talep_alindi: 'Sipariş Alındı',
   hazirlik_bekliyor: 'Hazırlık Bekliyor',
   hazirlaniyor: 'Hazırlanıyor',
   hazir: 'Hazır',
