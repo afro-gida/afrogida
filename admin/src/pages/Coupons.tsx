@@ -125,7 +125,7 @@ export default function Coupons() {
       members_only: c.members_only,
       single_use: c.single_use,
       active: c.active,
-      valid_until: c.valid_until ?? '',
+      valid_until: (c.valid_until ?? '').slice(0, 10),
     });
     setFormError('');
   }
@@ -269,29 +269,31 @@ export default function Coupons() {
             <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <div className="field" style={{ flex: 1 }}>
+            <div className="field" style={{ flex: 1, minWidth: 0 }}>
               <label>İndirim Tutarı (₺)</label>
               <input
                 type="number"
+                style={{ width: '100%' }}
                 value={form.discount_amount}
                 onChange={(e) => setForm((f) => ({ ...f, discount_amount: e.target.value === '' ? '' : Number(e.target.value) }))}
               />
             </div>
-            <div className="field" style={{ flex: 1 }}>
+            <div className="field" style={{ flex: 1, minWidth: 0 }}>
               <label>Alt Limit (₺)</label>
               <input
                 type="number"
+                style={{ width: '100%' }}
                 value={form.min_amount}
                 onChange={(e) => setForm((f) => ({ ...f, min_amount: e.target.value === '' ? '' : Number(e.target.value) }))}
               />
             </div>
           </div>
           <div className="field">
-            <label>Son Kullanma Tarihi (YYYY-AA-GG)</label>
+            <label>Son Kullanma Tarihi</label>
             <input
-              value={form.valid_until}
+              type="date"
+              value={form.valid_until.slice(0, 10)}
               onChange={(e) => setForm((f) => ({ ...f, valid_until: e.target.value }))}
-              placeholder="2026-12-31"
             />
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
@@ -301,14 +303,6 @@ export default function Coupons() {
               onChange={(e) => setForm((f) => ({ ...f, members_only: e.target.checked }))}
             />
             Sadece Üyelere Özel
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-            <input
-              type="checkbox"
-              checked={form.single_use}
-              onChange={(e) => setForm((f) => ({ ...f, single_use: e.target.checked }))}
-            />
-            Tek Kullanımlık
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
             <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
