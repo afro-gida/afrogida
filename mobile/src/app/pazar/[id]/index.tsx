@@ -162,8 +162,13 @@ export default function MarketProductsScreen() {
     if (hasCategoryTree) {
       for (const main of catalog.categories!) {
         for (const sub of catalog.subcategories?.[main] ?? []) {
-          const items = allProducts.filter((p) => p.category === sub);
-          if (items.length) result.push({ title: sub, key: sub, parentMain: main, data: chunk(items, 2) });
+          // "Diğer" gibi alt kategori isimleri birden fazla ana kategoride
+          // tekrar edebiliyor — sadece alt kategoriye (category) değil, ana
+          // kategoriye (subcategory) göre de eşleştirmezsek aynı ürün her
+          // ana kategoride tekrar tekrar görünür (bkz. "Limon" iki kez
+          // çıkması ve React'in "duplicate key" uyarısı).
+          const items = allProducts.filter((p) => p.category === sub && p.subcategory === main);
+          if (items.length) result.push({ title: sub, key: `${main}::${sub}`, parentMain: main, data: chunk(items, 2) });
         }
       }
     } else {
@@ -182,7 +187,9 @@ export default function MarketProductsScreen() {
   const hasDiscount = sections.some((s) => s.key === DISCOUNT_SECTION_KEY);
   const subOptions =
     hasCategoryTree && activeMain && activeMain !== 'İndirimli'
-      ? (catalog.subcategories![activeMain] ?? []).filter((sub) => sections.some((s) => s.key === sub))
+      ? (catalog.subcategories![activeMain] ?? []).filter((sub) =>
+          sections.some((s) => s.parentMain === activeMain && s.title === sub)
+        )
       : [];
 
   function scrollToSectionIndex(index: number) {
@@ -202,14 +209,14 @@ export default function MarketProductsScreen() {
 
   function selectSub(item: string) {
     setActiveSub(item);
-    scrollToSectionIndex(sections.findIndex((s) => s.key === item));
+    scrollToSectionIndex(sections.findIndex((s) => s.parentMain === activeMain && s.title === item));
   }
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { section?: ProductSection }[] }) => {
     const top = viewableItems.find((v) => v.section)?.section;
     if (!top) return;
     setActiveMain(top.parentMain);
-    setActiveSub(top.key === DISCOUNT_SECTION_KEY ? '' : top.key);
+    setActiveSub(top.key === DISCOUNT_SECTION_KEY ? '' : top.title);
   }).current;
 
   return (
