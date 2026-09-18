@@ -127,7 +127,12 @@ export default function CartScreen() {
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) ?? null;
 
   // Eve Servis sadece bu pazar destekliyorsa seçilebilir olsun.
-  const eveServisAvailable = !!(market?.delivery_enabled && market?.active_eve_servis);
+  // Not: `delivery_enabled` alanı admin panelinde hiçbir yerde açılamıyor
+  // (backend'de de hiç okunmuyor, ölü bir alan) - sadece admin'in gerçekten
+  // kontrol ettiği `active_eve_servis`'e bakıyoruz. Aksi halde admin "Eve
+  // Servis: Açık" dese bile müşteride hep kapalı görünüyordu (kullanıcı
+  // talimatıyla bulunan hata).
+  const eveServisAvailable = !!market?.active_eve_servis;
 
   useEffect(() => {
     if (deliveryType === 'eve_servis' && !eveServisAvailable) setDeliveryType('gel_al');

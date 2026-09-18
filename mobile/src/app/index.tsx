@@ -96,8 +96,10 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
   // Not: delivery_neighborhoods boşsa "her mahalleye servis var" demektir
   // (bkz. lib/addresses.ts addressServesMarket) — bu yüzden burada mahalle
   // sayısı şartı ARANMIYOR, sepetteki asıl uygunluk kontrolüyle (sepet.tsx
-  // eveServisAvailable) aynı iki alana bakılıyor.
-  const hasDelivery = !!(market.active_eve_servis && market.delivery_enabled);
+  // eveServisAvailable) aynı alana bakılıyor. `delivery_enabled` admin'de
+  // hiç kontrol edilemeyen (ve backend'de de okunmayan) ölü bir alan olduğu
+  // için kontrolden çıkarıldı (kullanıcı talimatıyla bulunan hata).
+  const hasDelivery = !!market.active_eve_servis;
   const mapUrl = market.google_maps_url || market.location_url;
   const showRealImage = market.image_url && !imageFailed;
 
