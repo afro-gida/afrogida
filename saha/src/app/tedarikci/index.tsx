@@ -54,7 +54,7 @@ export default function TedarikciHome() {
             Panele devam etmeden önce {supplierContract!.contract.title || 'Tedarikçi Sözleşmesi'}'ni okuyup
             onaylaman gerekiyor (sürüm {supplierContract!.current_version}).
           </ThemedText>
-          {supplierContract!.contract.url && (
+          {!!supplierContract!.contract.url && (
             <Pressable
               style={[styles.outlineBtn, { borderColor: theme.tint }]}
               onPress={() => openPdf(supplierContract!.contract.url!)}

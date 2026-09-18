@@ -267,7 +267,7 @@ export default function SorumluSiparisDetay() {
               </View>
             </View>
 
-            {order.delivery_type === 'eve_servis' && order.address && (
+            {order.delivery_type === 'eve_servis' && !!order.address && (
               <View style={[styles.card, { backgroundColor: theme.authCard }]}>
                 <ThemedText type="small" themeColor="textSecondary">
                   {order.delivery_neighborhood ? `${order.delivery_neighborhood} · ` : ''}{order.address}

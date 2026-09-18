@@ -86,7 +86,7 @@ export default function ProductDetailScreen() {
             <ThemedText themeColor="textSecondary" type="small"> / {formatUnit(product.unit)}</ThemedText>
           </ThemedText>
 
-          {product.description && <ThemedText style={styles.description}>{product.description}</ThemedText>}
+          {!!product.description && <ThemedText style={styles.description}>{product.description}</ThemedText>}
 
           {!product.in_stock && (
             <ThemedText themeColor="danger" type="smallBold">

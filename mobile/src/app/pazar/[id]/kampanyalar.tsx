@@ -48,7 +48,7 @@ export default function CampaignsScreen() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            {item.image_url && (
+            {!!item.image_url && (
               <Image source={{ uri: item.image_url }} style={styles.image} resizeMode="cover" />
             )}
             <View style={styles.body}>
@@ -56,7 +56,7 @@ export default function CampaignsScreen() {
                 <ThemedText type="smallBold" style={styles.flex}>
                   {item.title}
                 </ThemedText>
-                {item.discount_text && (
+                {!!item.discount_text && (
                   <View style={[styles.discountPill, { backgroundColor: theme.accentOrange }]}>
                     <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
                       {item.discount_text}

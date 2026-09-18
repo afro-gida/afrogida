@@ -145,12 +145,12 @@ export default function KuryeHome() {
               <ThemedText type="small" themeColor="textSecondary">{o.order_status}</ThemedText>
             </View>
             <ThemedText type="small">{o.user_name} {o.customer_phone ? `· ${o.customer_phone}` : ''}</ThemedText>
-            {o.address && <ThemedText type="small" themeColor="textSecondary">{o.address}</ThemedText>}
+            {!!o.address && <ThemedText type="small" themeColor="textSecondary">{o.address}</ThemedText>}
             {o.items.map((it, i) => (
               <ThemedText key={i} type="small" themeColor="textSecondary">{it.name} × {it.qty} {it.unit}</ThemedText>
             ))}
 
-            {o.customer_phone && (
+            {!!o.customer_phone && (
               <Pressable onPress={() => Linking.openURL(`tel:${o.customer_phone}`)}>
                 <ThemedText themeColor="tint" type="small">📞 Müşteriyi Ara</ThemedText>
               </Pressable>
