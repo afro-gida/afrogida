@@ -66,6 +66,9 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 const FINAL_STATUSES = new Set(['teslim_edildi', 'iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_iptal']);
 const CANCELLED = new Set(['iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_iptal']);
+// Sorumlu sadece hazırlık aşamalarını ilerletebilir - Yolda/Teslim Edildi
+// kurye kendi teslim akışında (teslim kodu doğrulamasıyla) ayarlanır.
+const SORUMLU_SETTABLE = new Set(['hazirlik_bekliyor', 'hazirlaniyor', 'hazir']);
 const NOTIFY_COLOR = '#EC4899';
 
 function paymentColor(status: string): ThemeColor {
@@ -85,6 +88,8 @@ export default function SorumluSiparisDetay() {
   const [notifyBusy, setNotifyBusy] = useState<string | null>(null);
   const [notifyDone, setNotifyDone] = useState('');
   const [notifyError, setNotifyError] = useState<{ id: string; message: string } | null>(null);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState('');
 
   const [returnMode, setReturnMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
@@ -122,6 +127,21 @@ export default function SorumluSiparisDetay() {
     });
     return Array.from(map.entries());
   }, [order]);
+
+  async function changeStatus(newStatus: string) {
+    if (!txId || !order || statusBusy) return;
+    if (!SORUMLU_SETTABLE.has(newStatus) || newStatus === order.order_status) return;
+    setStatusBusy(true);
+    setStatusError('');
+    try {
+      await api.post(`/pazar-sorumlusu/orders/${txId}/status`, { order_status: newStatus });
+      load();
+    } catch (err) {
+      setStatusError(err instanceof ApiError ? err.message : 'Durum değiştirilemedi');
+    } finally {
+      setStatusBusy(false);
+    }
+  }
 
   async function notify(courierId: string) {
     if (!txId) return;
@@ -260,26 +280,36 @@ export default function SorumluSiparisDetay() {
 
             <View style={[styles.card, { backgroundColor: theme.authCard }]}>
               <ThemedText type="smallBold">Durum</ThemedText>
+              {!isFinal && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  Hazırlık aşamalarını ilerletmek için birine dokun
+                </ThemedText>
+              )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
                 {(CANCELLED.has(order.order_status) ? [...STATUS_FLOW, order.order_status] : STATUS_FLOW).map((s) => {
                   const active = s === order.order_status;
                   const meta = STATUS_META[s];
+                  const tappable = !isFinal && !active && SORUMLU_SETTABLE.has(s) && !statusBusy;
                   return (
-                    <View
+                    <Pressable
                       key={s}
+                      disabled={!tappable}
+                      onPress={() => changeStatus(s)}
                       style={[
                         styles.statusPill,
-                        { backgroundColor: 'transparent', borderColor: meta.color, borderWidth: active ? 2 : 1.5 },
+                        { backgroundColor: 'transparent', borderColor: meta.color, borderWidth: active ? 2 : 1.5, opacity: tappable ? 1 : active ? 1 : 0.55 },
                       ]}
                     >
                       <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
                         <Ionicons name={meta.icon} size={13} color="#fff" />
                       </View>
                       <ThemedText type="smallBold" style={{ color: meta.color }}>{STATUS_LABELS[s]}</ThemedText>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
+              {statusBusy && <ThemedText type="small" themeColor="textSecondary">Güncelleniyor…</ThemedText>}
+              {!!statusError && <ThemedText type="small" themeColor="danger">{statusError}</ThemedText>}
             </View>
 
             {order.delivery_type === 'eve_servis' && !isFinal && (

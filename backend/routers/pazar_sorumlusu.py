@@ -7,18 +7,22 @@ tedarikçileri denetleyip atayabilen/kaldırabilen, admin panelinin geri kalanı
 HİÇ erişimi olmayan ayrı ve dar kapsamlı bir rol. Yetki sınırı her endpoint'te
 ayrı ayrı kontrol edilir (sadece frontend'de gizlemek yetmez — güvenlik burada).
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from core.crypto import dec_str
+from core.crypto import dec_str, enc_str
 from core.db import db
 from core.logs import _insert_log
 from core.security import get_current_pazar_sorumlusu, get_user_managed_markets
 from core.util import _afro_norm, now_utc
 from services.catalog import _read_catalog_config, _write_catalog_config
-from services.push import send_push_to_users
+from services.push import send_push_to_courier_markets, send_push_to_users
+from services.sms import _generate_sms_code, send_delivery_sms
+
+SORUMLU_SETTABLE_STATUSES = {"hazirlik_bekliyor", "hazirlaniyor", "hazir"}
+ORDER_FINAL_STATUSES = {"teslim_edildi", "iptal_edildi", "teslim_alinmadi", "musteri_gelmedi_iptal"}
 
 router = APIRouter(prefix="/api/pazar-sorumlusu")
 
@@ -152,6 +156,85 @@ async def pazar_sorumlusu_order_detail(tx_id: str, user: dict = Depends(get_curr
     managed_names = {_afro_norm(m.get("name") or "") for m in managed}
     order = await _sorumlu_order_or_404(tx_id, managed_names)
     return _sorumlu_order_view(order, detailed=True)
+
+
+@router.post("/orders/{tx_id}/status")
+async def pazar_sorumlusu_update_order_status(tx_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu, kendi pazarındaki bir siparişi hazırlık aşamaları arasında
+    ilerletebilir (Hazırlık Bekliyor / Hazırlanıyor / Hazır). Yolda/Teslim
+    Edildi/İptal gibi durumlar KASITLI olarak dışarıda tutuldu — kurye kendi
+    teslim akışını (teslim kodu doğrulama) atlamasın, para/iade ile ilgili
+    kararlar (iptal, teslim alınmadı) admin'de kalsın."""
+    new_status = str((data or {}).get("order_status") or "").strip().lower()
+    if new_status not in SORUMLU_SETTABLE_STATUSES:
+        raise HTTPException(status_code=400, detail="Sorumlu sadece Hazırlık Bekliyor / Hazırlanıyor / Hazır durumlarını ayarlayabilir")
+
+    managed = await _managed_market_docs(user)
+    managed_names = {_afro_norm(m.get("name") or "") for m in managed}
+    order = await _sorumlu_order_or_404(tx_id, managed_names)
+
+    current_status = str(order.get("order_status") or "").strip().lower()
+    if current_status in ORDER_FINAL_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Bu sipariş '{order.get('order_status')}' durumunda, değişiklik yapılamaz.")
+
+    updates = {"order_status": new_status, "updated_at": now_utc()}
+    delivery_sms_sent = None
+
+    # "Hazır" işaretlenince kurye teslim kodu üretilip müşteriye SMS'le
+    # gönderilir - admin panelindeki akışla aynı (bkz. admin_orders.py).
+    if new_status == "hazir" and current_status != "hazir":
+        delivery_code = dec_str(order.get("delivery_code")) or _generate_sms_code()
+        delivery_expires_at = datetime.now().replace(hour=23, minute=59, second=0, microsecond=0)
+        updates["delivery_code"] = enc_str(delivery_code)
+        updates["delivery_code_expires_at"] = delivery_expires_at
+        user_phone = None
+        if order.get("user_id"):
+            user_doc = await db.users.find_one({"user_id": order.get("user_id")}, {"_id": 0, "phone": 1})
+            user_phone = (user_doc or {}).get("phone")
+        if not user_phone:
+            user_phone = order.get("phone") or order.get("customer_phone")
+        delivery_sms_sent = send_delivery_sms(user_phone, tx_id, delivery_code) if user_phone else False
+        updates["delivery_sms_sent"] = delivery_sms_sent
+        updates["delivery_sms_sent_at"] = now_utc() if delivery_sms_sent else None
+        sms_state = "sent" if delivery_sms_sent else "failed"
+        updates["sms_status"] = sms_state
+        updates["pickup_sms_status"] = sms_state
+
+    await db.transactions.update_one({"tx_id": tx_id}, {"$set": updates})
+    await db.orders.update_one({"$or": [{"tx_id": tx_id}, {"order_id": tx_id}]}, {"$set": updates})
+
+    await _insert_log("log_orders", {
+        "order_id": tx_id, "user_id": order.get("user_id"),
+        "action": f"status_{new_status}", "performed_by": "pazar_sorumlusu",
+        "admin_id": user.get("user_id"), "admin_note": "", "order_snapshot": None,
+    }, request)
+    await _insert_log("log_admin", {
+        "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
+        "action": "pazar_sorumlusu_order_status_changed", "target_type": "order", "target_id": tx_id,
+        "change_details": {"field": "order_status", "old_value": current_status, "new_value": new_status},
+        "admin_note": "",
+    }, request)
+    if delivery_sms_sent is not None:
+        try:
+            from core.logs import _log_sms_send
+            await _log_sms_send(order.get("user_id"), order.get("phone") or "", "delivery_code", "teslim_kodu_v1", bool(delivery_sms_sent), request)
+        except Exception:
+            pass
+
+    # "Hazır" olunca pazardaki kuryelere push bildirimi (admin akışıyla aynı).
+    if new_status == "hazir" and current_status != "hazir":
+        mkt = order.get("market_name") or ""
+        try:
+            await send_push_to_courier_markets(
+                [mkt] if mkt else [],
+                title="🛵 Yeni Sipariş Hazır!",
+                body=f"{mkt + ' — ' if mkt else ''}Teslim bekleyen yeni bir sipariş var.",
+                data={"type": "new_order", "tx_id": tx_id, "url": "/courier-panel"},
+            )
+        except Exception:
+            pass
+
+    return {"success": True}
 
 
 @router.post("/orders/{tx_id}/return-request")
