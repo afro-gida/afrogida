@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCart } from '@/lib/cart-context';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
+import { formatMoney } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { Product, SelectedOption } from '@/lib/types';
 
@@ -91,7 +92,7 @@ export function ProductOptionsModal({
           </Pressable>
         </View>
         <ThemedText themeColor="tint" type="smallBold" style={styles.modalPrice}>
-          ₺{unitPrice.toFixed(2)}
+          ₺{formatMoney(unitPrice)}
           <ThemedText themeColor="textSecondary" type="small"> / {formatUnit(product.unit)}</ThemedText>
         </ThemedText>
 
@@ -121,7 +122,7 @@ export function ProductOptionsModal({
                   </View>
                   {choice.price_delta > 0 && (
                     <ThemedText themeColor="tint" type="small">
-                      +₺{choice.price_delta.toFixed(2)}
+                      +₺{formatMoney(choice.price_delta)}
                     </ThemedText>
                   )}
                 </Pressable>
@@ -157,7 +158,7 @@ export function ProductOptionsModal({
             }}
           >
             <ThemedText style={{ color: '#fff' }} type="smallBold" numberOfLines={1}>
-              {confirmLabel} · ₺{total.toFixed(2)}
+              {confirmLabel} · ₺{formatMoney(total)}
             </ThemedText>
           </Pressable>
         </View>

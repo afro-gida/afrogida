@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { fetchOrders } from '@/lib/orders';
+import { formatMoney } from '@/lib/format';
 import { IconGreen, Spacing } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
 
@@ -98,7 +99,7 @@ export default function OrdersScreen() {
               <ThemedText type="small">
                 {item.items.map((i) => `${i.name} (${i.qty} ${i.unit})`).join(', ')}
               </ThemedText>
-              <ThemedText type="smallBold">{item.amount.toFixed(2)} ₺</ThemedText>
+              <ThemedText type="smallBold">{formatMoney(item.amount)} ₺</ThemedText>
             </View>
           )}
           ListEmptyComponent={

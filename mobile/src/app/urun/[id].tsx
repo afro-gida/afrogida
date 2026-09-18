@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useProducts } from '@/lib/products-context';
 import { useCart } from '@/lib/cart-context';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
+import { formatMoney } from '@/lib/format';
 import { IconGreen, Spacing } from '@/constants/theme';
 import type { SelectedOption } from '@/lib/types';
 
@@ -81,7 +82,7 @@ export default function ProductDetailScreen() {
             {product.name}
           </ThemedText>
           <ThemedText themeColor="tint" type="subtitle" style={styles.price}>
-            ₺{unitPrice.toFixed(2)}
+            ₺{formatMoney(unitPrice)}
             <ThemedText themeColor="textSecondary" type="small"> / {formatUnit(product.unit)}</ThemedText>
           </ThemedText>
 
@@ -119,7 +120,7 @@ export default function ProductDetailScreen() {
                     </View>
                     {choice.price_delta > 0 && (
                       <ThemedText themeColor="tint" type="small">
-                        +₺{choice.price_delta.toFixed(2)}
+                        +₺{formatMoney(choice.price_delta)}
                       </ThemedText>
                     )}
                   </Pressable>
@@ -155,7 +156,7 @@ export default function ProductDetailScreen() {
           }}
         >
           <ThemedText style={{ color: '#fff' }} type="smallBold" numberOfLines={1}>
-            Sepete Ekle · ₺{total.toFixed(2)}
+            Sepete Ekle · ₺{formatMoney(total)}
           </ThemedText>
         </Pressable>
       </View>

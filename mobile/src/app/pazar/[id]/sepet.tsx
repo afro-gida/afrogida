@@ -17,6 +17,7 @@ import { fetchSettings, type StoreSettings } from '@/lib/settings';
 import { fetchAddresses, addressServesMarket, type Address } from '@/lib/addresses';
 import { fetchCoupons, validateCoupon, type Coupon, type CouponValidation } from '@/lib/coupons';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
+import { formatMoney } from '@/lib/format';
 import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
 import type { CartLine } from '@/lib/types';
 
@@ -244,7 +245,7 @@ export default function CartScreen() {
       }
     }
     if (belowMinimum) {
-      setError(`Minimum sepet tutarına ulaşman için sepetine ${remainingForMinimum.toFixed(2)} ₺ daha eklemen gerekiyor.`);
+      setError(`Minimum sepet tutarına ulaşman için sepetine ${formatMoney(remainingForMinimum)} ₺ daha eklemen gerekiyor.`);
       return;
     }
     if (!agreementAccepted) {
@@ -338,7 +339,7 @@ export default function CartScreen() {
               <View>
                 <ThemedText type="smallBold">Sepetim</ThemedText>
                 <ThemedText themeColor="textSecondary" type="small">
-                  {lines.length} çeşit ürün · {subtotal.toFixed(2)} ₺
+                  {lines.length} çeşit ürün · {formatMoney(subtotal)} ₺
                 </ThemedText>
               </View>
               <Pressable onPress={() => setProductsExpanded((v) => !v)} style={styles.toggleProductsBtn}>
@@ -365,7 +366,7 @@ export default function CartScreen() {
                         </ThemedText>
                       )}
                       <ThemedText themeColor="textSecondary" type="small">
-                        {formatQty(item.qty, item.product.unit)} {formatUnit(item.product.unit)} x {priceFor(item).toFixed(2)} ₺
+                        {formatQty(item.qty, item.product.unit)} {formatUnit(item.product.unit)} x {formatMoney(priceFor(item))} ₺
                       </ThemedText>
                     </Pressable>
                     <View style={styles.qtyRow}>
@@ -384,7 +385,7 @@ export default function CartScreen() {
                       </Pressable>
                     </View>
                     <ThemedText type="smallBold" themeColor="tint" style={styles.lineTotal}>
-                      {(item.qty * priceFor(item)).toFixed(2)} ₺
+                      {formatMoney(item.qty * priceFor(item))} ₺
                     </ThemedText>
                     <Pressable onPress={() => removeItem(item.lineId)} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={theme.danger} />
@@ -533,7 +534,7 @@ export default function CartScreen() {
                   <Ionicons name="pricetag" size={16} color={IconGreen} />
                   <View style={styles.flex}>
                     <ThemedText type="small" style={{ fontWeight: '700' }}>{appliedCoupon.title}</ThemedText>
-                    <ThemedText type="small" themeColor="tint">{appliedCoupon.discount.toFixed(2)} ₺ indirim uygulandı</ThemedText>
+                    <ThemedText type="small" themeColor="tint">{formatMoney(appliedCoupon.discount)} ₺ indirim uygulandı</ThemedText>
                   </View>
                   <Pressable onPress={removeCoupon} hitSlop={8}>
                     <Ionicons name="close-circle" size={20} color={theme.danger} />
@@ -559,7 +560,7 @@ export default function CartScreen() {
           <View style={[styles.summaryCard, { borderColor: theme.tint, backgroundColor: cardBg }]}>
             <View style={styles.summaryRow}>
               <ThemedText themeColor="textSecondary" type="small" style={styles.summaryText}>Ara Toplam</ThemedText>
-              <ThemedText type="smallBold" style={styles.summaryText}>{subtotal.toFixed(2)} ₺</ThemedText>
+              <ThemedText type="smallBold" style={styles.summaryText}>{formatMoney(subtotal)} ₺</ThemedText>
             </View>
             <View style={styles.summaryRow}>
               <ThemedText themeColor="textSecondary" type="small" style={styles.summaryText}>
@@ -611,35 +612,35 @@ export default function CartScreen() {
               <>
                 <View style={styles.summaryRow}>
                   <ThemedText themeColor="tint" type="small" style={[styles.summaryText, { fontWeight: '700' }]}>Minimum Sipariş Tutarı</ThemedText>
-                  <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>{minAmount!.toFixed(2)} ₺</ThemedText>
+                  <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>{formatMoney(minAmount!)} ₺</ThemedText>
                 </View>
                 <View style={styles.summaryRow}>
                   <ThemedText themeColor="tint" type="small" style={[styles.summaryText, { fontWeight: '700' }]}>Kalan Tutar</ThemedText>
-                  <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>{remainingForMinimum.toFixed(2)} ₺</ThemedText>
+                  <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>{formatMoney(remainingForMinimum)} ₺</ThemedText>
                 </View>
               </>
             )}
             {!belowMinimum && remainingForFreeDelivery > 0 && (
               <ThemedText themeColor="tint" type="small" style={[styles.summaryText, { fontWeight: '700', marginBottom: 2 }]}>
-                Ücretsiz teslimata ulaşmak için {remainingForFreeDelivery.toFixed(2)} TL daha ekle.
+                Ücretsiz teslimata ulaşmak için {formatMoney(remainingForFreeDelivery)} TL daha ekle.
               </ThemedText>
             )}
             {deliveryType === 'eve_servis' && (
               <View style={styles.summaryRow}>
                 <ThemedText themeColor="textSecondary" type="small" style={styles.summaryText}>Teslimat</ThemedText>
-                <ThemedText type="smallBold" style={styles.summaryText}>{deliveryFee > 0 ? `${deliveryFee.toFixed(2)} ₺` : 'Ücretsiz'}</ThemedText>
+                <ThemedText type="smallBold" style={styles.summaryText}>{deliveryFee > 0 ? `${formatMoney(deliveryFee)} ₺` : 'Ücretsiz'}</ThemedText>
               </View>
             )}
             {couponDiscount > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText themeColor="tint" type="small" style={[styles.summaryText, { fontWeight: '700' }]}>İndirim ({appliedCoupon!.code})</ThemedText>
-                <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>−{couponDiscount.toFixed(2)} ₺</ThemedText>
+                <ThemedText themeColor="tint" type="smallBold" style={styles.summaryText}>−{formatMoney(couponDiscount)} ₺</ThemedText>
               </View>
             )}
             <View style={[styles.summaryDivider, { backgroundColor: theme.tint }]} />
             <View style={styles.summaryRow}>
               <ThemedText type="smallBold" style={styles.summaryTotalText}>Toplam</ThemedText>
-              <ThemedText type="smallBold" themeColor="tint" style={styles.summaryTotalText}>{total.toFixed(2)} ₺</ThemedText>
+              <ThemedText type="smallBold" themeColor="tint" style={styles.summaryTotalText}>{formatMoney(total)} ₺</ThemedText>
             </View>
           </View>
 
@@ -734,7 +735,7 @@ export default function CartScreen() {
             </Pressable>
             {belowMinimum && (
               <ThemedText themeColor="tint" type="small" style={{ textAlign: 'center', fontWeight: '700' }}>
-                Minimum sipariş tutarına ulaşmak için {remainingForMinimum.toFixed(2)} ₺ daha ürün eklemelisiniz.
+                Minimum sipariş tutarına ulaşmak için {formatMoney(remainingForMinimum)} ₺ daha ürün eklemelisiniz.
               </ThemedText>
             )}
           </View>
@@ -811,7 +812,7 @@ function CouponPickerModal({
                     <ThemedText type="small" themeColor="textSecondary">{c.description}</ThemedText>
                   )}
                   <ThemedText type="small" themeColor="tint">
-                    {c.discount_amount ? `${c.discount_amount.toFixed(2)} ₺ indirim` : `%${c.discount_percent} indirim`}
+                    {c.discount_amount ? `${formatMoney(c.discount_amount)} ₺ indirim` : `%${c.discount_percent} indirim`}
                     {c.min_amount ? ` · min ${c.min_amount.toFixed(0)} ₺` : ''}
                   </ThemedText>
                 </View>

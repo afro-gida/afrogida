@@ -16,6 +16,7 @@ import { ProductOptionsModal } from '@/components/product-options-modal';
 import { fetchSettings, type StoreSettings } from '@/lib/settings';
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
+import { formatMoney } from '@/lib/format';
 import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
 import type { IoniconName } from '@/components/icon-badge';
 import type { Product } from '@/lib/types';
@@ -413,9 +414,9 @@ export default function MarketProductsScreen() {
         let progressMsg: string | null = null;
         let progressDone = false;
         if (minAmount > 0 && totalPrice < minAmount) {
-          progressMsg = `Minimum sepet tutarı için ₺${(minAmount - totalPrice).toFixed(2)} daha ekleyin`;
+          progressMsg = `Minimum sepet tutarı için ₺${formatMoney(minAmount - totalPrice)} daha ekleyin`;
         } else if (freeAmount && totalPrice < freeAmount) {
-          progressMsg = `Ücretsiz teslimat için ₺${(freeAmount - totalPrice).toFixed(2)} daha ekleyin`;
+          progressMsg = `Ücretsiz teslimat için ₺${formatMoney(freeAmount - totalPrice)} daha ekleyin`;
         } else if (freeAmount && totalPrice >= freeAmount) {
           progressMsg = 'Ücretsiz teslimat';
           progressDone = true;
@@ -453,7 +454,7 @@ export default function MarketProductsScreen() {
                 </View>
               )}
             </View>
-            <ThemedText style={styles.confirmPrice}>{totalPrice.toFixed(2)} ₺</ThemedText>
+            <ThemedText style={styles.confirmPrice}>{formatMoney(totalPrice)} ₺</ThemedText>
           </Pressable>
         );
       })()}
@@ -544,7 +545,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
       )}
       <View style={styles.priceEkleRow}>
         <ThemedText themeColor="tint" type="smallBold" style={styles.cardPriceBig}>
-          {product.gel_al_price ? `₺${product.gel_al_price.toFixed(2)}` : 'Fiyat yok'}
+          {product.gel_al_price ? `₺${formatMoney(product.gel_al_price)}` : 'Fiyat yok'}
           <ThemedText themeColor="textSecondary" type="small">
             {' '}
             / {formatUnit(product.unit)}
