@@ -9,6 +9,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
+import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 import type { SorumluOrder } from '../siparisler';
@@ -61,11 +62,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 const FINAL_STATUSES = new Set(['teslim_edildi', 'iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_iptal']);
 const CANCELLED = new Set(['iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_iptal']);
-
-function money(n?: number | null) {
-  if (n == null) return '—';
-  return `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+const NOTIFY_COLOR = '#EC4899';
 
 function paymentColor(status: string): ThemeColor {
   if (status === 'paid') return 'tint';
@@ -235,13 +232,13 @@ export default function SorumluSiparisDetay() {
                       key={s}
                       style={[
                         styles.statusPill,
-                        { backgroundColor: theme.backgroundSelected, borderColor: theme.tint, borderWidth: active ? 2 : 1 },
+                        { backgroundColor: 'transparent', borderColor: meta.color, borderWidth: active ? 2 : 1.5 },
                       ]}
                     >
                       <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
                         <Ionicons name={meta.icon} size={13} color="#fff" />
                       </View>
-                      <ThemedText type="smallBold">{STATUS_LABELS[s]}</ThemedText>
+                      <ThemedText type="smallBold" style={{ color: meta.color }}>{STATUS_LABELS[s]}</ThemedText>
                     </View>
                   );
                 })}
@@ -251,7 +248,7 @@ export default function SorumluSiparisDetay() {
             {order.delivery_type === 'eve_servis' && !isFinal && (
               <View style={[styles.card, { backgroundColor: theme.authCard }]}>
                 <Pressable onPress={() => setNotifyOpen((v) => !v)}>
-                  <ThemedText type="smallBold" themeColor="tint">🛵 Kuryeye Bildir</ThemedText>
+                  <ThemedText type="smallBold" style={{ color: NOTIFY_COLOR }}>🛵 Kuryeye Bildir</ThemedText>
                 </Pressable>
                 {notifyOpen && (
                   <View style={{ gap: 6, marginTop: 4 }}>

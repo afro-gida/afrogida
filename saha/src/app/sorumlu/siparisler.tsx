@@ -6,6 +6,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
+import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 
@@ -81,11 +82,6 @@ function matchesStatusTab(tab: string, status: string) {
   if (tab === 'hazirlaniyor') return status === 'hazirlaniyor' || status === 'hazirlik_bekliyor' || status === 'hazir';
   if (tab === 'iptal') return CANCELLED.has(status);
   return status === tab;
-}
-
-function money(n?: number | null) {
-  if (n == null) return '—';
-  return `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatTime(iso: string) {

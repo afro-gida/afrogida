@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
+import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 
 interface CourierStats {
@@ -35,11 +36,6 @@ interface CourierOrder {
   user_name?: string;
   customer_phone?: string;
   items: OrderItem[];
-}
-
-function money(n?: number) {
-  if (n == null) return '—';
-  return `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function KuryeHome() {

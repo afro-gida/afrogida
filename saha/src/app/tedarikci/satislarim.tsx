@@ -5,6 +5,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
+import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 
 interface SaleItem {
@@ -35,11 +36,6 @@ interface MySales {
   total_refunded: number;
   net_total: number;
   log: SaleLog[];
-}
-
-function money(n?: number) {
-  if (n == null) return '—';
-  return `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function dateTime(v?: string) {
