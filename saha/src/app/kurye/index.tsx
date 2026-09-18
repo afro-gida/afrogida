@@ -120,7 +120,7 @@ export default function KuryeHome() {
       <ScrollView contentContainerStyle={styles.body}>
         <ThemedText type="title" style={{ fontSize: 22 }}>Merhaba, {user?.name}</ThemedText>
 
-        <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.card, { backgroundColor: theme.authCard }]}>
           <View style={styles.rowBetween}>
             <ThemedText type="smallBold">{stats?.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}</ThemedText>
             <Switch value={!!stats?.is_online} onValueChange={toggleOnline} disabled={toggling} />
@@ -143,7 +143,7 @@ export default function KuryeHome() {
 
         <ThemedText type="smallBold">Aktif Siparişler ({orders.length})</ThemedText>
         {orders.map((o) => (
-          <View key={o.tx_id} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View key={o.tx_id} style={[styles.card, { backgroundColor: theme.authCard }]}>
             <View style={styles.rowBetween}>
               <ThemedText type="smallBold">{o.market_name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{o.order_status}</ThemedText>

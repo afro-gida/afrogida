@@ -34,7 +34,7 @@ export default function TedarikciHome() {
   if (contractPending) {
     return (
       <Screen edges={['top', 'bottom']}>
-        <View style={[styles.gateCard, { backgroundColor: theme.backgroundElement }]}>
+        <View style={[styles.gateCard, { backgroundColor: theme.authCard }]}>
           <ThemedText type="title" style={{ fontSize: 22 }}>Tedarikçi Sözleşmesi</ThemedText>
           <ThemedText themeColor="textSecondary">
             Panele devam etmeden önce {supplierContract!.contract.title || 'Tedarikçi Sözleşmesi'}'ni okuyup
@@ -72,12 +72,12 @@ export default function TedarikciHome() {
         <ThemedText type="title" style={{ fontSize: 22 }}>Merhaba, {user?.name}</ThemedText>
         <ThemedText themeColor="textSecondary">{user?.supplier_group ?? 'Tedarikçi'}</ThemedText>
 
-        <Pressable style={[styles.card, { backgroundColor: theme.backgroundElement }]} onPress={() => router.push('/tedarikci/urunlerim')}>
+        <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/urunlerim')}>
           <ThemedText type="smallBold">📦 Ürünlerim</ThemedText>
           <ThemedText themeColor="textSecondary" type="small">Ürün ekle, fiyat/stok güncelle</ThemedText>
         </Pressable>
 
-        <Pressable style={[styles.card, { backgroundColor: theme.backgroundElement }]} onPress={() => router.push('/tedarikci/satislarim')}>
+        <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/satislarim')}>
           <ThemedText type="smallBold">📊 Satışlarım</ThemedText>
           <ThemedText themeColor="textSecondary" type="small">Tezgah fiyatından hesaplanan satış logu</ThemedText>
         </Pressable>

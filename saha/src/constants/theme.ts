@@ -19,17 +19,20 @@ export const Colors = {
     inputBg: 'rgba(255,255,255,0.6)',
   },
   dark: {
+    // Kullanıcı isteğiyle (2026-09-18): yeşilimsi yüzeyler yerine nötr
+    // siyah - sayfa zemini tam siyah (#050505), kartlar bir tık açık
+    // (#0d0d0d) ki sınırları görünsün, mobile/'deki authCard ile aynı fikir.
     text: '#eafff4',
-    background: '#062216',
-    backgroundElement: '#0d3325',
-    backgroundSelected: '#135f42',
+    background: '#050505',
+    backgroundElement: '#0d0d0d',
+    backgroundSelected: '#1a1a1a',
     textSecondary: '#9ccbb8',
     tint: '#14B67E',
     tintSoft: '#154b36',
-    border: '#154b36',
+    border: '#232323',
     danger: '#f87171',
     authCard: '#0d0d0d',
-    inputBg: 'rgba(0,0,0,0.25)',
+    inputBg: 'rgba(0,0,0,0.4)',
   },
 } as const;
 

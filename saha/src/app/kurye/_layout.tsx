@@ -4,7 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 export default function KuryeLayout() {
   const theme = useTheme();
   const headerOptions = {
-    headerStyle: { backgroundColor: theme.backgroundElement },
+    headerStyle: { backgroundColor: theme.authCard },
     headerTintColor: theme.text,
     headerTitleStyle: { color: theme.text },
   };

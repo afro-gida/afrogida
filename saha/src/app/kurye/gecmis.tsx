@@ -42,7 +42,7 @@ export default function GecmisScreen() {
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
         {error && <ThemedText themeColor="danger">{error}</ThemedText>}
         {orders.map((o) => (
-          <View key={o.tx_id} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View key={o.tx_id} style={[styles.card, { backgroundColor: theme.authCard }]}>
             <ThemedText type="smallBold">{o.market_name}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">{o.user_name} · {dateTime(o.delivered_at)}</ThemedText>
           </View>

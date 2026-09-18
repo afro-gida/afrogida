@@ -149,7 +149,7 @@ export default function UrunlerimScreen() {
         {error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {showForm && (
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: theme.authCard }]}>
             <View style={styles.rowBetween}>
               <ThemedText type="smallBold">{editingId ? 'Ürünü Düzenle' : 'Yeni Ürün'}</ThemedText>
               <Pressable onPress={() => setShowForm(false)}><ThemedText>✕</ThemedText></Pressable>
@@ -215,7 +215,7 @@ export default function UrunlerimScreen() {
         )}
 
         {products.map((p) => (
-          <View key={p.id} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View key={p.id} style={[styles.card, { backgroundColor: theme.authCard }]}>
             <View style={styles.rowBetween}>
               <View style={{ flex: 1 }}>
                 <ThemedText type="smallBold">{p.name}</ThemedText>

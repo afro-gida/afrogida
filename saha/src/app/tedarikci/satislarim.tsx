@@ -70,7 +70,7 @@ export default function SatislarimScreen() {
         {error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {data && (
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: theme.authCard }]}>
             <View style={styles.statRow}>
               <View><ThemedText themeColor="textSecondary" type="small">Sipariş</ThemedText><ThemedText type="smallBold">{data.order_count}</ThemedText></View>
               <View><ThemedText themeColor="textSecondary" type="small">Toplam Satış</ThemedText><ThemedText type="smallBold">{money(data.total_sold)}</ThemedText></View>
@@ -80,7 +80,7 @@ export default function SatislarimScreen() {
         )}
 
         {(data?.log ?? []).map((s, i) => (
-          <View key={i} style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View key={i} style={[styles.card, { backgroundColor: theme.authCard }]}>
             <View style={styles.rowBetween}>
               <ThemedText type="small" themeColor="textSecondary">{dateTime(s.date)}</ThemedText>
               <ThemedText type="smallBold">{money(s.net)}</ThemedText>
