@@ -58,6 +58,8 @@ const STATUS_LABELS: Record<string, string> = {
   yolda: 'Yolda',
   teslim_edildi: 'Teslim Edildi',
   iptal_edildi: 'İptal Edildi',
+  teslim_alinmadi: 'Teslim Alınmadı',
+  musteri_gelmedi_iptal: 'Müşteri Gelmedi',
 };
 
 const CANCELLED = new Set(['iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_iptal']);
