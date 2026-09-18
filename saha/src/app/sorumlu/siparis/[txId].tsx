@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -33,14 +36,14 @@ const STATUS_LABELS: Record<string, string> = {
   teslim_edildi: 'Teslim Edildi',
   iptal_edildi: 'İptal Edildi',
 };
-const STATUS_META: Record<string, { icon: string; color: string }> = {
-  talep_alindi: { icon: '📄', color: '#9CA3AF' },
-  hazirlik_bekliyor: { icon: '🕐', color: '#F5A623' },
-  hazirlaniyor: { icon: '🧪', color: '#3B82F6' },
-  hazir: { icon: '📦', color: '#8B5CF6' },
-  yolda: { icon: '🛵', color: '#14B67E' },
-  teslim_edildi: { icon: '✅', color: '#22C55E' },
-  iptal_edildi: { icon: '❌', color: '#EF4444' },
+const STATUS_META: Record<string, { icon: IoniconName; color: string }> = {
+  talep_alindi: { icon: 'document-text', color: '#9CA3AF' },
+  hazirlik_bekliyor: { icon: 'time', color: '#F5A623' },
+  hazirlaniyor: { icon: 'flask', color: '#3B82F6' },
+  hazir: { icon: 'cube', color: '#8B5CF6' },
+  yolda: { icon: 'bicycle', color: '#14B67E' },
+  teslim_edildi: { icon: 'checkmark-done', color: '#22C55E' },
+  iptal_edildi: { icon: 'close-circle', color: '#EF4444' },
 };
 const PAYMENT_LABELS: Record<string, string> = {
   paid: 'Ödendi',
@@ -232,11 +235,11 @@ export default function SorumluSiparisDetay() {
                       key={s}
                       style={[
                         styles.statusPill,
-                        { backgroundColor: theme.backgroundSelected, borderColor: active ? meta.color : 'transparent' },
+                        { backgroundColor: theme.backgroundSelected, borderColor: theme.tint, borderWidth: active ? 2 : 1 },
                       ]}
                     >
                       <View style={[styles.statusIcon, { backgroundColor: meta.color }]}>
-                        <ThemedText style={styles.statusIconText}>{meta.icon}</ThemedText>
+                        <Ionicons name={meta.icon} size={13} color="#fff" />
                       </View>
                       <ThemedText type="small" style={{ fontWeight: active ? '700' : '500' }}>
                         {STATUS_LABELS[s]}
@@ -363,7 +366,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, paddingVertical: 6, paddingHorizontal: 12,
   },
   statusIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  statusIconText: { fontSize: 11, lineHeight: 14 },
   smallBtn: { borderRadius: 999, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   courierRow: { borderWidth: 1, borderRadius: 12, padding: Spacing.two },
