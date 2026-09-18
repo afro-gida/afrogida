@@ -79,6 +79,7 @@ export default function SorumluSiparisDetay() {
   const [error, setError] = useState('');
   const [notifyBusy, setNotifyBusy] = useState<string | null>(null);
   const [notifyDone, setNotifyDone] = useState('');
+  const [notifyError, setNotifyError] = useState<{ id: string; message: string } | null>(null);
 
   const [returnMode, setReturnMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
@@ -121,11 +122,16 @@ export default function SorumluSiparisDetay() {
     if (!txId) return;
     setNotifyBusy(courierId);
     setNotifyDone('');
+    setNotifyError(null);
     try {
       await api.post(`/pazar-sorumlusu/orders/${txId}/notify-courier`, { courier_user_id: courierId });
       setNotifyDone(courierId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Bildirilemedi');
+      // Sayfanın en üstündeki genel hata satırı, kuryeye bastığında
+      // ekranın alt tarafında görünmeyebiliyordu - kullanıcı "hiçbir şey
+      // olmuyor" sanıyordu. Artık hata, tam basılan kurye satırının
+      // altında da gösteriliyor.
+      setNotifyError({ id: courierId, message: err instanceof ApiError ? err.message : 'Bildirilemedi' });
     } finally {
       setNotifyBusy(null);
     }
@@ -264,22 +270,28 @@ export default function SorumluSiparisDetay() {
                 <View style={{ gap: 6, marginTop: 4 }}>
                   {couriers.length === 0 && <ThemedText type="small" themeColor="textSecondary">Pazarında kayıtlı kurye yok.</ThemedText>}
                   {couriers.map((c) => (
-                    <Pressable
-                      key={c.user_id}
-                      style={[styles.rowBetween, styles.courierRow, { borderColor: theme.border }]}
-                      onPress={() => notify(c.user_id)}
-                      disabled={notifyBusy === c.user_id}
-                    >
-                      <View>
-                        <ThemedText type="small">{c.name || 'Kurye'}</ThemedText>
-                        <ThemedText type="small" themeColor={c.is_online ? 'tint' : 'textSecondary'}>
-                          {c.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                    <View key={c.user_id}>
+                      <Pressable
+                        style={[styles.rowBetween, styles.courierRow, { borderColor: theme.border }]}
+                        onPress={() => notify(c.user_id)}
+                        disabled={notifyBusy === c.user_id}
+                      >
+                        <View>
+                          <ThemedText type="small">{c.name || 'Kurye'}</ThemedText>
+                          <ThemedText type="small" themeColor={c.is_online ? 'tint' : 'textSecondary'}>
+                            {c.is_online ? 'Çevrimiçi' : 'Çevrimdışı'}
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="small" themeColor="tint">
+                          {notifyBusy === c.user_id ? 'Gönderiliyor…' : notifyDone === c.user_id ? 'Bildirildi ✓' : 'Bildir'}
                         </ThemedText>
-                      </View>
-                      <ThemedText type="small" themeColor="tint">
-                        {notifyBusy === c.user_id ? 'Gönderiliyor…' : notifyDone === c.user_id ? 'Bildirildi ✓' : 'Bildir'}
-                      </ThemedText>
-                    </Pressable>
+                      </Pressable>
+                      {notifyError?.id === c.user_id && (
+                        <ThemedText type="small" themeColor="danger" style={{ marginTop: 2 }}>
+                          {notifyError.message}
+                        </ThemedText>
+                      )}
+                    </View>
                   ))}
                 </View>
               </View>
