@@ -1,12 +1,26 @@
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { API_BASE_URL } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
+
+const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
+/** Web'de yeni sekmede açar (tıklama olayı içinde çağrılmalı, aksi halde
+ * pop-up engelleyiciye takılabilir); native'de sistem tarayıcısına düşer. */
+function openPdf(url: string) {
+  const full = url.startsWith('http') ? url : `${BACKEND_ORIGIN}${url}`;
+  if (Platform.OS === 'web') {
+    window.open(full, '_blank', 'noopener,noreferrer');
+  } else {
+    Linking.openURL(full);
+  }
+}
 
 export default function TedarikciHome() {
   const theme = useTheme();
@@ -43,9 +57,7 @@ export default function TedarikciHome() {
           {supplierContract!.contract.url && (
             <Pressable
               style={[styles.outlineBtn, { borderColor: theme.tint }]}
-              onPress={() => Linking.openURL(supplierContract!.contract.url!.startsWith('http')
-                ? supplierContract!.contract.url!
-                : `${process.env.EXPO_PUBLIC_API_URL?.replace(/\/api$/, '') ?? 'http://localhost:8000'}${supplierContract!.contract.url}`)}
+              onPress={() => openPdf(supplierContract!.contract.url!)}
             >
               <ThemedText themeColor="tint" type="smallBold">PDF'i Görüntüle</ThemedText>
             </Pressable>
