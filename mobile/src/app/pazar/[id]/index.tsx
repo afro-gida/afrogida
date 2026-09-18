@@ -55,7 +55,20 @@ export default function MarketProductsScreen() {
   const [activeMain, setActiveMain] = useState<string>('');
   const [activeSub, setActiveSub] = useState<string>('');
   const { markets, loading: marketsLoading, refetch: refetchMarkets } = useMarkets();
-  const market = markets.find((m) => m.id === id);
+  // "market" sadece EŞLEŞME BULUNDUĞUNDA güncellenir, bulunamayınca eski
+  // değerini korur. `markets.find(...)` doğrudan kullanılsaydı, `markets`
+  // listesi ekran açıkken herhangi bir sebeple anlık olarak farklı bir
+  // referansla yeniden render tetiklediğinde (ör. context'teki başka bir
+  // güncelleme) `id` bir an için eşleşmeyebiliyor ve pazar bilgisi/ürün
+  // listesi sıfırlanıp ekran "Yükleniyor…" durumunda takılı kalıyordu
+  // (kullanıcı talimatıyla bulunan hata: "sayfada gezince pazar infosu
+  // sıfırlanıyor"). Gerçekten FARKLI bir pazara geçildiğinde (id değişince)
+  // ekran zaten yeniden mount olur ve bu state taze başlar.
+  const [market, setMarket] = useState(() => markets.find((m) => m.id === id));
+  useEffect(() => {
+    const found = markets.find((m) => m.id === id);
+    if (found) setMarket(found);
+  }, [markets, id]);
 
   // Ürünler artık GLOBAL listeden değil, bu pazara özel çekiliyor — backend
   // /api/products?market=... sadece o pazara atanmış tedarikçilerin ürünlerini
@@ -75,7 +88,7 @@ export default function MarketProductsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [market?.name]);
+  }, [market?.id]);
 
   // Bazı durumlarda (ör. ekran, pazar listesi backend'den henüz gelmeden
   // ilk kez açıldığında) pazar bulunamıyor ve isim boş kalıyordu, tekrar
