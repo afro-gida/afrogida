@@ -6,6 +6,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { CheckboxRow } from '@/components/checkbox-row';
+import { ProductOptionsModal } from '@/components/product-options-modal';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
@@ -63,7 +64,10 @@ export default function CartScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const { lines, setQty, removeItem, clear, deliveryType, setDeliveryType } = useCart();
+  const { lines, setQty, updateLine, removeItem, clear, deliveryType, setDeliveryType } = useCart();
+  // Bir sepet satırına basılınca (ürünün özelleştirmesi varsa) seçim ekranı
+  // mevcut seçimle önceden doldurulmuş şekilde açılır (kullanıcı talimatı).
+  const [editingLine, setEditingLine] = useState<CartLine | null>(null);
   const { markets } = useMarkets();
   const market = markets.find((m) => m.id === id);
   const [settings, setSettings] = useState<StoreSettings>({});
@@ -349,7 +353,11 @@ export default function CartScreen() {
               <View style={styles.productsList}>
                 {lines.map((item) => (
                   <View key={item.lineId} style={[styles.line, { borderColor: theme.border }]}>
-                    <View style={styles.lineInfo}>
+                    <Pressable
+                      style={styles.lineInfo}
+                      disabled={!item.product.customization_options?.length}
+                      onPress={() => setEditingLine(item)}
+                    >
                       <ThemedText type="smallBold">{item.product.name}</ThemedText>
                       {!!item.selectedOptions?.length && (
                         <ThemedText themeColor="tint" type="small">
@@ -359,7 +367,7 @@ export default function CartScreen() {
                       <ThemedText themeColor="textSecondary" type="small">
                         {formatQty(item.qty, item.product.unit)} {formatUnit(item.product.unit)} x {priceFor(item).toFixed(2)} ₺
                       </ThemedText>
-                    </View>
+                    </Pressable>
                     <View style={styles.qtyRow}>
                       <Pressable
                         style={[styles.qtyBtn, { borderColor: theme.tint, backgroundColor: withAlpha(theme.tint, 0.12) }]}
@@ -739,6 +747,17 @@ export default function CartScreen() {
         loading={couponsLoading}
         onClose={() => setCouponModalOpen(false)}
         onSelect={applyCoupon}
+      />
+
+      <ProductOptionsModal
+        product={editingLine?.product ?? null}
+        initialQty={editingLine?.qty}
+        initialSelectedOptions={editingLine?.selectedOptions}
+        confirmLabel="Güncelle"
+        onConfirm={(qty, selectedOptions) => {
+          if (editingLine) updateLine(editingLine.lineId, editingLine.product, qty, selectedOptions);
+        }}
+        onClose={() => setEditingLine(null)}
       />
     </Screen>
   );

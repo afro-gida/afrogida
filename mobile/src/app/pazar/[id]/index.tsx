@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Image, Modal, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { Animated, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -12,14 +12,13 @@ import { CATEGORIES } from '@/data/sample';
 import { useMarkets } from '@/lib/markets-context';
 import { useCart } from '@/lib/cart-context';
 import { fetchProducts } from '@/lib/products';
+import { ProductOptionsModal } from '@/components/product-options-modal';
 import { fetchSettings, type StoreSettings } from '@/lib/settings';
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
 import type { IoniconName } from '@/components/icon-badge';
-import type { Product, SelectedOption } from '@/lib/types';
-
-const NONE_LABEL = 'İstemiyorum';
+import type { Product } from '@/lib/types';
 
 const DISCOUNT_SECTION_KEY = '__indirimli';
 
@@ -451,129 +450,6 @@ export default function MarketProductsScreen() {
   );
 }
 
-/** Özelleştirmesi (Boyut/Şekil vb.) olan bir ürün için "Seç"e basılınca
- *  açılan alttan kayan seçim ekranı — tam sayfa ürün detayı yerine bu. */
-function ProductOptionsModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
-  const theme = useTheme();
-  const scheme = useColorScheme();
-  const { addItem } = useCart();
-  const [qty, setLocalQty] = useState(1);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!product) return;
-    setLocalQty(qtyStep(product.unit));
-    const defaults: Record<string, string> = {};
-    for (const g of product.customization_options ?? []) {
-      const none = g.choices.find((c) => c.label === NONE_LABEL);
-      defaults[g.title] = (none ?? g.choices[0])?.label ?? '';
-    }
-    setSelected(defaults);
-  }, [product?.id]);
-
-  if (!product) return null;
-
-  const groups = product.customization_options ?? [];
-  const step = qtyStep(product.unit);
-  const selectedOptions: SelectedOption[] = groups.map((g) => {
-    const label = selected[g.title];
-    const choice = g.choices.find((c) => c.label === label) ?? g.choices[0];
-    return { title: g.title, label: choice?.label ?? '', price_delta: choice?.price_delta ?? 0 };
-  });
-  const delta = selectedOptions.reduce((sum, o) => sum + (o.price_delta || 0), 0);
-  const unitPrice = (product.gel_al_price ?? 0) + delta;
-  const total = unitPrice * qty;
-
-  return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalBackdrop} onPress={onClose} />
-      <View
-        style={[
-          styles.modalSheet,
-          { backgroundColor: scheme === 'dark' ? '#0d1210' : '#fff', borderColor: theme.tint },
-        ]}
-      >
-        <View style={styles.modalHandle} />
-        <View style={styles.modalHeaderRow}>
-          <ThemedText type="subtitle" style={styles.flex} numberOfLines={1}>
-            {product.name}
-          </ThemedText>
-          <Pressable onPress={onClose} hitSlop={10}>
-            <Ionicons name="close" size={24} color={theme.text} />
-          </Pressable>
-        </View>
-        <ThemedText themeColor="tint" type="smallBold" style={styles.modalPrice}>
-          ₺{unitPrice.toFixed(2)}
-          <ThemedText themeColor="textSecondary" type="small"> / {formatUnit(product.unit)}</ThemedText>
-        </ThemedText>
-
-        {groups.map((group) => (
-          <View key={group.title} style={styles.group}>
-            <ThemedText type="smallBold" style={styles.groupTitle}>
-              {group.title}
-            </ThemedText>
-            {group.choices.map((choice) => {
-              const active = selected[group.title] === choice.label;
-              return (
-                <Pressable
-                  key={choice.label}
-                  onPress={() => setSelected((prev) => ({ ...prev, [group.title]: choice.label }))}
-                  style={[
-                    styles.choiceRow,
-                    { borderColor: active ? theme.tint : theme.border, backgroundColor: active ? theme.tintSoft : 'transparent' },
-                  ]}
-                >
-                  <View style={styles.choiceLeft}>
-                    <Ionicons
-                      name={active ? 'radio-button-on' : 'radio-button-off'}
-                      size={20}
-                      color={active ? theme.tint : theme.textSecondary}
-                    />
-                    <ThemedText type="small">{choice.label}</ThemedText>
-                  </View>
-                  {choice.price_delta > 0 && (
-                    <ThemedText themeColor="tint" type="small">
-                      +₺{choice.price_delta.toFixed(2)}
-                    </ThemedText>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
-
-        <View style={styles.modalFooterRow}>
-          <View style={styles.qtyRowFull}>
-            <Pressable
-              onPress={() => setLocalQty((q) => Math.max(step, q - step))}
-              style={[styles.qtyBtn, { backgroundColor: theme.tint }]}
-            >
-              <Ionicons name="remove" size={20} color="#fff" />
-            </Pressable>
-            <ThemedText type="smallBold" style={styles.qtyValue}>
-              {formatQty(qty, product.unit)}
-            </ThemedText>
-            <Pressable onPress={() => setLocalQty((q) => q + step)} style={[styles.qtyBtn, { backgroundColor: theme.tint }]}>
-              <Ionicons name="add" size={20} color="#fff" />
-            </Pressable>
-          </View>
-          <Pressable
-            style={[styles.addBtnFull, { backgroundColor: theme.tint }]}
-            onPress={() => {
-              addItem(product, qty, selectedOptions);
-              onClose();
-            }}
-          >
-            <ThemedText style={{ color: '#fff' }} type="smallBold" numberOfLines={1}>
-              Sepete Ekle · ₺{total.toFixed(2)}
-            </ThemedText>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 function ProductCard({ product, onSelect }: { product: Product; onSelect: () => void }) {
   const theme = useTheme();
   const scheme = useColorScheme();
@@ -868,23 +744,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#14B67E', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
   selectBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  // "Seç" seçim modalı — alttan kayan sayfa (bottom sheet).
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: {
-    position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '85%',
-    borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, borderBottomWidth: 0,
-    paddingVertical: Spacing.three, paddingHorizontal: Spacing.four, gap: Spacing.two,
-  },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)', alignSelf: 'center' },
-  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  modalPrice: { fontSize: 20 },
-  group: { gap: Spacing.one, marginTop: Spacing.one },
-  groupTitle: { marginBottom: 2 },
-  choiceRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two,
-  },
-  choiceLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  modalFooterRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.two },
-  addBtnFull: { flex: 1, borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center' },
 });

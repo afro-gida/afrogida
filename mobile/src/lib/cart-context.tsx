@@ -6,6 +6,10 @@ import type { CartLine, Product, SelectedOption } from '@/lib/types';
 type CartContextValue = {
   lines: CartLine[];
   addItem: (product: Product, qty?: number, selectedOptions?: SelectedOption[]) => void;
+  /** Sepetteki mevcut bir satırın miktarını/özelleştirmesini değiştirir
+   *  (ör. sepet ekranından "Orta" seçimini "Büyük" yapmak). Yeni seçim
+   *  başka bir satırla aynı kombinasyona denk gelirse miktarlar birleşir. */
+  updateLine: (oldLineId: string, product: Product, qty: number, selectedOptions?: SelectedOption[]) => void;
   removeItem: (lineId: string) => void;
   setQty: (lineId: string, qty: number) => void;
   clear: () => void;
@@ -57,6 +61,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateLine = (oldLineId: string, product: Product, qty: number, selectedOptions?: SelectedOption[]) => {
+    const newLineId = computeLineId(product.id, selectedOptions);
+    setLines((prev) => {
+      const withoutOld = prev.filter((l) => l.lineId !== oldLineId);
+      const existingIdx = withoutOld.findIndex((l) => l.lineId === newLineId);
+      if (existingIdx >= 0) {
+        const merged = [...withoutOld];
+        merged[existingIdx] = { ...merged[existingIdx], qty: merged[existingIdx].qty + qty };
+        return merged;
+      }
+      return [...withoutOld, { lineId: newLineId, product, qty, selectedOptions }];
+    });
+  };
+
   const removeItem = (lineId: string) => {
     setLines((prev) => prev.filter((l) => l.lineId !== lineId));
   };
@@ -87,7 +105,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ lines, addItem, removeItem, setQty, clear, enterMarket, totalQty, totalPrice, deliveryType, setDeliveryType }}
+      value={{ lines, addItem, updateLine, removeItem, setQty, clear, enterMarket, totalQty, totalPrice, deliveryType, setDeliveryType }}
     >
       {children}
     </CartContext.Provider>
