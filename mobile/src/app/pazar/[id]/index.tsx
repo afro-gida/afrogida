@@ -9,9 +9,9 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { CATEGORIES } from '@/data/sample';
-import { useProducts } from '@/lib/products-context';
 import { useMarkets } from '@/lib/markets-context';
 import { useCart } from '@/lib/cart-context';
+import { fetchProducts } from '@/lib/products';
 import { fetchSettings, type StoreSettings } from '@/lib/settings';
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
@@ -55,9 +55,28 @@ export default function MarketProductsScreen() {
   // kaydırdıkça da hangi bölümdeysen o kategori aktif (yeşil) yanıyor.
   const [activeMain, setActiveMain] = useState<string>('');
   const [activeSub, setActiveSub] = useState<string>('');
-  const { products: allProducts, loading } = useProducts();
   const { markets, loading: marketsLoading, refetch: refetchMarkets } = useMarkets();
   const market = markets.find((m) => m.id === id);
+
+  // Ürünler artık GLOBAL listeden değil, bu pazara özel çekiliyor — backend
+  // /api/products?market=... sadece o pazara atanmış tedarikçilerin ürünlerini
+  // döner (bkz. catalog_config.supplier_markets), böylece her pazarda farklı
+  // ürün seti görünür.
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!market) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchProducts(market.name).then((result) => {
+      if (cancelled) return;
+      setAllProducts(result.products);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [market?.name]);
 
   // Bazı durumlarda (ör. ekran, pazar listesi backend'den henüz gelmeden
   // ilk kez açıldığında) pazar bulunamıyor ve isim boş kalıyordu, tekrar

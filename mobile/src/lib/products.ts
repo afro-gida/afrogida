@@ -27,9 +27,10 @@ function normalizeProduct(raw: any): Product {
  * Ürünleri backend'den çek. Backend'e ulaşılamazsa (yerel sunucu kapalıysa)
  * örnek veriye düşer — uygulama her koşulda açılabilsin diye.
  */
-export async function fetchProducts(): Promise<{ products: Product[]; isLive: boolean }> {
+export async function fetchProducts(market?: string): Promise<{ products: Product[]; isLive: boolean }> {
   try {
-    const raw = await api.get<any[]>('/products');
+    const query = market ? `?market=${encodeURIComponent(market)}` : '';
+    const raw = await api.get<any[]>(`/products${query}`);
     const products = raw.filter((p) => p.active && !p.hidden).map(normalizeProduct);
     return { products, isLive: true };
   } catch (err) {
