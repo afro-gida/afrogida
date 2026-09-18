@@ -22,8 +22,6 @@ import StaffAndCouriers from './pages/StaffAndCouriers';
 import SorumluDetail from './pages/SorumluDetail';
 import SupplierContract from './pages/SupplierContract';
 import Logs from './pages/Logs';
-import YoneticiLayout from './components/YoneticiLayout';
-import YoneticiHome from './pages/YoneticiHome';
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
   const { user, loading } = useAuth();
@@ -32,21 +30,21 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
   return children;
 }
 
-/** DİKKAT: "yonetici" bu projede GERÇEK admin rolüdür (tam yetkili tek hesap türü) —
- * karıştırmayın. Yeni, kısıtlı rolün adı "pazar_sorumlusu" — sadece kendi pazarındaki
- * tedarikçileri yönetebilir, bu yüzden tamamen ayrı, dar kapsamlı bir arayüz görür. */
-const PAZAR_SORUMLUSU_ROLE = 'pazar_sorumlusu';
-
-function RoleRouter({ children }: { children: React.ReactElement }) {
-  const { user } = useAuth();
-  if (user?.role === PAZAR_SORUMLUSU_ROLE) {
+/** Bu uygulama SADECE tam yetkili yönetici ("admin"/"yonetici") içindir - güvenlik
+ * kararı: yönetici paketi hiçbir zaman başka bir kişiye (ör. Pazar Sorumlusu) verilmez,
+ * o rol artık ayrı "saha" uygulamasında (/sorumlu). Başka bir rolle buraya giriş
+ * denenirse (backend zaten engeller ama arayüzde de netleştir) hemen çıkış yaptır. */
+function RequireYonetici({ children }: { children: React.ReactElement }) {
+  const { user, logout } = useAuth();
+  if (user && user.role !== 'admin' && user.role !== 'yonetici') {
     return (
-      <Routes>
-        <Route element={<YoneticiLayout />}>
-          <Route path="/" element={<YoneticiHome />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>Bu uygulama sadece yönetici içindir</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+          Pazar Sorumlusu ve tedarikçi/kurye hesapları artık "saha" uygulamasından giriş yapıyor.
+        </div>
+        <button className="btn" onClick={logout}>Çıkış Yap</button>
+      </div>
     );
   }
   return children;
@@ -60,7 +58,7 @@ function AppRoutes() {
         path="/*"
         element={
           <RequireAuth>
-            <RoleRouter>
+            <RequireYonetici>
               <Routes>
                 <Route element={<Layout />}>
                   <Route path="/" element={<Dashboard />} />
@@ -86,7 +84,7 @@ function AppRoutes() {
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </RoleRouter>
+            </RequireYonetici>
           </RequireAuth>
         }
       />

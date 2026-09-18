@@ -9,7 +9,7 @@ export type AuthUser = {
   user_id: string;
   name: string;
   phone: string;
-  role: string; // 'esnaf' | 'supplier' | 'kurye'
+  role: string; // 'esnaf' | 'supplier' | 'kurye' | 'pazar_sorumlusu'
   supplier_group?: string;
 };
 
@@ -68,8 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(phone: string, password: string) {
     const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { phone, password });
-    if (res.user.role !== 'esnaf' && res.user.role !== 'supplier' && res.user.role !== 'kurye') {
-      throw new ApiError(403, 'Bu hesap tedarikçi veya kurye değil. Bu uygulama sadece tedarikçi/kurye hesapları içindir.');
+    const allowed = ['esnaf', 'supplier', 'kurye', 'pazar_sorumlusu'];
+    if (!allowed.includes(res.user.role)) {
+      throw new ApiError(403, 'Bu hesap tedarikçi, kurye veya pazar sorumlusu değil. Bu uygulama sadece bu hesaplar içindir.');
     }
     await AsyncStorage.setItem(TOKEN_KEY, res.token);
     setAuthToken(res.token);

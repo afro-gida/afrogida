@@ -53,7 +53,7 @@ export default function LoginScreen() {
           Saha Girişi
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-          Tedarikçi veya kurye hesabınızla giriş yapın.
+          Tedarikçi, kurye veya pazar sorumlusu hesabınızla giriş yapın.
         </ThemedText>
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
