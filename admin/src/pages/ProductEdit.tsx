@@ -352,23 +352,28 @@ export default function ProductEdit() {
                   </button>
                 </div>
                 {group.choices.map((choice, ci) => (
-                  <div key={ci} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <div className="field" style={{ flex: '2 1 160px' }}>
+                  <div key={ci} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div className="field" style={{ flex: '1 1 auto', minWidth: 0 }}>
                       <input
                         placeholder="Seçenek adı (örn: Büyük)"
                         value={choice.label}
                         onChange={(e) => updateChoice(gi, ci, { label: e.target.value })}
                       />
                     </div>
-                    <div className="field" style={{ flex: '1 1 100px' }}>
+                    <div className="field" style={{ flex: '0 0 68px' }}>
                       <input
                         type="number"
-                        placeholder="Fiyat farkı (₺)"
+                        placeholder="₺"
                         value={choice.price_delta}
                         onChange={(e) => updateChoice(gi, ci, { price_delta: e.target.value === '' ? 0 : Number(e.target.value) })}
                       />
                     </div>
-                    <button type="button" className="btn btn-outline" style={{ color: 'var(--danger)' }} onClick={() => removeChoice(gi, ci)}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ color: 'var(--danger)', flexShrink: 0, width: 36, height: 36, padding: 0, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => removeChoice(gi, ci)}
+                    >
                       ✕
                     </button>
                   </div>
