@@ -36,6 +36,8 @@ const STATUS_LABELS: Record<string, string> = {
   yolda: 'Yolda',
   teslim_edildi: 'Teslim Edildi',
   iptal_edildi: 'İptal Edildi',
+  teslim_alinmadi: 'Teslim Alınmadı',
+  musteri_gelmedi_iptal: 'Müşteri Gelmedi',
 };
 const STATUS_META: Record<string, { icon: IoniconName; color: string }> = {
   talep_alindi: { icon: 'document-text', color: '#9CA3AF' },
@@ -45,6 +47,8 @@ const STATUS_META: Record<string, { icon: IoniconName; color: string }> = {
   yolda: { icon: 'bicycle', color: '#14B67E' },
   teslim_edildi: { icon: 'checkmark-done', color: '#22C55E' },
   iptal_edildi: { icon: 'close-circle', color: '#EF4444' },
+  teslim_alinmadi: { icon: 'alert-circle', color: '#F97316' },
+  musteri_gelmedi_iptal: { icon: 'close-circle', color: '#EF4444' },
 };
 const PAYMENT_LABELS: Record<string, string> = {
   paid: 'Ödendi',
@@ -257,7 +261,7 @@ export default function SorumluSiparisDetay() {
             <View style={[styles.card, { backgroundColor: theme.authCard }]}>
               <ThemedText type="smallBold">Durum</ThemedText>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
-                {(CANCELLED.has(order.order_status) ? [...STATUS_FLOW, 'iptal_edildi'] : STATUS_FLOW).map((s) => {
+                {(CANCELLED.has(order.order_status) ? [...STATUS_FLOW, order.order_status] : STATUS_FLOW).map((s) => {
                   const active = s === order.order_status;
                   const meta = STATUS_META[s];
                   return (
