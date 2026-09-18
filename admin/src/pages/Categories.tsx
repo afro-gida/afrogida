@@ -68,18 +68,20 @@ function EditableList({
             onChange={(e) => rename(i, e.target.value)}
             style={{
               flex: 1,
+              minWidth: 0,
               background: '#fff',
               color: '#0d1a12',
               border: 'none',
               borderRadius: 999,
               padding: '12px 16px',
               fontSize: 15,
+              boxSizing: 'border-box',
             }}
           />
           <button
             type="button"
             className="btn btn-outline"
-            style={{ borderRadius: '50%', width: 36, height: 36, padding: 0 }}
+            style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => onChange(moveItem(items, i, -1))}
             disabled={i === 0}
             title="Yukarı taşı"
@@ -89,7 +91,7 @@ function EditableList({
           <button
             type="button"
             className="btn btn-outline"
-            style={{ borderRadius: '50%', width: 36, height: 36, padding: 0 }}
+            style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => onChange(moveItem(items, i, 1))}
             disabled={i === items.length - 1}
             title="Aşağı taşı"
@@ -99,7 +101,7 @@ function EditableList({
           <button
             type="button"
             className="btn btn-outline"
-            style={{ borderRadius: '50%', width: 36, height: 36, padding: 0, color: 'var(--danger)' }}
+            style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => remove(i)}
             title="Sil"
           >
@@ -133,7 +135,6 @@ function EditableList({
 export default function Categories() {
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<Record<string, string[]>>({});
-  const [suppliers, setSuppliers] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -146,7 +147,6 @@ export default function Categories() {
       .then(([c, p]) => {
         setCategories(c.categories ?? []);
         setSubcategories(c.subcategories ?? {});
-        setSuppliers(c.suppliers ?? []);
         setProducts(p);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Yüklenemedi'))
@@ -161,10 +161,6 @@ export default function Categories() {
   function subcategoryProductCount(category: string, name: string) {
     return products.filter((p) => p.subcategory === category && p.category === name).length;
   }
-  function supplierProductCount(name: string) {
-    return products.filter((p) => p.supplier_group === name).length;
-  }
-
   function updateCategoryName(index: number, name: string) {
     const oldName = categories[index];
     const nextCategories = [...categories];
@@ -198,20 +194,12 @@ export default function Categories() {
     });
   }
 
-  function addSupplier(next: string[]) {
-    setSuppliers(next);
-  }
-
-  function removeSupplier(name: string) {
-    setSuppliers((s) => s.filter((x) => x !== name));
-  }
-
   async function save() {
     setSaving(true);
     setError('');
     setSaved(false);
     try {
-      await api.put('/admin/catalog-config', { categories, subcategories, suppliers });
+      await api.put('/admin/catalog-config', { categories, subcategories });
       setSaved(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Kaydedilemedi');
@@ -248,14 +236,14 @@ export default function Categories() {
                   <input
                     value={cat}
                     onChange={(e) => updateCategoryName(i, e.target.value)}
-                    style={{ flex: 1, background: '#fff', color: '#0d1a12', border: 'none', borderRadius: 999, padding: '12px 16px', fontSize: 15, fontWeight: 700 }}
+                    style={{ flex: 1, minWidth: 0, background: '#fff', color: '#0d1a12', border: 'none', borderRadius: 999, padding: '12px 16px', fontSize: 15, fontWeight: 700, boxSizing: 'border-box' }}
                   />
-                  <button type="button" className="btn btn-outline" style={{ borderRadius: '50%', width: 36, height: 36, padding: 0 }} onClick={() => reorderCategories(moveItem(categories, i, -1))} disabled={i === 0} title="Yukarı taşı">↑</button>
-                  <button type="button" className="btn btn-outline" style={{ borderRadius: '50%', width: 36, height: 36, padding: 0 }} onClick={() => reorderCategories(moveItem(categories, i, 1))} disabled={i === categories.length - 1} title="Aşağı taşı">↓</button>
+                  <button type="button" className="btn btn-outline" style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => reorderCategories(moveItem(categories, i, -1))} disabled={i === 0} title="Yukarı taşı">↑</button>
+                  <button type="button" className="btn btn-outline" style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => reorderCategories(moveItem(categories, i, 1))} disabled={i === categories.length - 1} title="Aşağı taşı">↓</button>
                   <button
                     type="button"
                     className="btn btn-outline"
-                    style={{ borderRadius: '50%', width: 36, height: 36, padding: 0, color: 'var(--danger)' }}
+                    style={{ borderRadius: '50%', width: 42, height: 42, padding: 0, flexShrink: 0, color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onClick={() => {
                       const count = categoryProductCount(cat);
                       const warning = count > 0
@@ -287,28 +275,6 @@ export default function Categories() {
             <div style={{ display: 'flex', gap: 8 }}>
               <NewCategoryInput onAdd={(name) => addCategory([...categories, name])} disabledNames={categories} />
             </div>
-          </div>
-
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Tedarikçiler
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Ürün eklerken "tedarikçi grubu" olarak buradaki liste kullanılır, sıraları da müşteri tarafına yansır.
-            </div>
-            <EditableList
-              items={suppliers}
-              onChange={addSupplier}
-              onRemove={(name) => {
-                const count = supplierProductCount(name);
-                if (count > 0) {
-                  window.alert(`"${name}" şu anda ${count} üründe tedarikçi olarak kullanılıyor, bu yüzden silmedim. Önce o ürünleri başka bir tedarikçiye taşı.`);
-                  return;
-                }
-                removeSupplier(name);
-              }}
-              placeholder="Tedarikçi ekle"
-            />
           </div>
 
           <button className="btn" disabled={saving} onClick={save} style={{ alignSelf: 'flex-start', padding: '12px 24px' }}>
