@@ -62,7 +62,7 @@ export default function TedarikciHome() {
               <ThemedText themeColor="tint" type="smallBold">PDF'i Görüntüle</ThemedText>
             </Pressable>
           )}
-          {acceptError && <ThemedText themeColor="danger" type="small">{acceptError}</ThemedText>}
+          {!!acceptError && <ThemedText themeColor="danger" type="small">{acceptError}</ThemedText>}
           <Pressable style={[styles.submitBtn, { backgroundColor: theme.tint }]} onPress={handleAccept} disabled={accepting}>
             {accepting ? <ActivityIndicator color="#fff" /> : (
               <ThemedText style={{ color: '#fff' }} type="smallBold">Okudum, Kabul Ediyorum</ThemedText>

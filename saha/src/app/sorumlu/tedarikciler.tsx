@@ -83,7 +83,7 @@ export default function SorumluTedarikcilerGozlem() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {suppliers.map((s) => (
           <View key={s.supplier_group} style={[styles.card, { backgroundColor: theme.authCard }]}>

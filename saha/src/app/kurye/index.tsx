@@ -135,7 +135,7 @@ export default function KuryeHome() {
         </Pressable>
 
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         <ThemedText type="smallBold">Aktif Siparişler ({orders.length})</ThemedText>
         {orders.map((o) => (

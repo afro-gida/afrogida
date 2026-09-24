@@ -85,7 +85,7 @@ export default function SorumluTedarikciEkle() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         <View style={[styles.card, { backgroundColor: theme.authCard }]}>
           <ThemedText type="smallBold">Pazara Tedarikçi Ata</ThemedText>
@@ -113,7 +113,7 @@ export default function SorumluTedarikciEkle() {
               </View>
             </>
           )}
-          {formError && <ThemedText themeColor="danger" type="small">{formError}</ThemedText>}
+          {!!formError && <ThemedText themeColor="danger" type="small">{formError}</ThemedText>}
           <Pressable style={[styles.smallBtn, { backgroundColor: theme.tint }]} onPress={assign} disabled={saving}>
             <ThemedText style={{ color: '#fff' }} type="smallBold">{saving ? 'Kaydediliyor…' : 'Ata'}</ThemedText>
           </Pressable>

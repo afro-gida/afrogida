@@ -46,3 +46,6 @@ backend/uploads/
 # Large production snapshots (kept on server + here; put on GitHub Releases, not git)
 _archive/
 
+
+# Playwright MCP ekran goruntuleri / loglari
+.playwright-mcp/

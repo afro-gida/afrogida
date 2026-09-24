@@ -147,7 +147,7 @@ export default function UrunlerimScreen() {
         </Pressable>
 
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {showForm && (
           <View style={[styles.card, { backgroundColor: theme.authCard }]}>
@@ -208,7 +208,7 @@ export default function UrunlerimScreen() {
               <ThemedText type="small">Stokta</ThemedText>
               <ThemedText type="small" themeColor={form.in_stock ? 'tint' : 'danger'}>{form.in_stock ? 'Evet' : 'Hayır'}</ThemedText>
             </Pressable>
-            {formError && <ThemedText themeColor="danger" type="small">{formError}</ThemedText>}
+            {!!formError && <ThemedText themeColor="danger" type="small">{formError}</ThemedText>}
             <Pressable style={[styles.submitBtn, { backgroundColor: theme.tint }]} onPress={save} disabled={saving}>
               <ThemedText style={{ color: '#fff' }} type="smallBold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</ThemedText>
             </Pressable>

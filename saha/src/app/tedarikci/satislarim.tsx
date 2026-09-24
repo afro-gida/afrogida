@@ -63,7 +63,7 @@ export default function SatislarimScreen() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {data && (
           <View style={[styles.card, { backgroundColor: theme.authCard }]}>

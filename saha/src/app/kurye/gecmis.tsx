@@ -40,7 +40,7 @@ export default function GecmisScreen() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
         {orders.map((o) => (
           <View key={o.tx_id} style={[styles.card, { backgroundColor: theme.authCard }]}>
             <ThemedText type="smallBold">{o.market_name}</ThemedText>

@@ -34,7 +34,7 @@ export default function SorumluKuryeler() {
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {couriers.map((c) => (
           <View key={c.user_id} style={[styles.card, { backgroundColor: theme.authCard }]}>

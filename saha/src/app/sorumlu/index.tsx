@@ -48,7 +48,7 @@ export default function SorumluHome() {
         <ThemedText type="title" style={{ fontSize: 22 }}>Merhaba, {user?.name}</ThemedText>
 
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         <View style={styles.chipRow}>
           {markets.map((m) => (

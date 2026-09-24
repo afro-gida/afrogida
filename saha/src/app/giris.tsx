@@ -87,7 +87,7 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        {error && (
+        {!!error && (
           <ThemedText themeColor="danger" type="small" style={styles.error}>
             {error}
           </ThemedText>

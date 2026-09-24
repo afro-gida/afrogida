@@ -165,7 +165,7 @@ export default function SorumluSiparisler() {
         </ScrollView>
 
         {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
-        {error && <ThemedText themeColor="danger">{error}</ThemedText>}
+        {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
         {groups.map(([day, dayOrders]) => (
           <View key={day} style={{ gap: Spacing.two }}>
