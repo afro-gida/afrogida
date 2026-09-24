@@ -30,12 +30,16 @@ const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 
 // Kart zemini NÖTR (siyahımsı/beyazımsı) — eski sitedeki gibi; aksan rengi
 // (yeşil/turuncu) sadece kenarlıkta kalıyor, zemine yeşil ton karışmıyor.
-const CARD_BG_DARK = 'rgba(10, 12, 11, 0.78)';
-const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.82)';
+const CARD_BG_DARK = '#0e1411';
+const CARD_BG_LIGHT = '#fffaf2';
 // Bilgi etiketleri + kategori panelinin zemini — kartlardan farklı olarak
 // AÇIK TONDA ve daha şeffaf (koyu temada bile neredeyse siyah olmasın).
-const OVERLAY_BG_DARK = 'rgba(50, 55, 53, 0.55)';
-const OVERLAY_BG_LIGHT = 'rgba(255, 255, 255, 0.55)';
+const OVERLAY_BG_DARK = 'rgba(22, 28, 25, 0.94)';
+const OVERLAY_BG_LIGHT = 'rgba(255, 248, 238, 0.94)';
+// Ürün listesinin arkasına hafif perde: desenli duvar kağıdı kenarlarda
+// seçilmeye devam etsin ama başlıklar/yazılar üstünde net okunsun.
+const LIST_SCRIM_DARK = 'rgba(0, 0, 0, 0.55)';
+const LIST_SCRIM_LIGHT = 'rgba(255, 246, 232, 0.72)';
 
 // Her alt kategori TEK bir satırdır: ürünler o satırda YANA kayar
 // (Yemeksepeti / Uber Eats tarzı). SectionList'in her bölümünde tek "item"
@@ -245,16 +249,16 @@ export default function MarketProductsScreen() {
     <Screen edges={['bottom']}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.replace('/')} hitSlop={12} style={styles.backBtn}>
-            <ThemedText style={styles.backArrow}>←</ThemedText>
+          <Pressable onPress={() => router.replace('/')} hitSlop={12} style={styles.backBtn} accessibilityLabel="Pazarlara dön">
+            <Ionicons name="chevron-back" size={26} color={theme.text} />
           </Pressable>
-          <View style={[styles.flex, styles.headerTitleRow]}>
-            <ThemedText type="smallBold" style={styles.headerTitle}>
-              Pazar
+          <View style={styles.flex}>
+            <ThemedText numberOfLines={1} style={styles.headerTitle}>
+              {market ? market.name.replace(/\s*pazar[ıi]?\s*$/i, '') : 'Pazar'}
             </ThemedText>
-            {market && (
-              <ThemedText themeColor="tint" type="small" numberOfLines={1} style={[styles.flex, styles.headerMarketName]}>
-                · {market.name.replace(/\s*pazar[ıi]?\s*$/i, '')}
+            {!!market?.day && (
+              <ThemedText themeColor="textSecondary" type="small" numberOfLines={1}>
+                {market.day} pazarı
               </ThemedText>
             )}
           </View>
@@ -281,7 +285,7 @@ export default function MarketProductsScreen() {
           keyExtractor={(t) => t.key}
           contentContainerStyle={styles.infoRow}
           renderItem={({ item }) => (
-            <View style={[styles.infoPill, { backgroundColor: scheme === 'dark' ? OVERLAY_BG_DARK : OVERLAY_BG_LIGHT, borderColor: theme.tint }]}>
+            <View style={[styles.infoPill, { backgroundColor: scheme === 'dark' ? OVERLAY_BG_DARK : OVERLAY_BG_LIGHT }]}>
               <Ionicons name={item.icon} size={15} color={theme.tint} />
               <ThemedText type="small" numberOfLines={1}>
                 {item.label}
@@ -296,7 +300,7 @@ export default function MarketProductsScreen() {
           ürünler bulanık şekilde seçiliyor (kullanıcının işaretlediği
           bölge). "Ürünler" başlığı ve bilgi etiketleri bundan etkilenmiyor,
           normal akışta kalıyor. */}
-      <View style={styles.listArea}>
+      <View style={[styles.listArea, { backgroundColor: scheme === 'dark' ? LIST_SCRIM_DARK : LIST_SCRIM_LIGHT }]}>
         <SectionList
           ref={sectionListRef}
           style={styles.flex}
@@ -310,16 +314,11 @@ export default function MarketProductsScreen() {
           onScroll={handleListScroll}
           scrollEventThrottle={16}
           renderSectionHeader={({ section }) => (
-            <View
-              style={[
-                styles.sectionHeader,
-                { backgroundColor: withAlpha(theme.backgroundElement, 0.6), borderColor: theme.tint },
-              ]}
-            >
+            <View style={styles.sectionHeader}>
               {section.key === DISCOUNT_SECTION_KEY && (
-                <Ionicons name="pricetag-outline" size={21} color={theme.tint} style={styles.sectionHeaderIcon} />
+                <Ionicons name="pricetag" size={18} color={theme.tint} style={styles.sectionHeaderIcon} />
               )}
-              <ThemedText type="smallBold" style={styles.flex}>{section.title}</ThemedText>
+              <ThemedText style={[styles.flex, styles.sectionTitle]}>{section.title}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {section.data[0]?.length ?? 0} ürün
               </ThemedText>
@@ -373,8 +372,7 @@ export default function MarketProductsScreen() {
                   style={[
                     styles.chip,
                     {
-                      borderColor: active ? theme.tint : theme.border,
-                      backgroundColor: active ? theme.tint : (scheme === 'dark' ? OVERLAY_BG_DARK : OVERLAY_BG_LIGHT),
+                                            backgroundColor: active ? theme.tint : theme.backgroundSelected,
                     },
                   ]}
                 >
@@ -405,8 +403,7 @@ export default function MarketProductsScreen() {
                     style={[
                       styles.subChip,
                       {
-                        borderColor: active ? theme.tint : theme.border,
-                        backgroundColor: active ? theme.tint : (scheme === 'dark' ? OVERLAY_BG_DARK : OVERLAY_BG_LIGHT),
+                                                backgroundColor: active ? theme.tint : theme.backgroundSelected,
                       },
                     ]}
                   >
@@ -485,39 +482,22 @@ export default function MarketProductsScreen() {
 function ProductCard({ product, onSelect }: { product: Product; onSelect: () => void }) {
   const theme = useTheme();
   const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const { lines, addItem, setQty } = useCart();
   const hasOptions = !!product.customization_options?.length;
-  // Kartın hızlı "Ekle"si her zaman özelleştirmesiz (varsayılan) satırı
+  // Kartın hızlı "+"sı her zaman özelleştirmesiz (varsayılan) satırı
   // hedefler — bu satırın id'si ürünün kendi id'sidir (bkz. cart-context).
   const qty = lines.find((l) => l.lineId === product.id)?.qty ?? 0;
   const outOfStock = !product.in_stock;
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.image_url && !imageFailed;
+  const hasCampaign = !!product.campaign_discount_percent && !!product.campaign_min_qty;
+  // "+" düğmesi görselin üstünde duran yüzey renginde bir daire — Getir /
+  // Uber Eats kartlarındaki gibi; aksan rengi sadece ikonda.
+  const floatBg = isDark ? '#0b0f0d' : '#ffffff';
 
-  // "Ekle"ye basılınca miktar seçici satırı yavaşça kayarak/açılarak
-  // görünüyor (ani sıçrama yok). Her kartın kendi animasyon durumu var.
-  const qtyRowAnim = useRef(new Animated.Value(qty > 0 ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.timing(qtyRowAnim, {
-      toValue: qty > 0 ? 1 : 0,
-      duration: 260,
-      useNativeDriver: false,
-    }).start();
-  }, [qty > 0]);
-  // Buzlu cam kart: yarı saydam NÖTR zemin + (web'de) arkadan duvar
-  // kağıdının bulanık görünmesi için backdrop-filter — bkz. DESIGN-BRIEF.md
-  // 4. madde. Zemin eski sitedeki gibi siyahımsı/beyazımsı, aksan rengi
-  // (yeşil/turuncu) sadece kenarlıkta.
-  const glassStyle: any =
-    Platform.OS === 'web' ? { backdropFilter: 'blur(14px) saturate(1.3)' } : null;
   return (
-    <View
-      style={[
-        styles.card,
-        glassStyle,
-        { backgroundColor: scheme === 'dark' ? CARD_BG_DARK : CARD_BG_LIGHT, borderColor: theme.tint },
-      ]}
-    >
+    <View style={[styles.card, { backgroundColor: isDark ? CARD_BG_DARK : CARD_BG_LIGHT }, !isDark && styles.cardShadow]}>
       <View style={[styles.cardImageWrap, { backgroundColor: theme.tintSoft }]}>
         {showImage ? (
           <Image
@@ -527,104 +507,79 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <Ionicons name="leaf-outline" size={54} color={theme.tint} />
+          <Ionicons name="leaf-outline" size={46} color={withAlpha(theme.tint, 0.55)} />
         )}
-        {outOfStock && (
-          <View style={styles.outOfStockBadge}>
-            <ThemedText type="small" style={styles.badgeText}>
-              Stokta yok
-            </ThemedText>
+
+        {hasCampaign && (
+          <View style={[styles.discountBadge, { backgroundColor: theme.tint }]}>
+            <ThemedText style={styles.discountBadgeText}>%{product.campaign_discount_percent}</ThemedText>
           </View>
         )}
-        {/* Özelleştirmesi olan ürünler için resmin üzerinde yeşil "Seç"
-            rozeti — kullanıcı daha dokunmadan seçim gerektiğini görüyor. */}
-        {hasOptions && (
-          <View style={[styles.selectBadge, { backgroundColor: theme.tint }]}>
-            <ThemedText type="small" style={styles.selectBadgeText}>
-              Seç
-            </ThemedText>
+
+        {outOfStock ? (
+          <View style={styles.soldOutVeil}>
+            <ThemedText style={styles.soldOutText}>Tükendi</ThemedText>
           </View>
-        )}
-      </View>
-      {!!product.campaign_discount_percent && !!product.campaign_min_qty && (
-        <View style={[styles.discountBadge, { backgroundColor: theme.tint }]}>
-          <ThemedText type="small" style={styles.discountBadgeText}>
-            %{product.campaign_discount_percent}
-          </ThemedText>
-        </View>
-      )}
-      <ThemedText type="smallBold" numberOfLines={1} style={[styles.cardTitle, styles.cardTitleBig]}>
-        {product.name}
-      </ThemedText>
-      {!!product.campaign_discount_percent && !!product.campaign_min_qty && (
-        <ThemedText themeColor="tint" type="small" numberOfLines={1} style={styles.campaignLine}>
-          {product.campaign_min_qty} {formatUnit(product.unit)} ve üzeri %{product.campaign_discount_percent}
-        </ThemedText>
-      )}
-      <View style={styles.priceEkleRow}>
-        <ThemedText themeColor="tint" type="smallBold" style={styles.cardPriceBig}>
-          {product.gel_al_price ? `₺${formatMoney(product.gel_al_price)}` : 'Fiyat yok'}
-          <ThemedText themeColor="textSecondary" type="small">
-            {' '}
-            / {formatUnit(product.unit)}
-          </ThemedText>
-        </ThemedText>
-        {!outOfStock && hasOptions && (
+        ) : hasOptions ? (
           <Pressable
             onPress={onSelect}
             hitSlop={8}
             accessibilityLabel={`${product.name} seçeneklerini seç`}
-            style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
+            style={[styles.floatBtn, { backgroundColor: floatBg }]}
           >
-            <Ionicons name="options-outline" size={15} color="#fff" />
+            <Ionicons name="options-outline" size={17} color={theme.tint} />
           </Pressable>
-        )}
-        {!outOfStock && !hasOptions && qty === 0 && (
+        ) : qty === 0 ? (
           <Pressable
             onPress={() => addItem(product, qtyStep(product.unit))}
             hitSlop={8}
             accessibilityLabel={`${product.name} sepete ekle`}
-            style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
+            style={[styles.floatBtn, { backgroundColor: floatBg }]}
           >
-            <Ionicons name="add" size={18} color="#fff" />
+            <Ionicons name="add" size={22} color={theme.tint} />
           </Pressable>
-        )}
-      </View>
-
-      {/* "Ekle"ye basılınca "Ekle" kayboluyor, yerine miktar seçici yavaşça
-          kayarak/açılarak beliriyor. Özelleştirmesi olan ürünlerde miktar
-          modalda seçildiği için burada gösterilmiyor. */}
-      {!outOfStock && !hasOptions && (
-        <Animated.View
-          style={{
-            overflow: 'hidden',
-            height: qtyRowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }),
-            opacity: qtyRowAnim,
-            transform: [{ translateY: qtyRowAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
-          }}
-        >
-          <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
-          <View style={styles.qtyRowFull}>
+        ) : (
+          // Sepetteyken "+" aynı yerde miktar hapına dönüşüyor; kart boyu değişmiyor.
+          <View style={[styles.stepper, { backgroundColor: theme.tint }]}>
             <Pressable
               onPress={() => setQty(product.id, qty - qtyStep(product.unit))}
               hitSlop={6}
-              style={[styles.qtyBtn, { backgroundColor: theme.tint }]}
+              accessibilityLabel={`${product.name} azalt`}
+              style={styles.stepperBtn}
             >
-              <Ionicons name="remove" size={16} color="#fff" />
+              <Ionicons name={qty <= qtyStep(product.unit) ? 'trash-outline' : 'remove'} size={16} color="#fff" />
             </Pressable>
-            <ThemedText type="smallBold" style={styles.qtyValue}>
-              {formatQty(qty, product.unit)}
+            <ThemedText style={styles.stepperQty}>
+              {formatQty(qty, product.unit)} {formatUnit(product.unit).toLowerCase()}
             </ThemedText>
             <Pressable
               onPress={() => setQty(product.id, qty + qtyStep(product.unit))}
               hitSlop={6}
-              style={[styles.qtyBtn, { backgroundColor: theme.tint }]}
+              accessibilityLabel={`${product.name} artır`}
+              style={styles.stepperBtn}
             >
-              <Ionicons name="add" size={16} color="#fff" />
+              <Ionicons name="add" size={17} color="#fff" />
             </Pressable>
           </View>
-        </Animated.View>
-      )}
+        )}
+      </View>
+
+      <View style={styles.cardBody}>
+        <ThemedText style={styles.cardPrice} themeColor="tint">
+          {product.gel_al_price ? `₺${formatMoney(product.gel_al_price)}` : 'Fiyat yok'}
+          <ThemedText themeColor="textSecondary" style={styles.cardUnit}>
+            {' '}/ {formatUnit(product.unit).toLowerCase()}
+          </ThemedText>
+        </ThemedText>
+        <ThemedText numberOfLines={2} style={styles.cardName}>
+          {product.name}
+        </ThemedText>
+        {hasCampaign && (
+          <ThemedText themeColor="tint" numberOfLines={1} style={styles.campaignLine}>
+            {product.campaign_min_qty} {formatUnit(product.unit).toLowerCase()} ve üzeri %{product.campaign_discount_percent} indirim
+          </ThemedText>
+        )}
+      </View>
     </View>
   );
 }
@@ -636,20 +591,19 @@ const styles = StyleSheet.create({
   backBtn: { padding: Spacing.one },
   backArrow: { fontSize: 20 },
   headerTitleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  headerTitle: { fontSize: 18 },
-  headerMarketName: { fontSize: 15 },
+  // Ağırlıklar ThemedText'te bir kademe yükseltiliyor (700 -> 800).
+  headerTitle: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
   logoBadge: { width: 60, height: 60 },
   infoList: { flexGrow: 0, flexShrink: 0, height: 34, marginTop: Spacing.two },
   infoRow: { paddingHorizontal: Spacing.three, gap: Spacing.two },
   infoPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 9,
-    paddingHorizontal: Spacing.two - 2,
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two + 2,
     height: 30,
     justifyContent: 'center',
-    borderWidth: 1,
   },
   listArea: { flex: 1, position: 'relative' },
   categoryOverlay: { position: 'absolute', top: 0, left: 0, right: 0 },
@@ -660,75 +614,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     height: 36,
     borderRadius: 999,
-    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipIcon: { marginRight: 4 },
   subChipList: { flexGrow: 0, flexShrink: 0, height: 40 },
   subChip: {
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.two + 4,
     height: 30,
     borderRadius: 999,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Bölüm başlığı bandı — DESIGN-BRIEF.md'de "henüz uygulanmadı" diye
-  // işaretli hedef efektlerden biri (buzlu-cam + ince aksan kenarlık).
+  // Bölüm başlığı: kutu/çerçeve yok — büyük kalın başlık + sağda ürün sayısı.
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     marginHorizontal: Spacing.three,
-    marginTop: Spacing.two,
-    marginBottom: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: 10,
-    borderWidth: 1,
+    marginTop: Spacing.three,
+    marginBottom: Spacing.two,
   },
-  sectionHeaderIcon: { marginRight: 6 },
+  sectionHeaderIcon: { marginRight: 6, alignSelf: 'center' },
+  sectionTitle: { fontSize: 20, lineHeight: 24, fontWeight: '700', letterSpacing: -0.3 },
   // Liste kenardan kenara; yatay satırlar kendi iç boşluğunu veriyor ki
   // kartlar ekranın kenarına kadar kayabilsin.
-  grid: { paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.six },
-  // alignItems:'flex-start' olmazsa varsayılan 'stretch' kartları eşit
-  // yüksekliğe zorluyor — bir kartın miktar satırı açılınca diğerleri de
-  // uzuyordu. Her kart kendi yüksekliğinde.
-  hRow: { paddingHorizontal: Spacing.three, gap: Spacing.three, alignItems: 'flex-start' },
-  card: { width: CARD_WIDTH, borderRadius: 16, borderWidth: 1.5, padding: Spacing.two, paddingBottom: Spacing.two + 4, gap: 6 },
-  cardImageWrap: { height: 120, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  cardTitle: { marginTop: 4 },
-  cardTitleBig: { fontSize: 16, lineHeight: 20 },
-  cardPriceBig: { fontSize: 17, flexShrink: 1 },
-  campaignLine: { fontWeight: '700' },
-  // Fiyat + "Ekle" aynı satırda; "Ekle"ye basılınca aşağıda miktar seçici
-  // açılıyor, bu ayraç sadece o zaman (fiyat satırıyla arasında) görünüyor.
-  priceEkleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
-  cardDivider: { height: 1, marginVertical: 2, opacity: 0.5 },
-  badgeText: { color: '#fff', fontWeight: '700' },
-  outOfStockBadge: {
-    position: 'absolute', bottom: 6, left: 6, right: 6,
-    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 6, paddingVertical: 3, alignItems: 'center',
+  grid: { paddingTop: Spacing.one, paddingBottom: Spacing.six + Spacing.six },
+  hRow: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two, gap: Spacing.two + 4, alignItems: 'flex-start' },
+  // Kart: çerçevesiz dolu yüzey; görsel kenardan kenara üstte, aksiyonlar
+  // görselin üstünde yüzüyor (kart boyu sepete ekleyince değişmiyor).
+  card: { width: CARD_WIDTH, borderRadius: 18, overflow: 'hidden' },
+  cardShadow: {
+    shadowColor: '#7a4a1c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  // Görsel köşesine binen yuvarlak indirim rozeti (kartın kendisine, resim
-  // katmanının üstüne bindirilmiş — bkz. hedef site tasarımı).
+  cardImageWrap: { height: 128, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  cardBody: { paddingHorizontal: Spacing.two + 4, paddingTop: Spacing.two, paddingBottom: Spacing.two + 4, gap: 2 },
+  cardPrice: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
+  cardUnit: { fontSize: 13, fontWeight: '500' },
+  cardName: { fontSize: 15, lineHeight: 19, fontWeight: '600' },
+  campaignLine: { fontSize: 12, lineHeight: 16, fontWeight: '600', marginTop: 2 },
   discountBadge: {
-    position: 'absolute', top: Spacing.one, right: Spacing.one,
-    minWidth: 30, height: 22, borderRadius: 11, paddingHorizontal: 6,
+    position: 'absolute', top: Spacing.two, left: Spacing.two,
+    height: 22, borderRadius: 11, paddingHorizontal: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  // Yatay satırdaki dar kartta fiyat tek satıra sığsın diye sadece ikonlu
-  // yuvarlak "+" (Uber Eats / Yemeksepeti tarzı).
-  addBtnRound: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  // Kartın kendi üzerinde miktar seçici — sepete eklendikten sonra "Ekle"
-  // butonunun yerini alıyor (hedef sitedeki gibi). Parmakla rahat
-  // dokunulabilsin diye butonlar en az ~32dp. Fiyat satırından ayrı, ince
-  // bir çizgiyle bölünmüş kendi (tam genişlik) satırında duruyor.
-  qtyRowFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4 },
-  qtyBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  qtyValue: { minWidth: 24, textAlign: 'center' },
-  emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two },
+  discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12, lineHeight: 16 },
+  floatBtn: {
+    position: 'absolute', right: Spacing.two, bottom: Spacing.two,
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 3,
+  },
+  stepper: {
+    position: 'absolute', left: Spacing.two, right: Spacing.two, bottom: Spacing.two,
+    height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 3,
+  },
+  stepperBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  stepperQty: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  soldOutVeil: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+  },
+  soldOutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two, marginHorizontal: Spacing.three },
   // Sepette ürün varken alt menünün hemen üstünde yüzen onay çubuğu.
   confirmBar: {
     position: 'absolute',
@@ -770,11 +722,4 @@ const styles = StyleSheet.create({
   // Minimum sepet tutarı / ücretsiz teslimat için kalan tutar aşamalı satırı.
   confirmProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   confirmProgress: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
-  // Özelleştirmesi olan ürünün resminde duran "Seç" rozeti (renk: theme.tint —
-  // açık temada turuncu, koyu temada yeşil).
-  selectBadge: {
-    position: 'absolute', top: Spacing.one, left: Spacing.one,
-    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  selectBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
 });
