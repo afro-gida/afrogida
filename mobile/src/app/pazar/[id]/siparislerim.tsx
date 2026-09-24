@@ -12,6 +12,7 @@ import { fetchOrders } from '@/lib/orders';
 import { formatMoney } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
+import { formatQty, formatUnit } from '@/lib/units';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
 const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
@@ -97,7 +98,7 @@ export default function OrdersScreen() {
                 {new Date(item.created_at).toLocaleDateString('tr-TR')}
               </ThemedText>
               <ThemedText type="small">
-                {item.items.map((i) => `${i.name} (${i.qty} ${i.unit})`).join(', ')}
+                {item.items.map((i) => `${i.name} (${formatQty(i.qty, i.unit)} ${formatUnit(i.unit)})`).join(', ')}
               </ThemedText>
               <ThemedText type="smallBold">{formatMoney(item.amount)} ₺</ThemedText>
             </View>

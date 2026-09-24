@@ -12,8 +12,9 @@ export function qtyStep(unit: string): number {
   return isKg(unit) ? 0.5 : 1;
 }
 
+/** Türkçe ondalık ayracıyla: 0,5 / 1,0 / 1,5 (Kg); adetler tam sayı. */
 export function formatQty(qty: number, unit: string): string {
-  return isKg(unit) ? qty.toFixed(1) : String(qty);
+  return isKg(unit) ? qty.toFixed(1).replace('.', ',') : String(qty).replace('.', ',');
 }
 
 /** Ekranda gösterilecek birim adı — "kg"/"KG" gibi varyasyonları "Kg" olarak
