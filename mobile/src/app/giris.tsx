@@ -5,15 +5,19 @@ import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { IconGreen, Spacing } from '@/constants/theme';
 
 const LOGIN_BANNER = require('@/assets/brand/login-banner.jpg');
+// Koyu temada ayrı bir giriş görseli yok — siyah + yeşil duvar kağıdı kullanılıyor.
+const LOGIN_BANNER_DARK = require('@/assets/brand/wallpaper-dark.jpg');
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const router = useRouter();
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
@@ -47,7 +51,7 @@ export default function LoginScreen() {
   return (
     <Screen edges={['bottom']}>
       <View style={styles.headerSpace}>
-        <Image source={LOGIN_BANNER} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={isDark ? LOGIN_BANNER_DARK : LOGIN_BANNER} style={StyleSheet.absoluteFill} resizeMode="cover" />
         <Pressable style={styles.closeBtn} onPress={() => router.replace('/')} hitSlop={12}>
           <ThemedText style={styles.closeIcon}>✕</ThemedText>
         </Pressable>

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-import { Spacing } from '@/constants/theme';
+import { IconGreen, Spacing } from '@/constants/theme';
 
 interface Market {
   id: string;
@@ -59,22 +61,34 @@ export default function SorumluHome() {
         </View>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/siparisler')}>
-          <ThemedText type="smallBold">🧾 Sipariş Takip</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="receipt-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Sipariş Takip</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki siparişleri gör</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/tedarikciler')}>
-          <ThemedText type="smallBold">🏪 Tedarikçiler</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="storefront-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Tedarikçiler</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki tedarikçileri ve ürünlerini gör</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/tedarikci-ekle')}>
-          <ThemedText type="smallBold">➕ Tedarikçi Ekle / Düzenle</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="add-circle-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Tedarikçi Ekle / Düzenle</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Pazara tedarikçi ata veya kaldır</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/kuryeler')}>
-          <ThemedText type="smallBold">🛵 Kuryeler</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="bicycle-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Kuryeler</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki kuryeleri gör</ThemedText>
         </Pressable>
 
@@ -89,6 +103,7 @@ export default function SorumluHome() {
 const styles = StyleSheet.create({
   body: { padding: Spacing.three, gap: Spacing.two },
   card: { borderRadius: 16, padding: Spacing.three, gap: 4 },
+  cardTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   badge: { borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   outlineBtn: { borderRadius: 999, borderWidth: 1.5, paddingVertical: Spacing.two, alignItems: 'center' },

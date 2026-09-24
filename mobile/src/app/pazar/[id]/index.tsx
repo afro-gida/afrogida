@@ -530,7 +530,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         )}
       </View>
       {!!product.campaign_discount_percent && !!product.campaign_min_qty && (
-        <View style={[styles.discountBadge, { backgroundColor: theme.accentOrange }]}>
+        <View style={[styles.discountBadge, { backgroundColor: theme.tint }]}>
           <ThemedText type="small" style={styles.discountBadgeText}>
             %{product.campaign_discount_percent}
           </ThemedText>

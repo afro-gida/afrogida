@@ -69,7 +69,6 @@ const CANCELLED = new Set(['iptal_edildi', 'teslim_alinmadi', 'musteri_gelmedi_i
 // Sorumlu sadece hazırlık aşamalarını ilerletebilir - Yolda/Teslim Edildi
 // kurye kendi teslim akışında (teslim kodu doğrulamasıyla) ayarlanır.
 const SORUMLU_SETTABLE = new Set(['hazirlik_bekliyor', 'hazirlaniyor', 'hazir']);
-const NOTIFY_COLOR = '#EC4899';
 
 function paymentColor(status: string): ThemeColor {
   if (status === 'paid') return 'tint';
@@ -319,7 +318,7 @@ export default function SorumluSiparisDetay() {
 
             {order.delivery_type === 'eve_servis' && !isFinal && (
               <View style={[styles.card, { backgroundColor: theme.authCard }]}>
-                <ThemedText type="smallBold" style={{ color: NOTIFY_COLOR }}>🛵 Kuryeye Bildir</ThemedText>
+                <ThemedText type="smallBold" themeColor="tint">Kuryeye Bildir</ThemedText>
                 {/* Liste her zaman açık — önceden başlığa basınca açılan bir
                     liste vardı ama o dokunuş bazı cihazlarda hiç tepki
                     vermiyordu (kullanıcı talimatıyla bulunan hata, kesin

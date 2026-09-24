@@ -56,7 +56,9 @@ function formatAddressLine(a: Address) {
 // (kullanıcı talimatı, bkz. referans görsel). Nötr, çok hafif bir karartma/
 // aydınlatma dışında zemin neredeyse tamamen saydam.
 const CARD_BG_DARK = 'rgba(0, 0, 0, 0.18)';
-const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.35)';
+// Açık temada krem ve daha az saydam: %35 beyazda duvar kağıdı fazla
+// geçiyordu, turuncu yazılar (Minimum Sipariş Tutarı, sözleşme) okunmuyordu.
+const CARD_BG_LIGHT = 'rgba(255, 250, 242, 0.82)';
 
 export default function CartScreen() {
   const theme = useTheme();
@@ -707,7 +709,7 @@ export default function CartScreen() {
             <ThemedText themeColor="textSecondary" type="small" style={{ marginBottom: 4 }}>
               {deliveryType === 'eve_servis' ? 'Eve Servis' : 'Gel-Al'} siparişini tamamlamak için aşağıdaki belgeleri inceleyin.
             </ThemedText>
-            <View style={[styles.agreementBox, { borderColor: theme.border }]}>
+            <View style={[styles.agreementBox, { borderColor: theme.border, backgroundColor: cardBg }]}>
               <CheckboxRow checked={agreementAccepted} onToggle={() => setAgreementAccepted((v) => !v)}>
                 <ThemedText type="small" themeColor="tint" style={{ fontWeight: '700', textDecorationLine: 'underline' }}>
                   {deliveryType === 'eve_servis' ? 'Eve Servis' : 'Gel-Al'} Mesafeli Satış Sözleşmesi
@@ -748,7 +750,11 @@ export default function CartScreen() {
               )}
             </Pressable>
             {belowMinimum && (
-              <ThemedText themeColor="tint" type="small" style={{ textAlign: 'center', fontWeight: '700' }}>
+              <ThemedText
+                themeColor="tint"
+                type="small"
+                style={{ textAlign: 'center', fontWeight: '700', backgroundColor: cardBg, borderRadius: 12, padding: Spacing.two, overflow: 'hidden' }}
+              >
                 Minimum sipariş tutarına ulaşmak için {formatMoney(remainingForMinimum)} ₺ daha ürün eklemelisiniz.
               </ThemedText>
             )}

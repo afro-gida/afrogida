@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { API_BASE_URL } from '@/lib/api';
-import { Spacing } from '@/constants/theme';
+import { IconGreen, Spacing } from '@/constants/theme';
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
@@ -85,12 +87,18 @@ export default function TedarikciHome() {
         <ThemedText themeColor="textSecondary">{user?.supplier_group ?? 'Tedarikçi'}</ThemedText>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/urunlerim')}>
-          <ThemedText type="smallBold">📦 Ürünlerim</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="cube-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Ürünlerim</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Ürün ekle, fiyat/stok güncelle</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/satislarim')}>
-          <ThemedText type="smallBold">📊 Satışlarım</ThemedText>
+          <View style={styles.cardTitle}>
+            <Ionicons name="bar-chart-outline" size={20} color={IconGreen} />
+            <ThemedText type="smallBold">Satışlarım</ThemedText>
+          </View>
           <ThemedText themeColor="textSecondary" type="small">Tezgah fiyatından hesaplanan satış logu</ThemedText>
         </Pressable>
 
@@ -105,6 +113,7 @@ export default function TedarikciHome() {
 const styles = StyleSheet.create({
   body: { flex: 1, padding: Spacing.three, gap: Spacing.two },
   card: { borderRadius: 16, padding: Spacing.three, gap: 4 },
+  cardTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   outlineBtn: { borderRadius: 999, borderWidth: 1.5, paddingVertical: Spacing.two, alignItems: 'center' },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center' },
   gateCard: { flex: 1, margin: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.two, justifyContent: 'center' },

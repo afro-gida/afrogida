@@ -144,6 +144,17 @@ def test_market_min_amount_gel_al_enforced(client, make_user, product, market_wi
     assert "minimum" in r.text.lower()
 
 
+def test_order_market_name_filled_from_market(client, make_user, db, product, market_with_limits):
+    """market_name istemciden gelmese de sunucu pazar kaydından doldurur
+    (sorumlu sipariş listesi bu alana göre filtreliyor)."""
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 3}], market_id="market_test_limits",
+               payment_method="online_card")
+    assert r.status_code == 200, r.text
+    tx = r.json()["order"]["tx_id"]
+    assert db.transactions.find_one({"tx_id": tx})["market_name"] == "Test Pazarı"
+
+
 def test_market_min_amount_does_not_affect_other_markets(client, make_user, product, market_with_limits):
     """Aynı sepet, market_id verilmeden (veya farklı bir pazarla) hâlâ geçmeli —
     bir pazarın limiti başka pazarları/market_id'siz siparişleri etkilemiyor."""

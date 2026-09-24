@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { useMarkets } from '@/lib/markets-context';
@@ -12,7 +13,12 @@ import { fetchSettings } from '@/lib/settings';
 import { IconGreen, Spacing } from '@/constants/theme';
 import type { Market } from '@/lib/types';
 
-const WALLPAPER_CARD = require('@/assets/brand/wallpaper-light.jpg');
+const WALLPAPER_CARD_LIGHT = require('@/assets/brand/wallpaper-light.jpg');
+const WALLPAPER_CARD_DARK = require('@/assets/brand/wallpaper-dark.jpg');
+
+// Pazar kartının alt şeridi: koyu temada eskisi gibi siyah-yeşil, açık temada
+// krem (tema kuralı: açık = turuncu + krem, koyu = siyah + yeşil).
+const CARD_DARK = { body: '#0d1410', border: '#2a2f2c', outline: '#3a423b', text: '#f2f5ef', muted: '#9aa39c', closed: '#2a2f2c' };
 const LOGO = require('@/assets/brand/logo.png');
 
 /**
@@ -90,6 +96,10 @@ export default function MarketsScreen() {
 
 function MarketCard({ market, supportPhone, isMember }: { market: Market; supportPhone?: string; isMember: boolean }) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
+  const c = isDark
+    ? CARD_DARK
+    : { body: theme.backgroundElement, border: theme.border, outline: theme.border, text: theme.text, muted: theme.textSecondary, closed: theme.backgroundSelected };
   const router = useRouter();
   const [imageFailed, setImageFailed] = useState(false);
   const [neighborhoodsOpen, setNeighborhoodsOpen] = useState(false);
@@ -104,7 +114,7 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
   const showRealImage = market.image_url && !imageFailed;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { borderColor: c.border }]}>
       <View style={styles.cardImageWrap}>
         {showRealImage ? (
           <Image
@@ -115,7 +125,7 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
           />
         ) : (
           <>
-            <Image source={WALLPAPER_CARD} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <Image source={isDark ? WALLPAPER_CARD_DARK : WALLPAPER_CARD_LIGHT} style={StyleSheet.absoluteFill} resizeMode="cover" />
             <Image source={LOGO} style={styles.cardLogo} resizeMode="contain" />
           </>
         )}
@@ -126,8 +136,8 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
         </View>
       </View>
 
-      <View style={styles.cardBody}>
-        <ThemedText type="smallBold" style={[styles.marketName, styles.onDark]}>
+      <View style={[styles.cardBody, { backgroundColor: c.body }]}>
+        <ThemedText type="smallBold" style={[styles.marketName, { color: c.text }]}>
           {market.name}
         </ThemedText>
         {hasDelivery && (
@@ -139,24 +149,24 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
         )}
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionBtn, { backgroundColor: market.orders_enabled ? theme.tint : '#2a2f2c' }]}
+            style={[styles.actionBtn, { backgroundColor: market.orders_enabled ? theme.tint : c.closed }]}
             disabled={!market.orders_enabled}
             onPress={() => router.push(isMember ? `/pazar/${market.id}` : '/giris')}
           >
-            <Ionicons name={isMember ? 'cart-outline' : 'lock-closed-outline'} size={21} color="#fff" />
-            <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
+            <Ionicons name={isMember ? 'cart-outline' : 'lock-closed-outline'} size={21} color={market.orders_enabled || isDark ? '#fff' : c.muted} />
+            <ThemedText type="small" style={{ color: market.orders_enabled || isDark ? '#fff' : c.muted, fontWeight: '700' }}>
               {!market.orders_enabled ? 'Şu an kapalı' : isMember ? 'Siparişe Başla' : 'Üye Girişi Gerekli'}
             </ThemedText>
           </Pressable>
           {mapUrl ? (
-            <Pressable style={styles.actionBtnOutline} onPress={() => Linking.openURL(mapUrl)}>
+            <Pressable style={[styles.actionBtnOutline, { borderColor: c.outline }]} onPress={() => Linking.openURL(mapUrl)}>
               <Ionicons name="location-outline" size={21} color={IconGreen} />
-              <ThemedText type="small" style={styles.onDark}>Konum</ThemedText>
+              <ThemedText type="small" style={{ color: c.text }}>Konum</ThemedText>
             </Pressable>
           ) : (
-            <View style={styles.actionBtnOutline}>
+            <View style={[styles.actionBtnOutline, { borderColor: c.outline }]}>
               <Ionicons name="location-outline" size={21} color={IconGreen} />
-              <ThemedText type="small" style={styles.onDarkSecondary}>
+              <ThemedText type="small" style={{ color: c.muted }}>
                 Konum
               </ThemedText>
             </View>
@@ -226,20 +236,17 @@ const styles = StyleSheet.create({
   ctaBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, borderRadius: 14, padding: Spacing.two },
   ctaIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   list: { padding: Spacing.three, gap: Spacing.three, paddingTop: 0 },
-  card: { borderRadius: 18, borderWidth: 1, borderColor: '#2a2f2c', overflow: 'hidden' },
+  card: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
   cardImageWrap: { height: 130, alignItems: 'center', justifyContent: 'center' },
   cardLogo: { width: 88, height: 88, borderRadius: 44 },
   dayBadge: { position: 'absolute', top: Spacing.two, right: Spacing.two, borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 4 },
-  // Kart alt bilgi şeridi her zaman koyu — fotoğrafın üstündeki kontrast için,
-  // açık/koyu tema seçiminden bağımsız (gerçek sitedeki gibi).
-  cardBody: { padding: Spacing.three, gap: 6, backgroundColor: '#0d1410' },
-  onDark: { color: '#f2f5ef' },
-  onDarkSecondary: { color: '#9aa39c' },
+  // Renkler MarketCard içinde temaya göre (CARD_DARK / tema tokenları).
+  cardBody: { padding: Spacing.three, gap: 6 },
   marketName: { fontSize: 17 },
   underline: { textDecorationLine: 'underline' },
   actionRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 999, paddingVertical: Spacing.two },
-  actionBtnOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 999, borderWidth: 1.5, borderColor: '#3a423b', paddingVertical: Spacing.two },
+  actionBtnOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 999, borderWidth: 1.5, paddingVertical: Spacing.two },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', margin: Spacing.three },
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
   modalCenterWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },

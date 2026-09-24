@@ -57,7 +57,7 @@ export default function CampaignsScreen() {
                   {item.title}
                 </ThemedText>
                 {!!item.discount_text && (
-                  <View style={[styles.discountPill, { backgroundColor: theme.accentOrange }]}>
+                  <View style={[styles.discountPill, { backgroundColor: theme.tint }]}>
                     <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
                       {item.discount_text}
                     </ThemedText>

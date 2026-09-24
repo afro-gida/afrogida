@@ -38,6 +38,9 @@ export const Colors = {
   },
 } as const;
 
+/** Menü ikonları — mobile/ ile aynı: temadan bağımsız her zaman yeşil. */
+export const IconGreen = '#14B67E';
+
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({

@@ -543,7 +543,10 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
         "delivery_neighborhood": _clean_text(data.get("delivery_neighborhood") or "")[:120],
         "market_id": data.get("market_id") or data.get("stall_id"),
         "stall_id": data.get("stall_id") or data.get("market_id"),
-        "market_name": _clean_text(data.get("market_name")) or "",
+        # Pazar adı sunucudaki pazar kaydından: sorumlu sipariş listesi ve kurye
+        # bildirimleri bu alana göre çalışıyor; mobil uygulama market_name
+        # göndermediği için eskiden boş kalıyor, sipariş sorumluya görünmüyordu.
+        "market_name": _market.get("name") or _clean_text(data.get("market_name")) or "",
         "pickup_time": data.get("pickup_time") or None,
         "delivery_slot_start": data.get("delivery_slot_start") or None,
         "delivery_slot_end": data.get("delivery_slot_end") or None,

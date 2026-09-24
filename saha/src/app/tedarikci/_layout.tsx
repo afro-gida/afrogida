@@ -7,6 +7,8 @@ export default function TedarikciLayout() {
     headerStyle: { backgroundColor: theme.authCard },
     headerTintColor: theme.text,
     headerTitleStyle: { color: theme.text },
+    // Varsayılan alt çizgi koyu temada parlak beyaz görünüyordu.
+    headerShadowVisible: false,
   };
   return (
     <Stack>
