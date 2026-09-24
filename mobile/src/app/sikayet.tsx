@@ -81,7 +81,7 @@ export default function ComplaintScreen() {
             multiline
             style={[
               styles.input,
-              { borderColor: theme.border, color: theme.text, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.6)' },
+              { borderColor: theme.border, color: theme.text, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(252, 243, 228, 0.9)' },
             ]}
           />
           {error && (

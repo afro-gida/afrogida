@@ -21,7 +21,7 @@ import { Spacing, withAlpha } from '@/constants/theme';
 const TITLE_OPTIONS = ['Ev', 'İş', 'Diğer'];
 
 const CARD_BG_DARK = 'rgba(0, 0, 0, 0.18)';
-const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.35)';
+const CARD_BG_LIGHT = 'rgba(246, 229, 202, 0.92)';
 
 const EMPTY_FORM: AddressInput = {
   title: 'Ev',
@@ -218,7 +218,7 @@ function AddressFormModal({
     {
       borderColor: theme.border,
       color: theme.text,
-      backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.6)',
+      backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(252, 243, 228, 0.9)',
     },
   ];
 

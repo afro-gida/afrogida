@@ -31,15 +31,15 @@ const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 // Kart zemini NÖTR (siyahımsı/beyazımsı) — eski sitedeki gibi; aksan rengi
 // (yeşil/turuncu) sadece kenarlıkta kalıyor, zemine yeşil ton karışmıyor.
 const CARD_BG_DARK = '#0e1411';
-const CARD_BG_LIGHT = '#fffaf2';
+const CARD_BG_LIGHT = '#f8ebd6';
 // Bilgi etiketleri + kategori panelinin zemini — kartlardan farklı olarak
 // AÇIK TONDA ve daha şeffaf (koyu temada bile neredeyse siyah olmasın).
 const OVERLAY_BG_DARK = 'rgba(22, 28, 25, 0.94)';
-const OVERLAY_BG_LIGHT = 'rgba(255, 248, 238, 0.94)';
+const OVERLAY_BG_LIGHT = 'rgba(241, 222, 190, 0.96)';
 // Ürün listesinin arkasına hafif perde: desenli duvar kağıdı kenarlarda
 // seçilmeye devam etsin ama başlıklar/yazılar üstünde net okunsun.
 const LIST_SCRIM_DARK = 'rgba(0, 0, 0, 0.55)';
-const LIST_SCRIM_LIGHT = 'rgba(255, 246, 232, 0.72)';
+const LIST_SCRIM_LIGHT = 'rgba(232, 201, 158, 0.32)';
 
 // Her alt kategori TEK bir satırdır: ürünler o satırda YANA kayar
 // (Yemeksepeti / Uber Eats tarzı). SectionList'in her bölümünde tek "item"
@@ -494,7 +494,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
   const hasCampaign = !!product.campaign_discount_percent && !!product.campaign_min_qty;
   // "+" düğmesi görselin üstünde duran yüzey renginde bir daire — Getir /
   // Uber Eats kartlarındaki gibi; aksan rengi sadece ikonda.
-  const floatBg = isDark ? '#0b0f0d' : '#ffffff';
+  const floatBg = isDark ? '#0b0f0d' : '#fbf3e6';
 
   return (
     <View style={[styles.card, { backgroundColor: isDark ? CARD_BG_DARK : CARD_BG_LIGHT }, !isDark && styles.cardShadow]}>

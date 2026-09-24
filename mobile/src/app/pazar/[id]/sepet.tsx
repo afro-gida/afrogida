@@ -58,7 +58,7 @@ function formatAddressLine(a: Address) {
 const CARD_BG_DARK = 'rgba(0, 0, 0, 0.18)';
 // Açık temada krem ve daha az saydam: %35 beyazda duvar kağıdı fazla
 // geçiyordu, turuncu yazılar (Minimum Sipariş Tutarı, sözleşme) okunmuyordu.
-const CARD_BG_LIGHT = 'rgba(255, 250, 242, 0.82)';
+const CARD_BG_LIGHT = 'rgba(246, 229, 202, 0.92)';
 
 export default function CartScreen() {
   const theme = useTheme();
@@ -698,7 +698,7 @@ export default function CartScreen() {
                 multiline
                 style={[
                   styles.noteInput,
-                  { borderColor: theme.border, color: theme.text, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.6)' },
+                  { borderColor: theme.border, color: theme.text, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(252, 243, 228, 0.9)' },
                 ]}
               />
             </View>

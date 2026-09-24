@@ -12,7 +12,7 @@ import { fetchCoupons, type Coupon } from '@/lib/coupons';
 import { Spacing, withAlpha } from '@/constants/theme';
 
 const CARD_BG_DARK = 'rgba(0, 0, 0, 0.4)';
-const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.4)';
+const CARD_BG_LIGHT = 'rgba(246, 229, 202, 0.92)';
 
 function formatValidUntil(iso: string) {
   const d = new Date(iso);
@@ -91,7 +91,7 @@ export default function MyCouponsScreen() {
                   )}
                   <Pressable
                     onPress={() => handleCopy(item)}
-                    style={[styles.codeBox, { borderColor: theme.border, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.6)' }]}
+                    style={[styles.codeBox, { borderColor: theme.border, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(252, 243, 228, 0.9)' }]}
                   >
                     <ThemedText type="smallBold" style={styles.codeText}>{item.code}</ThemedText>
                     <Ionicons name={copiedId === item.id ? 'checkmark' : 'copy-outline'} size={16} color={theme.tint} />

@@ -16,25 +16,25 @@ export const Colors = {
   // KOYU tema = siyah + yeşil. Açık temada nane yeşili yüzey/yeşil yazı yok.
   light: {
     text: '#2e1d0e',
-    background: '#fffaf2',
-    backgroundElement: '#fdf0dc',
-    backgroundSelected: '#f8dcb4',
+    background: '#f7ead6',
+    backgroundElement: '#f3dfc0',
+    backgroundSelected: '#ecca98',
     textSecondary: '#7a5a3c',
     // Gerçek sitede açık modun aksan rengi TURUNCU'dur (rgb(251,140,60)),
     // koyu modda YEŞİL'dir — bkz. "Duvar Kağıdı Sistemi" dökümanı, madde 3.
     tint: '#fb8c3c',
-    tintSoft: '#fde2c8',
-    border: '#f1d6b0',
+    tintSoft: '#f4cfa3',
+    border: '#e2c092',
     danger: '#c0392b',
     accentOrange: '#f97316',
     wallpaperBg: '#e2b676',
     // Giriş/kayıt kartı: açık modda ayrı bir "siyah kart" tasarımı yok,
     // normal kart rengiyle aynı kalsın.
-    authCard: '#fdf0dc',
+    authCard: '#f5e4c9',
     // Yazı kutuları: uygulamanın geri kalanında (bkz. adreslerim.tsx) zaten
     // kullanılan yarı saydam koyulaştırma - kartın üstüne oturunca hep
     // aynı, tutarlı tonu verir.
-    inputBg: 'rgba(255,255,255,0.6)',
+    inputBg: 'rgba(252, 243, 228, 0.9)',
   },
   dark: {
     text: '#eafff4',

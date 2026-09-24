@@ -15,7 +15,7 @@ import { Spacing } from '@/constants/theme';
 // Butonlar dolu yeşil kutu değil, siyah zemin + ince yeşil çerçeve
 // (kullanıcı talimatı, bkz. referans görsel).
 const BTN_BG_DARK = 'rgba(0, 0, 0, 0.9)';
-const BTN_BG_LIGHT = 'rgba(255, 255, 255, 0.9)';
+const BTN_BG_LIGHT = 'rgba(246, 229, 202, 0.94)';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
 const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
