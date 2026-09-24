@@ -37,13 +37,14 @@ const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.82)';
 const OVERLAY_BG_DARK = 'rgba(50, 55, 53, 0.55)';
 const OVERLAY_BG_LIGHT = 'rgba(255, 255, 255, 0.55)';
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
+// Her alt kategori TEK bir satırdır: ürünler o satırda YANA kayar
+// (Yemeksepeti / Uber Eats tarzı). SectionList'in her bölümünde tek "item"
+// var — o bölümün tüm ürünleri; bölüm içi yatay liste bunu çizer.
 type ProductSection = { title: string; key: string; parentMain: string; data: Product[][] };
+
+// Yatay satırdaki kart genişliği: bir sonraki kartın kenardan biraz görünmesi
+// ("yana kaydırılabilir" ipucu) için ekrana tam 2 kart sığmayacak şekilde.
+const CARD_WIDTH = 164;
 
 export default function MarketProductsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -171,7 +172,7 @@ export default function MarketProductsScreen() {
     // ürün indirimli sayılmıyor, hiçbiri yoksa bölüm hiç görünmüyor.
     const discounted = allProducts.filter((p) => !!p.campaign_discount_percent && !!p.campaign_min_qty);
     if (discounted.length) {
-      result.push({ title: 'Çok al az öde', key: DISCOUNT_SECTION_KEY, parentMain: 'İndirimli', data: chunk(discounted, 2) });
+      result.push({ title: 'Çok al az öde', key: DISCOUNT_SECTION_KEY, parentMain: 'İndirimli', data: [discounted] });
     }
     if (hasCategoryTree) {
       for (const main of catalog.categories!) {
@@ -182,13 +183,13 @@ export default function MarketProductsScreen() {
           // ana kategoride tekrar tekrar görünür (bkz. "Limon" iki kez
           // çıkması ve React'in "duplicate key" uyarısı).
           const items = allProducts.filter((p) => p.category === sub && p.subcategory === main);
-          if (items.length) result.push({ title: sub, key: `${main}::${sub}`, parentMain: main, data: chunk(items, 2) });
+          if (items.length) result.push({ title: sub, key: `${main}::${sub}`, parentMain: main, data: [items] });
         }
       }
     } else {
       for (const cat of CATEGORIES) {
         const items = allProducts.filter((p) => p.category === cat);
-        if (items.length) result.push({ title: cat, key: cat, parentMain: cat, data: chunk(items, 2) });
+        if (items.length) result.push({ title: cat, key: cat, parentMain: cat, data: [items] });
       }
     }
     return result;
@@ -206,8 +207,14 @@ export default function MarketProductsScreen() {
         )
       : [];
 
+  // Çipe dokunulunca liste o bölüme kayarken, kaydırma sırasındaki görünürlük
+  // güncellemeleri seçilen çipi geri değiştirmesin (son bölümler ekranın en
+  // üstüne kadar kayamayabiliyor).
+  const chipLockUntil = useRef(0);
+
   function scrollToSectionIndex(index: number) {
     if (index < 0) return;
+    chipLockUntil.current = Date.now() + 900;
     sectionListRef.current?.scrollToLocation({ sectionIndex: index, itemIndex: 0, viewPosition: 0, animated: true });
   }
 
@@ -227,6 +234,7 @@ export default function MarketProductsScreen() {
   }
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { section?: ProductSection }[] }) => {
+    if (Date.now() < chipLockUntil.current) return;
     const top = viewableItems.find((v) => v.section)?.section;
     if (!top) return;
     setActiveMain(top.parentMain);
@@ -298,7 +306,7 @@ export default function MarketProductsScreen() {
           }
           stickySectionHeadersEnabled={false}
           onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 10 }}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
           onScroll={handleListScroll}
           scrollEventThrottle={16}
           renderSectionHeader={({ section }) => (
@@ -311,17 +319,26 @@ export default function MarketProductsScreen() {
               {section.key === DISCOUNT_SECTION_KEY && (
                 <Ionicons name="pricetag-outline" size={21} color={theme.tint} style={styles.sectionHeaderIcon} />
               )}
-              <ThemedText type="smallBold">{section.title}</ThemedText>
+              <ThemedText type="smallBold" style={styles.flex}>{section.title}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {section.data[0]?.length ?? 0} ürün
+              </ThemedText>
             </View>
           )}
           renderItem={({ item: row }) =>
             Array.isArray(row) ? (
-              <View style={styles.row}>
-                {row.map((product) => (
-                  <ProductCard key={product.id} product={product} onSelect={() => setOptionsProduct(product)} />
-                ))}
-                {row.length === 1 && <View style={styles.flex} />}
-              </View>
+              <FlatList
+                horizontal
+                data={row}
+                keyExtractor={(p) => p.id}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hRow}
+                initialNumToRender={4}
+                windowSize={3}
+                renderItem={({ item: product }) => (
+                  <ProductCard product={product} onSelect={() => setOptionsProduct(product)} />
+                )}
+              />
             ) : null
           }
           contentContainerStyle={[
@@ -553,19 +570,23 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
           </ThemedText>
         </ThemedText>
         {!outOfStock && hasOptions && (
-          <Pressable onPress={onSelect} hitSlop={6} style={[styles.addBtnCompact, { backgroundColor: theme.tint }]}>
-            <Ionicons name="options-outline" size={14} color="#fff" style={styles.chipIcon} />
-            <ThemedText style={styles.addBtnText}>Seç</ThemedText>
+          <Pressable
+            onPress={onSelect}
+            hitSlop={8}
+            accessibilityLabel={`${product.name} seçeneklerini seç`}
+            style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
+          >
+            <Ionicons name="options-outline" size={18} color="#fff" />
           </Pressable>
         )}
         {!outOfStock && !hasOptions && qty === 0 && (
           <Pressable
             onPress={() => addItem(product, qtyStep(product.unit))}
-            hitSlop={6}
-            style={[styles.addBtnCompact, { backgroundColor: theme.tint }]}
+            hitSlop={8}
+            accessibilityLabel={`${product.name} sepete ekle`}
+            style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
           >
-            <Ionicons name="cart-outline" size={14} color="#fff" style={styles.chipIcon} />
-            <ThemedText style={styles.addBtnText}>Ekle</ThemedText>
+            <Ionicons name="add" size={22} color="#fff" />
           </Pressable>
         )}
       </View>
@@ -658,7 +679,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.two,
+    marginHorizontal: Spacing.three,
     marginTop: Spacing.two,
     marginBottom: Spacing.one,
     paddingHorizontal: Spacing.three,
@@ -667,16 +688,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionHeaderIcon: { marginRight: 6 },
-  grid: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.six },
-  // alignItems:'flex-start' olmazsa varsayılan 'stretch' iki kartı da
-  // birbirine eşit yüksekliğe zorluyor — bir kartın miktar satırı açılınca
-  // yanındaki de aynı boyda görünüyordu. Artık her kart kendi yüksekliğinde.
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three },
-  card: { flex: 1, borderRadius: 16, borderWidth: 1.5, padding: Spacing.two, paddingBottom: Spacing.two + 4, gap: 6 },
-  cardImageWrap: { height: 130, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  // Liste kenardan kenara; yatay satırlar kendi iç boşluğunu veriyor ki
+  // kartlar ekranın kenarına kadar kayabilsin.
+  grid: { paddingTop: Spacing.two, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.six },
+  // alignItems:'flex-start' olmazsa varsayılan 'stretch' kartları eşit
+  // yüksekliğe zorluyor — bir kartın miktar satırı açılınca diğerleri de
+  // uzuyordu. Her kart kendi yüksekliğinde.
+  hRow: { paddingHorizontal: Spacing.three, gap: Spacing.three, alignItems: 'flex-start' },
+  card: { width: CARD_WIDTH, borderRadius: 16, borderWidth: 1.5, padding: Spacing.two, paddingBottom: Spacing.two + 4, gap: 6 },
+  cardImageWrap: { height: 120, borderRadius: 12, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cardTitle: { marginTop: 4 },
   cardTitleBig: { fontSize: 16, lineHeight: 20 },
-  cardPriceBig: { fontSize: 19 },
+  cardPriceBig: { fontSize: 17, flexShrink: 1 },
   campaignLine: { fontWeight: '700' },
   // Fiyat + "Ekle" aynı satırda; "Ekle"ye basılınca aşağıda miktar seçici
   // açılıyor, bu ayraç sadece o zaman (fiyat satırıyla arasında) görünüyor.
@@ -695,15 +718,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  addBtnCompact: {
-    flexDirection: 'row',
-    borderRadius: 999,
-    height: 32,
-    paddingHorizontal: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  // Yatay satırdaki dar kartta fiyat tek satıra sığsın diye sadece ikonlu
+  // yuvarlak "+" (Uber Eats / Yemeksepeti tarzı).
+  addBtnRound: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   // Kartın kendi üzerinde miktar seçici — sepete eklendikten sonra "Ekle"
   // butonunun yerini alıyor (hedef sitedeki gibi). Parmakla rahat
   // dokunulabilsin diye butonlar en az ~32dp. Fiyat satırından ayrı, ince
