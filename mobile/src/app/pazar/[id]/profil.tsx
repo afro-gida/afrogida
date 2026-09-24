@@ -68,7 +68,7 @@ export default function AccountScreen() {
   ];
 
   const accountLinks: { label: string; icon: IoniconName; onPress?: () => void; danger?: boolean }[] = [
-    { label: 'Şifre Değiştir', icon: 'key-outline', onPress: () => router.push('/sifremi-unuttum') },
+    { label: 'Şifre Değiştir', icon: 'key-outline', onPress: () => router.push('/sifre-degistir') },
     { label: 'Hesabımı Sil', icon: 'trash-outline', onPress: () => setDeleteConfirmOpen(true), danger: true },
   ];
 

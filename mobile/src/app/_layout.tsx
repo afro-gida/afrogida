@@ -51,6 +51,16 @@ function RootLayoutInner() {
                     headerStyle: { backgroundColor: theme.authCard },
                   }}
                 />
+                <Stack.Screen
+                  name="sifre-degistir"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: true,
+                    title: 'Şifre Değiştir',
+                    ...headerOptions,
+                    headerStyle: { backgroundColor: theme.authCard },
+                  }}
+                />
               </Stack>
               <ContractGate />
               <StatusBar style="auto" />

@@ -35,6 +35,7 @@ type AuthContextValue = {
   }) => Promise<void>;
   login: (phone: string, password: string) => Promise<void>;
   resetPassword: (phone: string, otpCode: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   acceptContract: (documentCode: string, documentVersion: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<{ error?: string }>;
@@ -109,6 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post('/auth/reset-password', { phone, otp_code: otpCode, new_password: newPassword });
   }
 
+  /** Oturum açıkken şifre değiştirme — mevcut şifre sunucuda doğrulanır. */
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await api.post('/auth/password', { current_password: currentPassword, new_password: newPassword });
+  }
+
   async function acceptContract(documentCode: string, documentVersion: string) {
     await api.post('/contracts/accept', { document_code: documentCode, document_version: documentVersion });
     setPendingContracts((prev) => prev.filter((c) => c.document_code !== documentCode));
@@ -147,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, pendingContracts, sendOtp, register, login, resetPassword, acceptContract, logout, deleteAccount }}
+      value={{ user, token, loading, pendingContracts, sendOtp, register, login, resetPassword, changePassword, acceptContract, logout, deleteAccount }}
     >
       {children}
     </AuthContext.Provider>

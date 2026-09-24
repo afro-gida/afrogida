@@ -116,3 +116,24 @@ def test_delete_me_blocked_for_staff_roles(client, make_user, db):
     assert r.status_code == 403
     # silinmedi
     assert db.users.find_one({"user_id": uid}) is not None
+
+
+def test_change_password_requires_current(client, make_user):
+    """Oturum açıkken şifre değiştirme: telefon/SMS yok, mevcut şifre doğrulanır."""
+    import uuid
+    phone = "055" + str(uuid.uuid4().int)[:8]
+    uid, h = make_user(phone=phone)  # make_user şifresi: test1234
+
+    r = client.post("/api/auth/password", json={"current_password": "yanlis", "new_password": "yeni12345"}, headers=h)
+    assert r.status_code == 400
+    assert client.post("/api/auth/login", json={"phone": phone, "password": "yeni12345"}).status_code != 200
+
+    r = client.post("/api/auth/password", json={"current_password": "test1234", "new_password": "yeni12345"}, headers=h)
+    assert r.status_code == 200, r.text
+    assert client.post("/api/auth/login", json={"phone": phone, "password": "yeni12345"}).status_code == 200
+    assert client.post("/api/auth/login", json={"phone": phone, "password": "test1234"}).status_code != 200
+
+
+def test_change_password_requires_login(client):
+    r = client.post("/api/auth/password", json={"current_password": "a", "new_password": "yeni12345"})
+    assert r.status_code == 401
