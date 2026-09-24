@@ -18,7 +18,7 @@ import { fetchAddresses, addressServesMarket, type Address } from '@/lib/address
 import { fetchCoupons, validateCoupon, type Coupon, type CouponValidation } from '@/lib/coupons';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
-import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
+import { Spacing, withAlpha } from '@/constants/theme';
 import type { CartLine } from '@/lib/types';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
@@ -338,7 +338,7 @@ export default function CartScreen() {
 
       {lines.length === 0 ? (
         <View style={[styles.emptyWrap, { backgroundColor: theme.backgroundElement }]}>
-          <Ionicons name="cart-outline" size={60} color={IconGreen} />
+          <Ionicons name="cart-outline" size={60} color={theme.tint} />
           <ThemedText themeColor="textSecondary" style={styles.emptyText}>
             Sepetin boş. Ürünlere göz atarak alışverişe başlayabilirsin.
           </ThemedText>
@@ -411,7 +411,7 @@ export default function CartScreen() {
           {/* Teslimat türü */}
           <View style={styles.sectionBlock}>
             <View style={styles.labelRow}>
-              <Ionicons name="car-outline" size={23} color={IconGreen} />
+              <Ionicons name="car-outline" size={23} color={theme.tint} />
               <ThemedText type="smallBold">Teslimat Türü</ThemedText>
             </View>
             <View style={styles.toggleRow}>
@@ -427,7 +427,7 @@ export default function CartScreen() {
               <View style={{ marginTop: Spacing.one }}>
                 <View style={styles.addressHeaderRow}>
                   <View style={styles.labelRow}>
-                    <Ionicons name="location-outline" size={21} color={IconGreen} />
+                    <Ionicons name="location-outline" size={21} color={theme.tint} />
                     <ThemedText type="small" themeColor="textSecondary">Teslimat Adresi</ThemedText>
                   </View>
                   <Pressable onPress={() => router.push('/adreslerim')}>
@@ -486,7 +486,7 @@ export default function CartScreen() {
                 {!!market?.delivery_neighborhoods?.length && (
                   <View style={[styles.neighborhoodsBox, { borderColor: theme.tint, backgroundColor: cardBg }]}>
                     <View style={styles.labelRow}>
-                      <Ionicons name="location-outline" size={16} color={IconGreen} />
+                      <Ionicons name="location-outline" size={16} color={theme.tint} />
                       <ThemedText type="small" themeColor="tint" style={{ fontWeight: '700' }}>
                         Eve servis verilen mahalleler
                       </ThemedText>
@@ -503,7 +503,7 @@ export default function CartScreen() {
           {/* Ödeme yöntemi */}
           <View style={styles.sectionBlock}>
             <View style={styles.labelRow}>
-              <Ionicons name="card-outline" size={23} color={IconGreen} />
+              <Ionicons name="card-outline" size={23} color={theme.tint} />
               <ThemedText type="smallBold">Ödeme Yöntemi</ThemedText>
             </View>
             <View style={styles.toggleRow}>
@@ -539,7 +539,7 @@ export default function CartScreen() {
           {/* Kupon kullan */}
           <View style={styles.sectionBlock}>
             <View style={styles.labelRow}>
-              <Ionicons name="pricetag-outline" size={23} color={IconGreen} />
+              <Ionicons name="pricetag-outline" size={23} color={theme.tint} />
               <ThemedText type="smallBold">Kupon Kullan</ThemedText>
             </View>
             <View style={[styles.couponBox, { borderColor: theme.tint, backgroundColor: cardBg }]}>
@@ -547,7 +547,7 @@ export default function CartScreen() {
                 <ActivityIndicator color={theme.tint} />
               ) : appliedCoupon ? (
                 <>
-                  <Ionicons name="pricetag" size={16} color={IconGreen} />
+                  <Ionicons name="pricetag" size={16} color={theme.tint} />
                   <View style={styles.flex}>
                     <ThemedText type="small" style={{ fontWeight: '700' }}>{appliedCoupon.title}</ThemedText>
                     <ThemedText type="small" themeColor="tint">{formatMoney(appliedCoupon.discount)} ₺ indirim uygulandı</ThemedText>
@@ -558,7 +558,7 @@ export default function CartScreen() {
                 </>
               ) : (
                 <Pressable onPress={openCouponPicker} style={styles.couponRowPressable}>
-                  <Ionicons name="gift-outline" size={16} color={IconGreen} />
+                  <Ionicons name="gift-outline" size={16} color={theme.tint} />
                   <ThemedText type="small" style={styles.flex}>İndirim Kuponu Seç</ThemedText>
                   <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                 </Pressable>
@@ -663,7 +663,7 @@ export default function CartScreen() {
           {/* Teslim alma bilgisi: sabit/açıklayıcı metin, ayara bağlı değil. */}
           <View style={[styles.infoCard, { borderColor: theme.border, backgroundColor: withAlpha(theme.backgroundElement, 0.72) }]}>
             <View style={styles.labelRow}>
-              <Ionicons name={deliveryType === 'eve_servis' ? 'bicycle-outline' : 'storefront-outline'} size={23} color={IconGreen} />
+              <Ionicons name={deliveryType === 'eve_servis' ? 'bicycle-outline' : 'storefront-outline'} size={23} color={theme.tint} />
               <ThemedText type="smallBold">
                 {deliveryType === 'eve_servis' ? 'Teslimat Bilgisi' : 'Teslim Alma Bilgisi'}
               </ThemedText>
@@ -679,7 +679,7 @@ export default function CartScreen() {
           {deliveryType === 'eve_servis' && (
             <View style={[styles.prefsCard, { borderColor: theme.border, backgroundColor: withAlpha(theme.backgroundElement, 0.72) }]}>
               <View style={styles.labelRow}>
-                <Ionicons name="cube-outline" size={23} color={IconGreen} />
+                <Ionicons name="cube-outline" size={23} color={theme.tint} />
                 <ThemedText type="smallBold">Teslimat Tercihleri</ThemedText>
               </View>
               <CheckboxRow checked={noRing} onToggle={() => setNoRing((v) => !v)}>
@@ -825,7 +825,7 @@ function CouponPickerModal({
                 onPress={() => onSelect(c)}
                 style={[styles.couponListItem, { borderColor: theme.border, backgroundColor: cardBg }]}
               >
-                <Ionicons name="pricetag-outline" size={20} color={IconGreen} />
+                <Ionicons name="pricetag-outline" size={20} color={theme.tint} />
                 <View style={styles.flex}>
                   <ThemedText type="smallBold">{c.title}</ThemedText>
                   {!!c.description && (
