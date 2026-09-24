@@ -576,7 +576,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             accessibilityLabel={`${product.name} seçeneklerini seç`}
             style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
           >
-            <Ionicons name="options-outline" size={18} color="#fff" />
+            <Ionicons name="options-outline" size={15} color="#fff" />
           </Pressable>
         )}
         {!outOfStock && !hasOptions && qty === 0 && (
@@ -586,7 +586,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             accessibilityLabel={`${product.name} sepete ekle`}
             style={[styles.addBtnRound, { backgroundColor: theme.tint }]}
           >
-            <Ionicons name="add" size={22} color="#fff" />
+            <Ionicons name="add" size={18} color="#fff" />
           </Pressable>
         )}
       </View>
@@ -598,7 +598,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         <Animated.View
           style={{
             overflow: 'hidden',
-            height: qtyRowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 48] }),
+            height: qtyRowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 40] }),
             opacity: qtyRowAnim,
             transform: [{ translateY: qtyRowAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
           }}
@@ -610,7 +610,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
               hitSlop={6}
               style={[styles.qtyBtn, { backgroundColor: theme.tint }]}
             >
-              <Ionicons name="remove" size={22} color="#fff" />
+              <Ionicons name="remove" size={16} color="#fff" />
             </Pressable>
             <ThemedText type="smallBold" style={styles.qtyValue}>
               {formatQty(qty, product.unit)}
@@ -620,7 +620,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
               hitSlop={6}
               style={[styles.qtyBtn, { backgroundColor: theme.tint }]}
             >
-              <Ionicons name="add" size={22} color="#fff" />
+              <Ionicons name="add" size={16} color="#fff" />
             </Pressable>
           </View>
         </Animated.View>
@@ -720,13 +720,13 @@ const styles = StyleSheet.create({
   discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
   // Yatay satırdaki dar kartta fiyat tek satıra sığsın diye sadece ikonlu
   // yuvarlak "+" (Uber Eats / Yemeksepeti tarzı).
-  addBtnRound: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  addBtnRound: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   // Kartın kendi üzerinde miktar seçici — sepete eklendikten sonra "Ekle"
   // butonunun yerini alıyor (hedef sitedeki gibi). Parmakla rahat
   // dokunulabilsin diye butonlar en az ~32dp. Fiyat satırından ayrı, ince
   // bir çizgiyle bölünmüş kendi (tam genişlik) satırında duruyor.
-  qtyRowFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 6 },
-  qtyBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  qtyRowFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 4 },
+  qtyBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   qtyValue: { minWidth: 24, textAlign: 'center' },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two },
   // Sepette ürün varken alt menünün hemen üstünde yüzen onay çubuğu.
