@@ -291,7 +291,11 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
         raise HTTPException(status_code=400, detail=f"{_type_label} şu anda bu pazar için sipariş kabul saatleri dışında.")
 
     # Kapıda nakit ödeme (eve servis, kapıda nakit) pazar bazında kapatılabilir.
-    if payment_method == "cash_on_delivery" and not _msetting("kapida_nakit_odeme_enabled", True):
+    # Eve serviste "pay_at_counter" de fiilen kapıda ödemedir (mobil uygulama
+    # "Kapıda Ödeme" için bunu gönderiyor) — kural onu da kapsamalı.
+    _is_door_payment = payment_method == "cash_on_delivery" or (
+        delivery_type == "eve_servis" and payment_method == "pay_at_counter")
+    if _is_door_payment and not _msetting("kapida_nakit_odeme_enabled", True):
         raise HTTPException(status_code=400, detail="Bu pazarda kapıda nakit ödeme kabul edilmiyor. Lütfen online ödeme seçin.")
 
     tamper = []

@@ -54,6 +54,18 @@ export type Market = {
   active_eve_servis: boolean;
   active_gel_al: boolean;
   delivery_neighborhoods?: string[];
+  // Pazar bazlı sipariş ayarları — sunucu siparişi BUNLARLA hesaplar
+  // (backend/services/orders.py::_prepare_order_payload, models.Market).
+  eve_servis_min_tutar?: number;
+  eve_servis_saati?: string;
+  kapida_nakit_odeme_enabled?: boolean;
+  nakit_tezgah_limit_enabled?: boolean;
+  nakit_tezgah_maksimum_tutari?: number;
+  gel_al_min_tutar?: number;
+  teslimat_ucreti?: number;
+  ucretsiz_teslimat_alt_limiti?: number;
+  pazar_saati?: string;
+  gel_al_saati?: string;
 };
 
 export type CartLine = {

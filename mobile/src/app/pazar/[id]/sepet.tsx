@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useMarkets } from '@/lib/markets-context';
 import { createOrder, type PaymentMethod } from '@/lib/orders';
-import { fetchSettings, type StoreSettings } from '@/lib/settings';
+import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/settings';
 import { fetchAddresses, addressServesMarket, type Address } from '@/lib/addresses';
 import { fetchCoupons, validateCoupon, type Coupon, type CouponValidation } from '@/lib/coupons';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
@@ -71,7 +71,8 @@ export default function CartScreen() {
   const [editingLine, setEditingLine] = useState<CartLine | null>(null);
   const { markets } = useMarkets();
   const market = markets.find((m) => m.id === id);
-  const [settings, setSettings] = useState<StoreSettings>({});
+  const [globalSettings, setGlobalSettings] = useState<StoreSettings>({});
+  const settings = useMemo(() => withMarketSettings(globalSettings, market), [globalSettings, market]);
   // Ürün listesi açılışta gizli — "Ürünleri Göster" ile açılıyor.
   const [productsExpanded, setProductsExpanded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pay_at_counter');
@@ -103,7 +104,7 @@ export default function CartScreen() {
   }, [paymentMethod]);
 
   useEffect(() => {
-    fetchSettings().then(setSettings);
+    fetchSettings().then(setGlobalSettings);
   }, []);
 
   // useEffect DEĞİL useFocusEffect: kullanıcı /adreslerim'de yeni adres
@@ -219,10 +220,13 @@ export default function CartScreen() {
   // zaten bunu reddediyor, burada önceden gösterip ödeme yöntemini online'a
   // kilitliyoruz.
   const cashLimitExceeded = !!(settings.cash_payment_limit_enabled && settings.cash_payment_max_amount && total > settings.cash_payment_max_amount);
+  // Pazar kapıda nakit ödemeyi kapatmışsa Eve Servis'te sadece online ödeme.
+  const doorPaymentDisabled = deliveryType === 'eve_servis' && market?.kapida_nakit_odeme_enabled === false;
+  const counterPaymentBlocked = cashLimitExceeded || doorPaymentDisabled;
 
   useEffect(() => {
-    if (cashLimitExceeded && paymentMethod === 'pay_at_counter') setPaymentMethod('online_card');
-  }, [cashLimitExceeded, paymentMethod]);
+    if (counterPaymentBlocked && paymentMethod === 'pay_at_counter') setPaymentMethod('online_card');
+  }, [counterPaymentBlocked, paymentMethod]);
 
   // Koşullar tamamlanmadıysa "Sipariş Oluştur" butonu sönük/pasif görünür
   // (kullanıcı talimatı) — giriş yapılmamışsa bu kural işlemiyor, buton
@@ -275,6 +279,7 @@ export default function CartScreen() {
         selected_options: l.selectedOptions?.map((o) => ({ title: o.title, label: o.label })),
       })),
       {
+        marketId: id,
         deliveryType,
         paymentMethod,
         address,
@@ -503,12 +508,16 @@ export default function CartScreen() {
               <ToggleBtn
                 label={deliveryType === 'eve_servis' ? 'Kapıda Ödeme' : 'Tezgahta Nakit/Pos'}
                 active={paymentMethod === 'pay_at_counter'}
-                disabled={cashLimitExceeded}
+                disabled={counterPaymentBlocked}
                 onPress={() => setPaymentMethod('pay_at_counter')}
               />
               <ToggleBtn label="Online Kredi Kartı" active={paymentMethod === 'online_card'} onPress={() => setPaymentMethod('online_card')} />
             </View>
-            {cashLimitExceeded ? (
+            {doorPaymentDisabled ? (
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 4 }}>
+                Bu pazarda kapıda ödeme kapalı, sadece online ödeme geçerlidir.
+              </ThemedText>
+            ) : cashLimitExceeded ? (
               <ThemedText type="small" themeColor="tint" style={{ marginTop: 4, fontWeight: '700' }}>
                 Kapıda Nakit / Tezgahta Nakit/Pos Limiti{'\n'}
                 <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '400' }}>

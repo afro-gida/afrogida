@@ -2,7 +2,10 @@ import { api, ApiError } from '@/lib/api';
 import { SAMPLE_PRODUCTS } from '@/data/sample';
 import type { Product } from '@/lib/types';
 
-/** Backend'de gel_al_price/eve_servis_price girilmemişse (0) temel `price` alanına düşer. */
+/** Sunucu tahsilatta ÖNCE `price`'ı kullanır, sadece o yoksa/0 ise
+ *  gel_al_price/eve_servis_price'a düşer (backend/services/orders.py) —
+ *  ekranda da aynı sıra. Tedarikçi fiyat değiştirince sadece `price`
+ *  güncelleniyor; gel_al_price'ı öne almak ekranda eski fiyatı gösteriyordu. */
 function normalizeProduct(raw: any): Product {
   const base = typeof raw.price === 'number' && raw.price > 0 ? raw.price : null;
   return {
@@ -11,8 +14,8 @@ function normalizeProduct(raw: any): Product {
     category: raw.category,
     subcategory: raw.subcategory,
     unit: raw.unit,
-    gel_al_price: raw.gel_al_price || base,
-    eve_servis_price: raw.eve_servis_price || base,
+    gel_al_price: base ?? raw.gel_al_price,
+    eve_servis_price: base ?? raw.eve_servis_price,
     image_url: raw.image_url,
     description: raw.description,
     in_stock: !!raw.in_stock,

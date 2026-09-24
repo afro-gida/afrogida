@@ -55,6 +55,9 @@ export type PaymentMethod = 'pay_at_counter' | 'online_card';
 export async function createOrder(
   items: { id: string; qty: number; selected_options?: { title: string; label: string }[] }[],
   opts: {
+    /** Siparişin verildiği pazar — sunucu teslimat ücreti, minimum sepet,
+     *  nakit limiti ve saat kısıtlarını bu pazarın ayarlarıyla uygular. */
+    marketId: string;
     deliveryType: DeliveryType;
     paymentMethod: PaymentMethod;
     address?: string;
@@ -75,6 +78,7 @@ export async function createOrder(
     const path = opts.paymentMethod === 'online_card' ? '/payments/init' : '/orders';
     const res = await api.post<{ success: boolean; tx_id: string; payment_url?: string }>(path, {
       items,
+      market_id: opts.marketId,
       delivery_type: opts.deliveryType,
       payment_method: opts.paymentMethod,
       ...(opts.address ? { address: opts.address } : {}),

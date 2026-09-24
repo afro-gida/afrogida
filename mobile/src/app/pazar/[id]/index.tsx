@@ -13,7 +13,7 @@ import { useMarkets } from '@/lib/markets-context';
 import { useCart } from '@/lib/cart-context';
 import { fetchProducts } from '@/lib/products';
 import { ProductOptionsModal } from '@/components/product-options-modal';
-import { fetchSettings, type StoreSettings } from '@/lib/settings';
+import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/settings';
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
@@ -102,7 +102,8 @@ export default function MarketProductsScreen() {
       refetchMarkets();
     }
   }, [market, marketsLoading, id]);
-  const [settings, setSettings] = useState<StoreSettings>({});
+  const [globalSettings, setGlobalSettings] = useState<StoreSettings>({});
+  const settings = useMemo(() => withMarketSettings(globalSettings, market), [globalSettings, market]);
   const [catalog, setCatalog] = useState<CatalogConfig>({});
   const sectionListRef = useRef<SectionList<Product[], ProductSection>>(null);
   const { lines, totalQty, totalPrice } = useCart();
@@ -131,7 +132,7 @@ export default function MarketProductsScreen() {
   }
 
   useEffect(() => {
-    fetchSettings().then(setSettings);
+    fetchSettings().then(setGlobalSettings);
     fetchCatalogConfig().then(setCatalog);
   }, []);
 

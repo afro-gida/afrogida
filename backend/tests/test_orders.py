@@ -256,6 +256,17 @@ def test_kapida_nakit_disabled_rejects_cash_on_delivery(client, make_user, produ
     assert "nakit" in r.text.lower()
 
 
+def test_kapida_nakit_disabled_rejects_eve_servis_pay_at_counter(client, make_user, product, market_no_cash_on_delivery):
+    """Mobil uygulama eve serviste 'Kapıda Ödeme' için pay_at_counter gönderiyor —
+    kapıda nakit kapalıysa bu da reddedilmeli."""
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}],
+               market_id="market_test_no_cod", delivery_type="eve_servis",
+               address="Test Mah. No:1", payment_method="pay_at_counter")
+    assert r.status_code == 400
+    assert "nakit" in r.text.lower()
+
+
 def test_kapida_nakit_disabled_does_not_block_pay_at_counter(client, make_user, product, market_no_cash_on_delivery):
     """kapida_nakit_odeme_enabled SADECE 'kapıda nakit' (eve servis) ödemesini
     kapatır — tezgahta ödeme (gel_al) ayrı bir alan (nakit_tezgah_*), etkilenmez."""
