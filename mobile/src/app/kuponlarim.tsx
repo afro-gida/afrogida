@@ -52,7 +52,7 @@ export default function MyCouponsScreen() {
           <ThemedText type="subtitle">İndirim Kuponları</ThemedText>
           <ThemedText themeColor="textSecondary" type="small">Sadece online ödemelerde geçerlidir</ThemedText>
         </View>
-        <View style={[styles.logoBadge, { backgroundColor: withAlpha('#14B67E', 0.2), borderColor: theme.tint }]}>
+        <View style={[styles.logoBadge, { backgroundColor: withAlpha(theme.tint, 0.2), borderColor: theme.tint }]}>
           <Ionicons name="leaf" size={20} color={IconGreen} />
         </View>
       </View>

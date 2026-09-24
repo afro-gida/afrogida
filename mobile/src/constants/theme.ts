@@ -12,23 +12,25 @@ import { Platform } from 'react-native';
  * (frontend/index.html içindeki buton/tema renkleri).
  */
 export const Colors = {
+  // Tema kuralı (kullanıcı talimatı): AÇIK tema = turuncu + krem tonları,
+  // KOYU tema = siyah + yeşil. Açık temada nane yeşili yüzey/yeşil yazı yok.
   light: {
-    text: '#0d2b1e',
-    background: '#ffffff',
-    backgroundElement: '#eafff4',
-    backgroundSelected: '#cdeee0',
-    textSecondary: '#4b6358',
+    text: '#2e1d0e',
+    background: '#fffaf2',
+    backgroundElement: '#fdf0dc',
+    backgroundSelected: '#f8dcb4',
+    textSecondary: '#7a5a3c',
     // Gerçek sitede açık modun aksan rengi TURUNCU'dur (rgb(251,140,60)),
     // koyu modda YEŞİL'dir — bkz. "Duvar Kağıdı Sistemi" dökümanı, madde 3.
     tint: '#fb8c3c',
-    tintSoft: '#CCE6D1',
-    border: '#cdeee0',
+    tintSoft: '#fde2c8',
+    border: '#f1d6b0',
     danger: '#c0392b',
     accentOrange: '#f97316',
     wallpaperBg: '#e2b676',
     // Giriş/kayıt kartı: açık modda ayrı bir "siyah kart" tasarımı yok,
     // normal kart rengiyle aynı kalsın.
-    authCard: '#eafff4',
+    authCard: '#fdf0dc',
     // Yazı kutuları: uygulamanın geri kalanında (bkz. adreslerim.tsx) zaten
     // kullanılan yarı saydam koyulaştırma - kartın üstüne oturunca hep
     // aynı, tutarlı tonu verir.

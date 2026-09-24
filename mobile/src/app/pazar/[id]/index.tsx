@@ -429,9 +429,9 @@ export default function MarketProductsScreen() {
               styles.confirmBar,
               {
                 bottom: Spacing.three + insets.bottom + 60 + Spacing.two,
-                backgroundColor: withAlpha('#14B67E', 0.75),
+                backgroundColor: withAlpha(theme.tint, 0.75),
                 borderWidth: 1,
-                borderColor: withAlpha('#14B67E', 0.9),
+                borderColor: withAlpha(theme.tint, 0.9),
               },
               Platform.OS === 'web' ? ({ backdropFilter: 'blur(14px) saturate(1.3)' } as any) : null,
             ]}
@@ -522,7 +522,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         {/* Özelleştirmesi olan ürünler için resmin üzerinde yeşil "Seç"
             rozeti — kullanıcı daha dokunmadan seçim gerektiğini görüyor. */}
         {hasOptions && (
-          <View style={styles.selectBadge}>
+          <View style={[styles.selectBadge, { backgroundColor: theme.tint }]}>
             <ThemedText type="small" style={styles.selectBadgeText}>
               Seç
             </ThemedText>
@@ -753,10 +753,11 @@ const styles = StyleSheet.create({
   // Minimum sepet tutarı / ücretsiz teslimat için kalan tutar aşamalı satırı.
   confirmProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   confirmProgress: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
-  // Özelleştirmesi olan ürünün resminde duran yeşil "Seç" rozeti.
+  // Özelleştirmesi olan ürünün resminde duran "Seç" rozeti (renk: theme.tint —
+  // açık temada turuncu, koyu temada yeşil).
   selectBadge: {
     position: 'absolute', top: Spacing.one, left: Spacing.one,
-    backgroundColor: '#14B67E', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
   selectBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
 });

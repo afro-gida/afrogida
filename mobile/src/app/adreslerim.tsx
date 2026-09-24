@@ -338,7 +338,7 @@ function AddressFormModal({
           )}
 
           <Pressable
-            style={[styles.saveBtn, { backgroundColor: '#14B67E' }]}
+            style={[styles.saveBtn, { backgroundColor: theme.tint }]}
             onPress={handleSave}
             disabled={submitting}
           >

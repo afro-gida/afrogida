@@ -1,6 +1,11 @@
-import { ImageBackground, Platform, StyleSheet, useColorScheme, View, type ViewStyle } from 'react-native';
+import { ImageBackground, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
+// react-native'in useColorScheme'i DEĞİL: bu hook kullanıcının Profil'den
+// seçtiği Açık/Koyu tercihini de hesaba katıyor. Sistem temasına bakınca
+// tercih sistemden farklıysa duvar kağıdı kartlarla uyuşmuyordu (ör. koyu
+// duvar kağıdı üstünde açık tema kartları).
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { MaxContentWidth } from '@/constants/theme';
 

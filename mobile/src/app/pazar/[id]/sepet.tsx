@@ -581,7 +581,7 @@ export default function CartScreen() {
                 {deliveryType === 'eve_servis' ? 'Teslimat Saati' : 'Gel-Al Saati'}
               </ThemedText>
               <Pressable onPress={() => setScheduleOpen((v) => !v)} style={styles.timeValueRow} hitSlop={6}>
-                <ThemedText type="smallBold" style={[styles.summaryText, { color: '#fff' }]}>
+                <ThemedText type="smallBold" style={styles.summaryText}>
                   {selectedSlot ? `${selectedSlot.start}-${selectedSlot.end}` : 'Şimdi'}
                 </ThemedText>
                 <Ionicons name={scheduleOpen ? 'chevron-up' : 'chevron-down'} size={12} color={theme.tint} />
@@ -729,7 +729,7 @@ export default function CartScreen() {
             <Pressable
               style={[
                 styles.completeBtn,
-                { backgroundColor: canSubmit ? '#14B67E' : withAlpha('#14B67E', 0.35) },
+                { backgroundColor: canSubmit ? theme.tint : withAlpha(theme.tint, 0.35) },
               ]}
               onPress={handleCheckout}
               disabled={!canSubmit}
