@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from core.config import ORDERED_CATEGORIES
 from core.db import db
@@ -114,10 +116,34 @@ async def get_product(product_id: str):
     return product
 
 
+# Tedarikçi sadece KENDİ fiyatını (supplier_price = alış/tezgah fiyatı) görür.
+# Müşteriye satış fiyatı ve platform kâr marjı tedarikçiye gösterilmez
+# (bkz. docs/YENI-MIMARI-KARARLAR.md §3.1 "Fiyat ve para yapısı").
+_SUPPLIER_HIDDEN_PRODUCT_FIELDS = (
+    "sale_price", "profit_margin_amount",
+    "price", "gel_al_price", "eve_servis_price",
+)
+# Tedarikçinin gönderse bile değiştiremeyeceği müşteri fiyatı alanları;
+# müşteri fiyatı sadece supplier_price + kâr marjından hesaplanır.
+_SUPPLIER_READONLY_PRICE_FIELDS = ("price", "gel_al_price", "eve_servis_price")
+
+
+def _supplier_view(product: dict) -> dict:
+    return {k: v for k, v in product.items() if k not in _SUPPLIER_HIDDEN_PRODUCT_FIELDS}
+
+
+def _supplier_response(product) -> JSONResponse:
+    """response_model=Product olan uçlarda tedarikçiye alan gizleyerek yanıt ver
+    (OpenAPI şeması değişmesin diye response_model'e dokunulmuyor)."""
+    doc = product.dict() if hasattr(product, "dict") else dict(product)
+    return JSONResponse(jsonable_encoder(_supplier_view(doc)))
+
+
 @router.get("/admin/products")
 async def admin_list_products(staff=Depends(get_current_staff)):
     query = {}
-    if is_supplier_role(staff):
+    is_supplier = is_supplier_role(staff)
+    if is_supplier:
         sg = get_user_supplier_group(staff)
         if not sg:
             return []
@@ -129,6 +155,8 @@ async def admin_list_products(staff=Depends(get_current_staff)):
         cat_order.get(p.get("category"), len(cat_order)),
         (p.get("name") or "").lower(),
     ))
+    if is_supplier:
+        return [_supplier_view(p) for p in products]
     return products
 
 
@@ -147,6 +175,16 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
             raise HTTPException(status_code=403, detail="Hesabınıza tedarikçi atanmamış")
         await _afro_require_supplier_contract(staff)
         data["supplier_group"] = sg
+        # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatı
+        # supplier_price + kâr marjı. Yeni üründe marj henüz 0 — admin belirler.
+        supp_price = data.get("supplier_price") or 0
+        data["gel_al_price"] = 0
+        data["eve_servis_price"] = None
+        data["profit_margin_amount"] = 0
+        data["sale_price"] = supp_price
+        data["price"] = supp_price
+        data["price_updated_at"] = now_utc()
+        data["price_updated_by"] = "supplier"
     if not data.get("price"):
         data["price"] = data.get("gel_al_price") or 0
     # sale_price gönderilmemişse müşteri fiyatı (price) ile başlat
@@ -155,6 +193,8 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
     product = Product(**data)
     await db.products.insert_one(product.dict())
     await _insert_log("log_admin", {"admin_id": staff["user_id"], "admin_name": staff.get("name",""), "action": "product_created", "target_type": "product", "target_id": product.id, "change_details": {"field": "new_product", "old_value": None, "new_value": {"name": data.get("name"), "sale_price": data.get("sale_price")}}, "admin_note": ""}, request)
+    if is_supplier_role(staff):
+        return _supplier_response(product)
     return product
 
 
@@ -202,13 +242,20 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             "profit_margin_amount", "sale_price", "price_updated_by",
             "campaign_discount_percent", "campaign_min_qty", "quality",
             "hidden", "active_gel_al", "active_eve_servis",
+            "supplier_price_locked_until", "price_updated_at",
+            *_SUPPLIER_READONLY_PRICE_FIELDS,
         ]
         for f in protected_from_supplier:
             if f in updates:
                 updates[f] = existing.get(f)  # mevcut değeri koru
-        
-        # supplier_price güncelleniyorsa sale_price'ı yeniden hesapla
-        if "supplier_price" in sent:
+
+        # supplier_price gerçekten değişiyorsa sale_price'ı yeniden hesapla.
+        # Aynı değer tekrar gönderildiyse (form her kayıtta tüm alanları
+        # yolluyor) fiyat değişikliği sayılmaz, günlük kilide takılmaz.
+        supp_changed = "supplier_price" in sent and (
+            (sent.get("supplier_price") or 0) != (existing.get("supplier_price") or 0)
+        )
+        if supp_changed:
             # Fiyat kilidi kontrolü
             locked_until = existing.get("supplier_price_locked_until")
             if locked_until:
@@ -218,6 +265,9 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
                         locked_until = datetime.fromisoformat(locked_until.replace("Z", "+00:00"))
                     except:
                         locked_until = None
+                # Mongo tarihleri tz'siz (naive, UTC) döner -> UTC olarak işaretle
+                if locked_until and locked_until.tzinfo is None:
+                    locked_until = locked_until.replace(tzinfo=timezone.utc)
                 # Kilit hâlâ geçerliyse engelle
                 if locked_until and locked_until > now_utc():
                     raise HTTPException(
@@ -295,6 +345,8 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             _pchanged.append({"field": _pf, "old_value": _pov, "new_value": _pnv})
     if _pchanged:
         await _insert_log("log_admin", {"admin_id": staff["user_id"], "admin_name": staff.get("name",""), "action": "product_updated", "target_type": "product", "target_id": product_id, "change_details": _pchanged[0] if len(_pchanged)==1 else {"fields": _pchanged}, "admin_note": ""}, request)
+    if is_supplier:
+        return _supplier_response(product)
     return product
 
 

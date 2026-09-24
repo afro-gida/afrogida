@@ -15,7 +15,9 @@ interface Product {
   category: string; // alt kategori (ör. "Domates")
   subcategory?: string; // ana kategori (ör. "Sebze")
   unit: string;
-  price?: number | null;
+  // Tedarikçi sadece kendi (alış/tezgah) fiyatını görür; müşteri fiyatı ve kâr
+  // marjı sunucuda hesaplanır ve bu uca hiç gelmez.
+  supplier_price?: number | null;
   in_stock: boolean;
   active: boolean;
 }
@@ -88,7 +90,7 @@ export default function UrunlerimScreen() {
       mainCategory,
       leafCategory: p.category,
       unit: p.unit,
-      price: p.price != null ? String(p.price) : '',
+      price: p.supplier_price != null ? String(p.supplier_price) : '',
       in_stock: p.in_stock,
     });
     setFormError('');
@@ -107,8 +109,7 @@ export default function UrunlerimScreen() {
       category: form.leafCategory,
       subcategory: form.mainCategory,
       unit: form.unit,
-      price: form.price === '' ? 0 : Number(form.price),
-      sale_price: form.price === '' ? 0 : Number(form.price),
+      supplier_price: form.price === '' ? 0 : Number(form.price.replace(',', '.')),
       in_stock: form.in_stock,
       active: true,
     };
@@ -196,7 +197,7 @@ export default function UrunlerimScreen() {
                 </Pressable>
               ))}
             </View>
-            <ThemedText type="small" themeColor="textSecondary">Fiyat (₺)</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">Fiyatım (₺)</ThemedText>
             <TextInput
               value={form.price}
               onChangeText={(v) => setForm((f) => ({ ...f, price: v }))}
@@ -220,7 +221,7 @@ export default function UrunlerimScreen() {
               <View style={{ flex: 1 }}>
                 <ThemedText type="smallBold">{p.name}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {p.subcategory ?? '—'} › {p.category} · {p.unit} · ₺{p.price ?? 0}
+                  {p.subcategory ?? '—'} › {p.category} · {p.unit} · ₺{p.supplier_price ?? 0}
                 </ThemedText>
                 {!p.in_stock && <ThemedText type="small" themeColor="danger">Stok Yok</ThemedText>}
               </View>
