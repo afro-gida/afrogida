@@ -17,7 +17,7 @@ import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/set
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
-import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
+import { Spacing, withAlpha } from '@/constants/theme';
 import type { IoniconName } from '@/components/icon-badge';
 import type { Product } from '@/lib/types';
 
@@ -274,7 +274,7 @@ export default function MarketProductsScreen() {
           contentContainerStyle={styles.infoRow}
           renderItem={({ item }) => (
             <View style={[styles.infoPill, { backgroundColor: scheme === 'dark' ? OVERLAY_BG_DARK : OVERLAY_BG_LIGHT, borderColor: theme.tint }]}>
-              <Ionicons name={item.icon} size={15} color={IconGreen} />
+              <Ionicons name={item.icon} size={15} color={theme.tint} />
               <ThemedText type="small" numberOfLines={1}>
                 {item.label}
               </ThemedText>
@@ -309,7 +309,7 @@ export default function MarketProductsScreen() {
               ]}
             >
               {section.key === DISCOUNT_SECTION_KEY && (
-                <Ionicons name="pricetag-outline" size={21} color={IconGreen} style={styles.sectionHeaderIcon} />
+                <Ionicons name="pricetag-outline" size={21} color={theme.tint} style={styles.sectionHeaderIcon} />
               )}
               <ThemedText type="smallBold">{section.title}</ThemedText>
             </View>
@@ -510,7 +510,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <Ionicons name="leaf-outline" size={54} color={IconGreen} />
+          <Ionicons name="leaf-outline" size={54} color={theme.tint} />
         )}
         {outOfStock && (
           <View style={styles.outOfStockBadge}>

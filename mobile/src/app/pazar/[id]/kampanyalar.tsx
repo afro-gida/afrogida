@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchCampaigns } from '@/lib/campaigns';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import type { Campaign } from '@/lib/types';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
@@ -69,7 +69,7 @@ export default function CampaignsScreen() {
               </ThemedText>
               {item.members_only && (
                 <View style={styles.membersRow}>
-                  <Ionicons name="person-outline" size={20} color={IconGreen} />
+                  <Ionicons name="person-outline" size={20} color={theme.tint} />
                   <ThemedText themeColor="tint" type="small">
                     Üyelere özel
                   </ThemedText>

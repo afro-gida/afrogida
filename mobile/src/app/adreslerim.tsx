@@ -16,7 +16,7 @@ import {
   type Address,
   type AddressInput,
 } from '@/lib/addresses';
-import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
+import { Spacing, withAlpha } from '@/constants/theme';
 
 const TITLE_OPTIONS = ['Ev', 'İş', 'Diğer'];
 
@@ -105,7 +105,7 @@ export default function AddressesScreen() {
           )}
           {addresses.length === 0 && !error && (
             <View style={[styles.emptyWrap, { backgroundColor: cardBg, borderColor: theme.border }]}>
-              <Ionicons name="location-outline" size={54} color={IconGreen} />
+              <Ionicons name="location-outline" size={54} color={theme.tint} />
               <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 Henüz kayıtlı adresin yok.
               </ThemedText>
@@ -259,7 +259,7 @@ function AddressFormModal({
           {/* Google Haritalar API anahtarı henüz tanımlanmadığı için harita
               ile konum seçme şimdilik yok — adres elle giriliyor. */}
           <View style={styles.labelRow}>
-            <Ionicons name="location-outline" size={21} color={IconGreen} />
+            <Ionicons name="location-outline" size={21} color={theme.tint} />
             <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
               Haritadan konum seçme yakında eklenecek — şimdilik adresi elle gir.
             </ThemedText>

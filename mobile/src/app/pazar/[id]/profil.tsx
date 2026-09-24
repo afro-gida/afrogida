@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { useThemePreference, type ThemePreference } from '@/lib/theme-preference';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 // Butonlar dolu yeşil kutu değil, siyah zemin + ince yeşil çerçeve
 // (kullanıcı talimatı, bkz. referans görsel).
@@ -121,7 +121,7 @@ export default function AccountScreen() {
               disabled={!l.onPress}
               style={[styles.linkRow, i < links.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
             >
-              <Ionicons name={l.icon} size={22} color={IconGreen} />
+              <Ionicons name={l.icon} size={22} color={theme.tint} />
               <ThemedText style={styles.flex}>{l.label}</ThemedText>
               {l.onPress && <ThemedText themeColor="textSecondary">›</ThemedText>}
             </Pressable>
@@ -140,7 +140,7 @@ export default function AccountScreen() {
                 onPress={() => setPreference(opt.value)}
                 style={[styles.linkRow, i < THEME_OPTIONS.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
               >
-                <Ionicons name={opt.icon} size={20} color={IconGreen} />
+                <Ionicons name={opt.icon} size={20} color={theme.tint} />
                 <ThemedText style={styles.flex}>{opt.label}</ThemedText>
                 <View style={[styles.radioOuter, { borderColor: active ? theme.tint : theme.border }]}>
                   {active && <View style={[styles.radioInner, { backgroundColor: theme.tint }]} />}
@@ -162,7 +162,7 @@ export default function AccountScreen() {
                   onPress={l.onPress}
                   style={[styles.linkRow, i < accountLinks.length - 1 && { borderBottomWidth: 1, borderColor: theme.border }]}
                 >
-                  <Ionicons name={l.icon} size={22} color={l.danger ? theme.danger : IconGreen} />
+                  <Ionicons name={l.icon} size={22} color={l.danger ? theme.danger : theme.tint} />
                   <ThemedText style={styles.flex} themeColor={l.danger ? 'danger' : undefined}>{l.label}</ThemedText>
                   <ThemedText themeColor={l.danger ? 'danger' : 'textSecondary'}>›</ThemedText>
                 </Pressable>

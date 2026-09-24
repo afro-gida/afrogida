@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { fetchOrders } from '@/lib/orders';
 import { formatMoney } from '@/lib/format';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
@@ -64,7 +64,7 @@ export default function OrdersScreen() {
 
       {!authLoading && !user ? (
         <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
-          <Ionicons name="lock-closed-outline" size={48} color={IconGreen} />
+          <Ionicons name="lock-closed-outline" size={48} color={theme.tint} />
           <ThemedText themeColor="textSecondary" style={styles.emptyText}>
             Siparişlerini görmek için giriş yapmalısın.
           </ThemedText>

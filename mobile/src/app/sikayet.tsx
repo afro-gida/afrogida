@@ -9,7 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { submitComplaint } from '@/lib/complaints';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 export default function ComplaintScreen() {
   const theme = useTheme();
@@ -59,7 +59,7 @@ export default function ComplaintScreen() {
         </View>
       ) : sent ? (
         <View style={[styles.card, { backgroundColor: theme.tintSoft, alignItems: 'center', gap: Spacing.one }]}>
-          <Ionicons name="checkmark-circle" size={40} color={IconGreen} />
+          <Ionicons name="checkmark-circle" size={40} color={theme.tint} />
           <ThemedText type="smallBold">Mesajın iletildi</ThemedText>
           <ThemedText themeColor="textSecondary" type="small" style={{ textAlign: 'center' }}>
             Şikayet ve önerin ekibimize ulaştı, en kısa sürede değerlendireceğiz.

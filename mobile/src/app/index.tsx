@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { useMarkets } from '@/lib/markets-context';
 import { fetchSettings } from '@/lib/settings';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import type { Market } from '@/lib/types';
 
 const WALLPAPER_CARD_LIGHT = require('@/assets/brand/wallpaper-light.jpg');
@@ -160,12 +160,12 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
           </Pressable>
           {mapUrl ? (
             <Pressable style={[styles.actionBtnOutline, { borderColor: c.outline }]} onPress={() => Linking.openURL(mapUrl)}>
-              <Ionicons name="location-outline" size={21} color={IconGreen} />
+              <Ionicons name="location-outline" size={21} color={theme.tint} />
               <ThemedText type="small" style={{ color: c.text }}>Konum</ThemedText>
             </Pressable>
           ) : (
             <View style={[styles.actionBtnOutline, { borderColor: c.outline }]}>
-              <Ionicons name="location-outline" size={21} color={IconGreen} />
+              <Ionicons name="location-outline" size={21} color={theme.tint} />
               <ThemedText type="small" style={{ color: c.muted }}>
                 Konum
               </ThemedText>
@@ -179,7 +179,7 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
         <View style={styles.modalCenterWrap} pointerEvents="box-none">
           <View style={[styles.neighborhoodsBox, { backgroundColor: theme.background, borderColor: theme.tint }]}>
             <View style={styles.neighborhoodsHeaderRow}>
-              <Ionicons name="location-outline" size={20} color={IconGreen} />
+              <Ionicons name="location-outline" size={20} color={theme.tint} />
               <View style={styles.flex}>
                 <ThemedText type="smallBold">Evlere Servisimiz Olan Mahalleler</ThemedText>
                 {!!market.location && (
@@ -195,7 +195,7 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
                 <View style={styles.neighborhoodsChipsWrap}>
                   {market.delivery_neighborhoods.map((n) => (
                     <View key={n} style={[styles.neighborhoodChip, { borderColor: theme.tint }]}>
-                      <Ionicons name="checkmark-circle" size={14} color={IconGreen} />
+                      <Ionicons name="checkmark-circle" size={14} color={theme.tint} />
                       <ThemedText type="small">{n}</ThemedText>
                     </View>
                   ))}

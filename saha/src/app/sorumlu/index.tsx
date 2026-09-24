@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError } from '@/lib/api';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 interface Market {
   id: string;
@@ -62,7 +62,7 @@ export default function SorumluHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/siparisler')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="receipt-outline" size={20} color={IconGreen} />
+            <Ionicons name="receipt-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Sipariş Takip</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki siparişleri gör</ThemedText>
@@ -70,7 +70,7 @@ export default function SorumluHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/tedarikciler')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="storefront-outline" size={20} color={IconGreen} />
+            <Ionicons name="storefront-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Tedarikçiler</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki tedarikçileri ve ürünlerini gör</ThemedText>
@@ -78,7 +78,7 @@ export default function SorumluHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/tedarikci-ekle')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="add-circle-outline" size={20} color={IconGreen} />
+            <Ionicons name="add-circle-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Tedarikçi Ekle / Düzenle</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Pazara tedarikçi ata veya kaldır</ThemedText>
@@ -86,7 +86,7 @@ export default function SorumluHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/kuryeler')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="bicycle-outline" size={20} color={IconGreen} />
+            <Ionicons name="bicycle-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Kuryeler</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki kuryeleri gör</ThemedText>

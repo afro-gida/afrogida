@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { API_BASE_URL } from '@/lib/api';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
@@ -88,7 +88,7 @@ export default function TedarikciHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/urunlerim')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="cube-outline" size={20} color={IconGreen} />
+            <Ionicons name="cube-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Ürünlerim</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Ürün ekle, fiyat/stok güncelle</ThemedText>
@@ -96,7 +96,7 @@ export default function TedarikciHome() {
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/tedarikci/satislarim')}>
           <View style={styles.cardTitle}>
-            <Ionicons name="bar-chart-outline" size={20} color={IconGreen} />
+            <Ionicons name="bar-chart-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Satışlarım</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Tezgah fiyatından hesaplanan satış logu</ThemedText>

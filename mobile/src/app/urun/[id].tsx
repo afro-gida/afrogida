@@ -10,7 +10,7 @@ import { useProducts } from '@/lib/products-context';
 import { useCart } from '@/lib/cart-context';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import type { SelectedOption } from '@/lib/types';
 
 const NONE_LABEL = 'İstemiyorum';
@@ -73,7 +73,7 @@ export default function ProductDetailScreen() {
               onError={() => setImageFailed(true)}
             />
           ) : (
-            <Ionicons name="leaf-outline" size={96} color={IconGreen} />
+            <Ionicons name="leaf-outline" size={96} color={theme.tint} />
           )}
         </View>
 

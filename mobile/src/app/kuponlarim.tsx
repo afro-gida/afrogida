@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchCoupons, type Coupon } from '@/lib/coupons';
-import { IconGreen, Spacing, withAlpha } from '@/constants/theme';
+import { Spacing, withAlpha } from '@/constants/theme';
 
 const CARD_BG_DARK = 'rgba(0, 0, 0, 0.4)';
 const CARD_BG_LIGHT = 'rgba(255, 255, 255, 0.4)';
@@ -53,7 +53,7 @@ export default function MyCouponsScreen() {
           <ThemedText themeColor="textSecondary" type="small">Sadece online ödemelerde geçerlidir</ThemedText>
         </View>
         <View style={[styles.logoBadge, { backgroundColor: withAlpha(theme.tint, 0.2), borderColor: theme.tint }]}>
-          <Ionicons name="leaf" size={20} color={IconGreen} />
+          <Ionicons name="leaf" size={20} color={theme.tint} />
         </View>
       </View>
 
@@ -107,7 +107,7 @@ export default function MyCouponsScreen() {
           }}
           ListEmptyComponent={
             <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
-              <Ionicons name="pricetag-outline" size={36} color={IconGreen} />
+              <Ionicons name="pricetag-outline" size={36} color={theme.tint} />
               <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>
                 Kullanılabilir kuponun yok.
               </ThemedText>

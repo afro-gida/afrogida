@@ -10,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
-import { IconGreen, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 const LOGIN_BANNER = require('@/assets/brand/login-banner.jpg');
 // Koyu temada ayrı bir giriş görseli yok — siyah + yeşil duvar kağıdı kullanılıyor.
@@ -159,7 +159,7 @@ export default function RegisterScreen() {
               style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
             />
             <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={27} color={IconGreen} />
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={27} color={theme.tint} />
             </Pressable>
           </View>
 
