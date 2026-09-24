@@ -540,14 +540,14 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
           </Pressable>
         ) : (
           // Sepetteyken "+" aynı yerde miktar hapına dönüşüyor; kart boyu değişmiyor.
-          <View style={[styles.stepper, { backgroundColor: theme.tint }]}>
+          <View style={[styles.stepper, { backgroundColor: withAlpha(theme.tint, 0.35) }]}>
             <Pressable
               onPress={() => setQty(product.id, qty - qtyStep(product.unit))}
               hitSlop={6}
               accessibilityLabel={`${product.name} azalt`}
               style={styles.stepperBtn}
             >
-              <Ionicons name={qty <= qtyStep(product.unit) ? 'trash-outline' : 'remove'} size={16} color="#fff" />
+              <Ionicons name={qty <= qtyStep(product.unit) ? 'trash-outline' : 'remove'} size={13} color="#fff" />
             </Pressable>
             <ThemedText style={styles.stepperQty}>
               {formatQty(qty, product.unit)} {formatUnit(product.unit).toLowerCase()}
@@ -558,7 +558,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
               accessibilityLabel={`${product.name} artır`}
               style={styles.stepperBtn}
             >
-              <Ionicons name="add" size={17} color="#fff" />
+              <Ionicons name="add" size={14} color="#fff" />
             </Pressable>
           </View>
         )}
@@ -668,13 +668,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 3,
   },
+  // Küçük ve çok şeffaf hap: resmi kapatmasın. Şeffaf zeminde gölge/elevation
+  // (Android'de) gri leke bıraktığı için gölge yok; okunurluk yazı gölgesiyle.
   stepper: {
-    position: 'absolute', left: Spacing.two, right: Spacing.two, bottom: Spacing.two,
-    height: 36, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 3,
+    position: 'absolute', right: Spacing.one + 2, bottom: Spacing.one + 2,
+    height: 26, borderRadius: 13, flexDirection: 'row', alignItems: 'center', gap: 2,
   },
-  stepperBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  stepperQty: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  stepperBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  stepperQty: {
+    color: '#fff', fontWeight: '700', fontSize: 12,
+    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+  },
   soldOutVeil: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
