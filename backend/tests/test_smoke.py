@@ -15,6 +15,30 @@ def test_products_list_public(client):
     assert {"name", "category", "price"} <= set(data[0])
 
 
+_PRIVATE_PRODUCT_FIELDS = {
+    "supplier_price", "sale_price", "profit_margin_amount",
+    "supplier_price_locked_until", "price_updated_by",
+}
+
+
+def test_public_products_hide_supplier_price_and_margin(client, make_user):
+    """Tedarikçi alış fiyatı / kâr marjı herkese açık uçlarda görünmemeli,
+    admin ucunda görünmeye devam etmeli."""
+    listing = client.get("/api/products").json()
+    assert listing
+    for p in listing:
+        assert not (_PRIVATE_PRODUCT_FIELDS & set(p)), p.get("id")
+
+    one = client.get(f"/api/products/{listing[0]['id']}")
+    assert one.status_code == 200
+    assert not (_PRIVATE_PRODUCT_FIELDS & set(one.json()))
+    assert "price" in one.json()
+
+    _, admin = make_user(role="yonetici")
+    admin_list = client.get("/api/admin/products", headers=admin).json()
+    assert "supplier_price" in admin_list[0]
+
+
 def test_categories_public(client):
     r = client.get("/api/categories")
     assert r.status_code == 200

@@ -25,8 +25,20 @@ router = APIRouter(prefix="/api")
 
 # _afro_norm -> core/util.py
 
+# Herkese açık (giriş gerektirmeyen) ürün uçlarında ASLA dönmemesi gereken iç
+# alanlar: tedarikçi alış fiyatı ve platform kâr marjı. Müşteri fiyatı zaten
+# `price` alanında (sale_price ile senkron tutuluyor, bkz. update_product).
+# Admin/tedarikçi panelleri bu alanları /admin/products'tan (auth) okur.
+# Şema (OpenAPI) değişmesin diye response_model aynı; alanlar sadece yanıttan
+# çıkarılıyor.
+_PRIVATE_PRODUCT_FIELDS = {
+    "supplier_price", "sale_price", "profit_margin_amount",
+    "supplier_price_locked_until", "price_updated_by",
+}
 
-@router.get("/products", response_model=List[Product])
+
+@router.get("/products", response_model=List[Product],
+            response_model_exclude={"__all__": _PRIVATE_PRODUCT_FIELDS})
 async def list_products(
     category: Optional[str] = None,
     search: Optional[str] = None,
@@ -93,7 +105,8 @@ async def list_categories():
     return ORDERED_CATEGORIES + extras
 
 
-@router.get("/products/{product_id}", response_model=Product)
+@router.get("/products/{product_id}", response_model=Product,
+            response_model_exclude=_PRIVATE_PRODUCT_FIELDS)
 async def get_product(product_id: str):
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not product:
