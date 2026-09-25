@@ -147,9 +147,24 @@ export default function AccountScreen() {
               <ThemedText themeColor="textSecondary" style={styles.sectionLabel}>HESAP</ThemedText>
               <View style={[styles.card, styles.shadow, styles.listCard, { backgroundColor: cardBg }]}>
                 <Row icon="key-outline" label="Şifre Değiştir" onPress={() => router.push('/sifre-degistir')} />
-                <Row icon="logout" label="Çıkış Yap" onPress={() => logout()} />
                 <Row icon="trash-can-outline" label="Hesabımı Sil" onPress={() => setDeleteConfirmOpen(true)} danger last />
               </View>
+
+              {/* Çıkış Yap: en altta, ayrı ve belirgin düğme. */}
+              <Pressable
+                onPress={() => logout()}
+                accessibilityLabel="Çıkış Yap"
+                style={({ pressed }) => [
+                  styles.logoutBtn,
+                  styles.shadow,
+                  { backgroundColor: pressed ? withAlpha(theme.danger, 0.16) : cardBg, borderColor: withAlpha(theme.danger, 0.45) },
+                ]}
+              >
+                <View style={[styles.logoutIcon, { backgroundColor: theme.danger }]}>
+                  <MaterialCommunityIcons name="logout" size={18} color="#fff" />
+                </View>
+                <ThemedText style={[styles.logoutText, { color: theme.danger }]}>Çıkış Yap</ThemedText>
+              </Pressable>
             </>
           )}
 
@@ -254,6 +269,12 @@ const styles = StyleSheet.create({
   segmentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 42, borderRadius: 12, paddingHorizontal: 4 },
   segmentActive: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 2 },
   segmentText: { fontSize: 13, lineHeight: 16, fontWeight: '800', flexShrink: 1 },
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two + 2,
+    marginTop: Spacing.four, height: 56, borderRadius: 999, borderWidth: 1.5,
+  },
+  logoutIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  logoutText: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
   version: { textAlign: 'center', marginTop: Spacing.four, fontSize: 12, lineHeight: 15 },
   // Hesap silme onayı
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
