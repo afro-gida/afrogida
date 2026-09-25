@@ -37,8 +37,10 @@ def payment_return_urls(app_url: str | None, tx_id: str) -> tuple[str, str]:
 
     Yeni uygulama ödeme başlatırken kendi adresini (`app_url`, ör.
     https://afrogida.com.tr veya geliştirmede http://localhost:8081) gönderir;
-    adres İZİNLİ listedeyse (CORS ile aynı: core.config) müşteri o siparişin
-    takip ekranına döner: {app}/siparis/{tx_id}?odeme=tamam|hata.
+    adres İZİNLİ listedeyse (CORS ile aynı: core.config) müşteri uygulamanın
+    ödeme BEKLEME ekranına döner: {app}/odeme/{tx_id}?sonuc=tamam|hata. O ekran
+    kesin sonucu (PayTR'ın sunucuya bildirimi) bekler; onaylanınca takip
+    ekranına, reddedilince sepete yönlendirir.
     `app_url` yoksa ya da izinli değilse eski davranış: PAYTR_OK_URL /
     PAYTR_FAIL_URL (canlıdaki eski site bunu kullanıyor, bozulmasın).
     """
@@ -58,8 +60,8 @@ def payment_return_urls(app_url: str | None, tx_id: str) -> tuple[str, str]:
     origin = f"{parts.scheme}://{parts.netloc}".lower()
     if origin not in [o.lower() for o in ALLOWED_ORIGINS] and not re.match(ALLOWED_ORIGIN_REGEX, origin):
         return legacy
-    base = f"{origin}/siparis/{quote(str(tx_id), safe='')}"
-    return f"{base}?odeme=tamam", f"{base}?odeme=hata"
+    base = f"{origin}/odeme/{quote(str(tx_id), safe='')}"
+    return f"{base}?sonuc=tamam", f"{base}?sonuc=hata"
 
 
 def _clean_paytr_oid(value: str) -> str:

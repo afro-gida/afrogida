@@ -73,14 +73,14 @@ def test_callback_missing_fields(client):
 
 # --- Ödeme sonrası dönüş adresi (services/payments.py::payment_return_urls) ---
 
-def test_return_urls_go_to_tracking_screen_for_allowed_app():
+def test_return_urls_go_to_payment_wait_screen_for_allowed_app():
     from services.payments import payment_return_urls
     ok, fail = payment_return_urls("https://afrogida.com.tr", "tx_abc123")
-    assert ok == "https://afrogida.com.tr/siparis/tx_abc123?odeme=tamam"
-    assert fail == "https://afrogida.com.tr/siparis/tx_abc123?odeme=hata"
+    assert ok == "https://afrogida.com.tr/odeme/tx_abc123?sonuc=tamam"
+    assert fail == "https://afrogida.com.tr/odeme/tx_abc123?sonuc=hata"
     # geliştirme adresi (CORS listesinde) + fazladan yol yok sayılır
     ok, _ = payment_return_urls("http://localhost:8081/pazar/x/sepet", "tx_1")
-    assert ok == "http://localhost:8081/siparis/tx_1?odeme=tamam"
+    assert ok == "http://localhost:8081/odeme/tx_1?sonuc=tamam"
 
 
 def test_return_urls_reject_foreign_or_bad_app_url(monkeypatch):

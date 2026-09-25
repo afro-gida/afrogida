@@ -13,6 +13,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { useMarkets } from '@/lib/markets-context';
 import { createOrder, type PaymentMethod } from '@/lib/orders';
+import { savePendingPayment } from '@/lib/pending-payment';
 import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/settings';
 import { fetchAddresses, addressServesMarket, type Address } from '@/lib/addresses';
 import { fetchCoupons, validateCoupon, type Coupon, type CouponValidation } from '@/lib/coupons';
@@ -64,7 +65,13 @@ export default function CartScreen() {
   const scheme = useColorScheme();
   const cardBg = scheme === 'dark' ? CARD_BG_DARK : CARD_BG_LIGHT;
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // odeme=red: online ödeme reddedildi, bekleme ekranı (app/odeme/[tx].tsx)
+  // sepeti geri yükleyip buraya döndürdü -> üstte uyarı gösterilir.
+  const { id, odeme } = useLocalSearchParams<{ id: string; odeme?: string }>();
+  const [paymentRejected, setPaymentRejected] = useState(odeme === 'red');
+  useEffect(() => {
+    if (odeme === 'red') setPaymentRejected(true);
+  }, [odeme]);
   const { user } = useAuth();
   const { lines, setQty, updateLine, clear, deliveryType, setDeliveryType } = useCart();
   // Bir sepet satırına basılınca (ürünün özelleştirmesi varsa) seçim ekranı
@@ -300,12 +307,15 @@ export default function CartScreen() {
     if (paymentMethod === 'online_card' && result.payment_url) {
       // Kart bilgisi bizim uygulamadan geçmiyor — PayTR'nin kendi ödeme
       // sayfasına yönlendiriyoruz (bkz. lib/orders.ts açıklaması).
-      clear();
+      // Sepet TEMİZLENMEZ, yedeklenir: ödeme reddedilirse bekleme ekranı
+      // (app/odeme/[tx].tsx) müşteriyi ürünleriyle birlikte sepete döndürür,
+      // onaylanırsa sepeti temizleyip takip ekranına geçer.
+      await savePendingPayment({ txId: result.tx_id, marketId: id, deliveryType, lines });
       if (Platform.OS === 'web') {
         window.location.href = result.payment_url;
       } else {
         await Linking.openURL(result.payment_url);
-        router.push(`/pazar/${id}/siparislerim`);
+        router.push({ pathname: '/odeme/[tx]', params: { tx: result.tx_id } });
       }
       return;
     }
@@ -361,6 +371,20 @@ export default function CartScreen() {
           </View>
         ) : (
           <ScrollView style={styles.flex} contentContainerStyle={styles.scrollContent}>
+            {paymentRejected && (
+              <View style={[styles.rejectBanner, { backgroundColor: withAlpha(theme.danger, 0.14), borderColor: withAlpha(theme.danger, 0.35) }]}>
+                <Ionicons name="close-circle" size={24} color={theme.danger} />
+                <View style={styles.flex}>
+                  <ThemedText style={[styles.rowTitle, { color: theme.danger }]}>Ödeme reddedildi</ThemedText>
+                  <ThemedText style={styles.rowSub}>
+                    Kartından ödeme alınamadı, sipariş oluşturulmadı. Sepetin olduğu gibi duruyor; tekrar deneyebilir ya da başka bir ödeme yöntemi seçebilirsin.
+                  </ThemedText>
+                </View>
+                <Pressable onPress={() => setPaymentRejected(false)} hitSlop={8} accessibilityLabel="Uyarıyı kapat">
+                  <Ionicons name="close" size={20} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+            )}
             {/* Ürünler — açılışta gizli, "Göster" ile açılır (kullanıcı talimatı). */}
             <View style={[styles.card, styles.shadow, { backgroundColor: cardBg }]}>
               <View style={styles.cardHeadRow}>
@@ -971,6 +995,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   infoText: { flex: 1, fontSize: 12.5, lineHeight: 17 },
   noteStrip: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 14, padding: Spacing.two + 2 },
+  rejectBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two + 4, borderRadius: 18, borderWidth: 1, padding: Spacing.three - 2 },
   // Kupon
   couponCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 4, minHeight: 72 },
   couponPressable: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 4 },

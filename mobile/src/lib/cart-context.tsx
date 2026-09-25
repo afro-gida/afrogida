@@ -16,6 +16,9 @@ type CartContextValue = {
   /** Bir pazara girildiğinde çağrılır. Farklı bir pazarsa sepeti sıfırlar
    *  (her pazarın sepeti ayrıdır); aynı pazara tekrar girilirse dokunmaz. */
   enterMarket: (marketId: string) => void;
+  /** Online ödeme reddedilince, ödemeye geçmeden önce saklanan sepeti geri
+   *  koyar (bkz. lib/pending-payment.ts, app/odeme/[tx].tsx). */
+  restore: (marketId: string, lines: CartLine[], deliveryType: DeliveryType) => void;
   totalQty: number;
   totalPrice: number;
   /** Gel-Al/Eve Servis seçimi — sepet ekranında değil BURADA tutuluyor ki
@@ -97,6 +100,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     currentMarketId.current = marketId;
   };
 
+  const restore = (marketId: string, restored: CartLine[], restoredType: DeliveryType) => {
+    currentMarketId.current = marketId;
+    setLines(restored);
+    setDeliveryType(restoredType);
+  };
+
   const totalQty = useMemo(() => lines.reduce((sum, l) => sum + l.qty, 0), [lines]);
   const totalPrice = useMemo(
     () => lines.reduce((sum, l) => sum + l.qty * lineUnitPrice(l), 0),
@@ -105,7 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ lines, addItem, updateLine, removeItem, setQty, clear, enterMarket, totalQty, totalPrice, deliveryType, setDeliveryType }}
+      value={{ lines, addItem, updateLine, removeItem, setQty, clear, enterMarket, restore, totalQty, totalPrice, deliveryType, setDeliveryType }}
     >
       {children}
     </CartContext.Provider>
