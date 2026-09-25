@@ -232,36 +232,37 @@ function AddressCard({
           {!!addr.description && (
             <ThemedText themeColor="textSecondary" style={[styles.addrLine, styles.addrNote]}>{addr.description}</ThemedText>
           )}
+          {!addr.is_default && (
+            <Pressable onPress={onSetDefault} hitSlop={6} style={styles.setDefault}>
+              <ThemedText style={[styles.setDefaultText, { color: theme.tint }]}>Varsayılan yap</ThemedText>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Düzenle / sil: adres bilgisinin sağında, aynı satırda (kart aşağı uzamasın). */}
+        <View style={styles.actions}>
+          <Pressable onPress={onEdit} accessibilityLabel="Düzenle" hitSlop={6} style={[styles.iconBtn, { backgroundColor: withAlpha(theme.text, 0.06) }]}>
+            <MaterialCommunityIcons name="pencil-outline" size={17} color={theme.text} />
+          </Pressable>
+          {confirmDelete ? (
+            <Pressable onPress={onDelete} accessibilityLabel="Silmeyi onayla" style={[styles.iconBtn, { backgroundColor: theme.danger }]}>
+              <MaterialCommunityIcons name="check" size={18} color="#fff" />
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => setConfirmDelete(true)}
+              accessibilityLabel="Sil"
+              hitSlop={6}
+              style={[styles.iconBtn, { backgroundColor: withAlpha(theme.danger, 0.12) }]}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={17} color={theme.danger} />
+            </Pressable>
+          )}
         </View>
       </View>
-
-      <View style={styles.actions}>
-        {!addr.is_default ? (
-          <Pressable onPress={onSetDefault} style={[styles.softBtn, { backgroundColor: withAlpha(theme.tint, 0.12) }]} hitSlop={4}>
-            <ThemedText style={[styles.softBtnText, { color: theme.tint }]}>Varsayılan yap</ThemedText>
-          </Pressable>
-        ) : (
-          <View style={styles.flex} />
-        )}
-        <View style={styles.flex} />
-        <Pressable onPress={onEdit} accessibilityLabel="Düzenle" hitSlop={6} style={[styles.iconBtn, { backgroundColor: withAlpha(theme.text, 0.06) }]}>
-          <MaterialCommunityIcons name="pencil-outline" size={17} color={theme.text} />
-        </Pressable>
-        {confirmDelete ? (
-          <Pressable onPress={onDelete} style={[styles.softBtn, { backgroundColor: theme.danger }]}>
-            <ThemedText style={[styles.softBtnText, { color: '#fff' }]}>Silinsin mi?</ThemedText>
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => setConfirmDelete(true)}
-            accessibilityLabel="Sil"
-            hitSlop={6}
-            style={[styles.iconBtn, { backgroundColor: withAlpha(theme.danger, 0.12) }]}
-          >
-            <MaterialCommunityIcons name="trash-can-outline" size={17} color={theme.danger} />
-          </Pressable>
-        )}
-      </View>
+      {confirmDelete && (
+        <ThemedText style={[styles.confirmText, { color: theme.danger }]}>Silmek için ✓'e tekrar dokun</ThemedText>
+      )}
     </View>
   );
 }
@@ -404,9 +405,10 @@ const styles = StyleSheet.create({
   defaultText: { fontSize: 11.5, lineHeight: 14, fontWeight: '900' },
   addrLine: { fontSize: 13, lineHeight: 18 },
   addrNote: { fontStyle: 'italic' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  softBtn: { borderRadius: 999, paddingHorizontal: Spacing.three, height: 34, alignItems: 'center', justifyContent: 'center' },
-  softBtnText: { fontSize: 12.5, lineHeight: 16, fontWeight: '900' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, alignSelf: 'center' },
+  setDefault: { alignSelf: 'flex-start', marginTop: 6 },
+  setDefaultText: { fontSize: 12.5, lineHeight: 16, fontWeight: '900' },
+  confirmText: { fontSize: 12, lineHeight: 15, fontWeight: '800', textAlign: 'right', marginTop: -4 },
   iconBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   // Form penceresi
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
