@@ -2,7 +2,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { reportScroll, showChrome, tabBarHidden } from '@/lib/chrome-autohide';
+import {
+  CART_BAR_COLLAPSED_SCALE,
+  chromeCollapsed,
+  reportScroll,
+  showChrome,
+  TAB_BAR_COLLAPSED_BOTTOM,
+  TAB_BAR_COLLAPSED_SCALE,
+} from '@/lib/chrome-autohide';
+
+// Alt menünün yüksekliği (bkz. pazar/[id]/_layout.tsx CustomTabBar) ve menü
+// küçülünce arkasındaki sepet çubuğunun üstten görünen payı.
+const TAB_BAR_HEIGHT = 60;
+const CART_PEEK = 20;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -558,6 +570,7 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
   count: number; total: number; minAmount: number; freeAmount?: number; bottomInset: number; onPress: () => void;
 }) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
 
   // Önce minimum sepet hedefi, o tamamlanınca ücretsiz teslimat hedefi.
   let target = 0;
@@ -581,47 +594,67 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
     Animated.timing(fill, { toValue: ratio, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [ratio, fill]);
 
-  // Menü (60) + aradaki boşluk kadar yukarıda; menü gizlenince o kadar aşağı iner.
-  const lift = 60 + Spacing.two;
-  const translateY = tabBarHidden.interpolate({ inputRange: [0, 1], outputRange: [0, lift] });
+  // Normalde menünün (60) üstünde. Aşağı kaydırınca küçülüp menünün ARKASINA
+  // iner: üst kenarı küçülmüş menünün üstünden CART_PEEK kadar görünür kalır
+  // (üst üste iki kart). Ölçek alt kenara göre olduğu için kaydırma miktarı
+  // çubuğun kendi yüksekliğine bağlı -> onLayout ile ölçülüyor.
+  const [height, setHeight] = useState(0);
+  const lift = TAB_BAR_HEIGHT + Spacing.two;
+  const collapsedTabTop = TAB_BAR_COLLAPSED_BOTTOM + TAB_BAR_HEIGHT * TAB_BAR_COLLAPSED_SCALE;
+  const collapsedBottom = collapsedTabTop + CART_PEEK - height * CART_BAR_COLLAPSED_SCALE;
+  const translateY = chromeCollapsed.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, Spacing.three + lift - collapsedBottom],
+  });
+  const scale = chromeCollapsed.interpolate({ inputRange: [0, 1], outputRange: [1, CART_BAR_COLLAPSED_SCALE] });
+
+  // Çubuğun kendisi çok şeffaf; sepet doldukça soldan sağa farklı tonda bir
+  // renkle doluyor (ayrı ilerleme çubuğu yok). Koyu tema: parlak yeşil;
+  // açık tema: koyu turuncu (tema kuralı: açık temada yeşil yok).
+  const fillColor = isDark ? withAlpha('#34e3a0', 0.5) : withAlpha('#f07416', 0.55);
+  const fg = isDark ? '#fff' : theme.text;
+  const fgSoft = isDark ? 'rgba(255,255,255,0.85)' : theme.textSecondary;
 
   return (
     <Animated.View
+      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
       style={[
         styles.cartBar,
-        styles.cartBarShadow,
-        { bottom: Spacing.three + bottomInset + lift, backgroundColor: withAlpha(theme.tint, 0.94), transform: [{ translateY }] },
+        {
+          bottom: Spacing.three + bottomInset + lift,
+          backgroundColor: withAlpha(theme.tint, 0.18),
+          borderColor: withAlpha(theme.tint, 0.55),
+          transformOrigin: 'bottom',
+          transform: [{ translateY }, { scale }],
+        },
         Platform.OS === 'web' ? ({ backdropFilter: 'blur(14px) saturate(1.3)' } as any) : null,
       ]}
     >
-      <Pressable onPress={onPress} accessibilityLabel="Sepete git" style={({ pressed }) => [styles.cartBarInner, { opacity: pressed ? 0.85 : 1 }]}>
-        <View style={styles.cartBarRow}>
-          <View style={styles.cartBarIcon}>
-            <Ionicons name="basket" size={20} color="#fff" />
-            <View style={[styles.cartBarBadge, { borderColor: theme.tint }]}>
-              <ThemedText style={[styles.cartBarBadgeText, { color: theme.tint }]}>{count}</ThemedText>
-            </View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.cartBarFill,
+          { backgroundColor: fillColor, width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
+        ]}
+      />
+      <Pressable onPress={onPress} accessibilityLabel="Sepete git" style={({ pressed }) => [styles.cartBarRow, { opacity: pressed ? 0.8 : 1 }]}>
+        <View style={[styles.cartBarIcon, { backgroundColor: theme.tint }]}>
+          <Ionicons name="basket" size={19} color="#fff" />
+          <View style={[styles.cartBarBadge, { borderColor: theme.tint }]}>
+            <ThemedText style={[styles.cartBarBadgeText, { color: theme.tint }]}>{count}</ThemedText>
           </View>
-          <View style={styles.flex}>
-            <ThemedText style={styles.cartBarTitle} numberOfLines={1}>Sepete Git</ThemedText>
-            <ThemedText style={styles.cartBarSub} numberOfLines={1}>{count} ürün</ThemedText>
-          </View>
-          <ThemedText style={styles.cartBarTotal}>{formatMoney(total)} ₺</ThemedText>
-          <Ionicons name="chevron-forward" size={20} color="#fff" />
         </View>
-        {label && (
-          <View style={styles.cartBarProgressRow}>
-            <View style={styles.cartBarTrack}>
-              <Animated.View
-                style={[styles.cartBarFill, { width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]}
-              />
-            </View>
-            <View style={styles.cartBarLabelRow}>
-              {done && <Ionicons name="checkmark-circle" size={13} color="#fff" />}
-              <ThemedText style={styles.cartBarLabel} numberOfLines={1}>{label}</ThemedText>
-            </View>
+        <View style={styles.flex}>
+          <ThemedText style={[styles.cartBarTitle, { color: fg }]} numberOfLines={1}>Sepete Git</ThemedText>
+          <View style={styles.cartBarLabelRow}>
+            {done && <Ionicons name="checkmark-circle" size={13} color={theme.tint} />}
+            <ThemedText style={[styles.cartBarSub, { color: fgSoft }]} numberOfLines={1}>
+              {label ?? `${count} ürün`}
+            </ThemedText>
           </View>
-        )}
+        </View>
+        <ThemedText style={[styles.cartBarTotal, { color: fg }]}>{formatMoney(total)} ₺</ThemedText>
+        <Ionicons name="chevron-forward" size={20} color={fg} />
       </Pressable>
     </Animated.View>
   );
@@ -798,27 +831,25 @@ const styles = StyleSheet.create({
   soldOutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two, marginHorizontal: Spacing.three },
   // Sepet çubuğu (CartBar): alt menünün üstünde yüzen tek kart.
-  cartBar: { position: 'absolute', left: Spacing.three, right: Spacing.three, borderRadius: 20 },
-  cartBarShadow: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 18, elevation: 10,
+  // Şeffaf zeminde gölge/elevation Android'de gri leke bırakır -> gölge yok.
+  cartBar: {
+    position: 'absolute', left: Spacing.three, right: Spacing.three, borderRadius: 20,
+    borderWidth: 1, overflow: 'hidden',
   },
-  cartBarInner: { paddingHorizontal: Spacing.three - 2, paddingTop: Spacing.two + 2, paddingBottom: Spacing.two + 2, gap: Spacing.two },
-  cartBarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2 },
-  cartBarIcon: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center', justifyContent: 'center',
+  // Dolum: çubuğun kendisi soldan sağa dolar (sepet tutarı / hedef).
+  cartBarFill: { position: 'absolute', left: 0, top: 0, bottom: 0 },
+  cartBarRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2,
+    paddingHorizontal: Spacing.three - 4, paddingVertical: Spacing.two + 2,
   },
+  cartBarIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   cartBarBadge: {
     position: 'absolute', top: -4, right: -6, minWidth: 19, height: 19, borderRadius: 10, paddingHorizontal: 4,
     backgroundColor: '#fff', borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
   },
   cartBarBadgeText: { fontSize: 11, lineHeight: 13, fontWeight: '900' },
-  cartBarTitle: { color: '#fff', fontSize: 16, lineHeight: 20, fontWeight: '800' },
-  cartBarSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, lineHeight: 15, fontWeight: '600' },
-  cartBarTotal: { color: '#fff', fontSize: 19, lineHeight: 23, fontWeight: '900', letterSpacing: -0.3 },
-  cartBarProgressRow: { gap: 5 },
-  cartBarTrack: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' },
-  cartBarFill: { height: 5, borderRadius: 3, backgroundColor: '#fff' },
+  cartBarTitle: { fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  cartBarSub: { fontSize: 12, lineHeight: 15, fontWeight: '700', flexShrink: 1 },
+  cartBarTotal: { fontSize: 19, lineHeight: 23, fontWeight: '900', letterSpacing: -0.3 },
   cartBarLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  cartBarLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 12, lineHeight: 15, fontWeight: '700' },
 });

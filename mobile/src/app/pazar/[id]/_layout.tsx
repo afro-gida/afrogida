@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { Animated, Platform, Pressable } from 'react-native';
 
 import { useAuth } from '@/lib/auth-context';
-import { showChrome, tabBarHidden } from '@/lib/chrome-autohide';
+import { chromeCollapsed, showChrome, TAB_BAR_COLLAPSED_BOTTOM, TAB_BAR_COLLAPSED_SCALE } from '@/lib/chrome-autohide';
 import { useCart } from '@/lib/cart-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -49,14 +49,18 @@ function CustomTabBar({ state, navigation, insets }: any) {
   const glassStyle: any =
     Platform.OS === 'web' ? { backdropFilter: 'blur(14px) saturate(1.3)' } : null;
 
-  // Aşağı kaydırınca menü ekranın altından dışarı kayar (bkz. lib/chrome-autohide).
-  const translateY = tabBarHidden.interpolate({ inputRange: [0, 1], outputRange: [0, 60 + Spacing.three + insets.bottom + 24] });
+  // Aşağı kaydırınca menü küçülüp ekranın en altına iner (bkz. lib/chrome-autohide).
+  // Ölçek alt kenara göre; alt kenar Spacing.three'den TAB_BAR_COLLAPSED_BOTTOM'a kayar.
+  const translateY = chromeCollapsed.interpolate({ inputRange: [0, 1], outputRange: [0, Spacing.three - TAB_BAR_COLLAPSED_BOTTOM] });
+  const scale = chromeCollapsed.interpolate({ inputRange: [0, 1], outputRange: [1, TAB_BAR_COLLAPSED_SCALE] });
 
   return (
     <Animated.View
       style={[
         {
-          transform: [{ translateY }],
+          transformOrigin: 'bottom',
+          transform: [{ translateY }, { scale }],
+          zIndex: 2,
           position: 'absolute',
           left: Spacing.three,
           right: Spacing.three,
