@@ -2,7 +2,19 @@
  * Backend API istemcisi. Taban adres EXPO_PUBLIC_API_URL env değişkeninden gelir;
  * verilmezse yerel geliştirme backend'ini (backend/run_dev_server.py) varsayar.
  */
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+export const API_BASE_URL = resolveApiBase(process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api');
+
+/**
+ * Web'de sayfa telefondan bilgisayarın ağ adresiyle açılırsa (ör.
+ * http://192.168.1.2:8081) "localhost" telefonun kendisi olur ve API'ye
+ * ulaşılamaz — bu durumda API'yi de sayfanın açıldığı makineden iste.
+ */
+function resolveApiBase(base: string) {
+  if (typeof window === 'undefined' || !window.location?.hostname) return base;
+  const pageHost = window.location.hostname;
+  if (pageHost === 'localhost' || pageHost === '127.0.0.1') return base;
+  return base.replace(/\/\/(localhost|127\.0\.0\.1)(?=[:/])/, `//${pageHost}`);
+}
 
 export class ApiError extends Error {
   status: number;

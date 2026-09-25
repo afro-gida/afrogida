@@ -33,9 +33,29 @@ os.environ["ADMIN_2FA_ALLOW_UNSENT_SMS"] = "1"
 # bu değişkeni tanımlamıyor -> orada davranış değişmiyor.
 os.environ["AFRO_ALLOWED_ORIGINS"] = (
     "https://afrogida.com.tr,https://www.afrogida.com.tr,"
-    "http://localhost:3000,http://localhost:8081,http://localhost:19006,"
+    "http://localhost:3000,http://localhost:8081,http://localhost:8082,http://localhost:19006,"
     "http://localhost:5183,capacitor://localhost,http://localhost"
 )
+
+
+def _lan_ip():
+    """Bu bilgisayarin yerel ag adresi (telefondan http://<ip>:8081 ile
+    acilan Expo web sayfasi API'ye buradan istek atar)."""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))  # paket gonderilmez, sadece arayuz secilir
+        return s.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        s.close()
+
+
+_ip = _lan_ip()
+if _ip:
+    os.environ["AFRO_ALLOWED_ORIGINS"] += "".join(f",http://{_ip}:{p}" for p in (8081, 8082, 5183))
+    print(f"[dev] Telefondan: http://{_ip}:8081 (ayni Wi-Fi agi)")
 
 import uvicorn  # noqa: E402
 
