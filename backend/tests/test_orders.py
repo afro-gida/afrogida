@@ -43,6 +43,27 @@ def test_order_uses_server_price(client, make_user, product):
     assert order["items"][0]["price"] == pytest.approx(product["price"])
 
 
+def test_customer_never_sees_supplier_price(client, make_user, db, product):
+    """Müşteri siparişinde tedarikçi alış fiyatı / tedarikçi adı gitmez
+    (sipariş oluşturma yanıtı + sipariş listesi); DB'de hak ediş için kalır."""
+    db.products.update_one({"id": product["id"]},
+                           {"$set": {"supplier_price": 12.5, "supplier_group": "Gizli Sebzeci"}})
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 1}])
+    assert r.status_code == 200, r.text
+    hidden = {"supplier_price_snapshot", "supplier_group_snapshot"}
+    created = r.json()["order"]
+    assert not (hidden & set(created["items"][0]))
+
+    listed = [o for o in client.get("/api/orders", headers=h).json() if o["tx_id"] == created["tx_id"]]
+    assert listed and not (hidden & set(listed[0]["items"][0]))
+    assert "12.5" not in r.text and "Gizli Sebzeci" not in r.text
+
+    stored = db.transactions.find_one({"tx_id": created["tx_id"]})
+    assert stored["items"][0]["supplier_price_snapshot"] == 12.5
+    assert stored["items"][0]["supplier_group_snapshot"] == "Gizli Sebzeci"
+
+
 def test_order_low_price_fresh_product_charged_server(client, make_user, product):
     """Ürün son 24 saatte güncellendiyse düşük fiyat = bayat sepet:
     sipariş geçer ama SUNUCU fiyatı tahsil edilir (manipülasyon değil)."""

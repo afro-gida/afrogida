@@ -28,6 +28,10 @@ logger = logging.getLogger("afro.orders")
 # Siparişin çıkış yollarında çözülen / gizlenen alanlar
 ORDER_ENC_FIELDS = ("address", "delivery_code")
 ORDER_INTERNAL_FIELDS = ("paytr_init", "paytr_callback", "calc_signature", "security_flags")
+# Ürün satırlarındaki iç alanlar: tedarikçi alış fiyatı ve tedarikçi adı.
+# DB'de kalır (tedarikçi hak edişi bunlarla hesaplanır, bkz. services/suppliers.py)
+# ama müşteriye ASLA gönderilmez — müşteri alış fiyatını / platform marjını göremez.
+ORDER_ITEM_INTERNAL_FIELDS = ("supplier_price_snapshot", "supplier_group_snapshot")
 
 
 def _dec_order(o):
@@ -49,6 +53,13 @@ def _customer_order_view(o):
     out = _dec_order(o)
     for f in ORDER_INTERNAL_FIELDS:
         out.pop(f, None)
+    # Satırlar kopyalanarak temizlenir: aynı sipariş sözlüğü çağıran tarafta
+    # (ör. DB'ye yazılan kayıt) kullanılmaya devam edebilir.
+    if isinstance(out.get("items"), list):
+        out["items"] = [
+            {k: v for k, v in it.items() if k not in ORDER_ITEM_INTERNAL_FIELDS} if isinstance(it, dict) else it
+            for it in out["items"]
+        ]
     return out
 
 
