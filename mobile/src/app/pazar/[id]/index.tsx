@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CART_BAR_COLLAPSED_SCALE,
   chromeCollapsed,
-  reportScroll,
+  setChromeCollapsed,
   showChrome,
   TAB_BAR_COLLAPSED_BOTTOM,
   TAB_BAR_COLLAPSED_SCALE,
@@ -15,6 +15,12 @@ import {
 // küçülünce arkasındaki sepet çubuğunun üstten görünen payı.
 const TAB_BAR_HEIGHT = 60;
 const CART_PEEK = 20;
+// Katlanan başlık + bilgi şeridi ~135 px. Kaydırılabilir mesafe bundan
+// rahatça büyük değilse katlama yok (katlanınca içerik sığar, konum 0'a
+// düşer, başlık açılır... döngü). En alttaki bu bölgede de yukarı "kayma"
+// başlığı açmaz (katlanmanın yarattığı geri çekilme sanılmasın).
+const COLLAPSE_MIN_SCROLL = 280;
+const COLLAPSE_BOTTOM_ZONE = 180;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -141,18 +147,44 @@ export default function MarketProductsScreen() {
     Animated.timing(pillsAnim, { toValue: pillsVisible ? 1 : 0, duration: 200, useNativeDriver: false }).start();
   }, [pillsVisible, pillsAnim]);
 
-  function handleListScroll(e: { nativeEvent: { contentOffset: { y: number } } }) {
-    const y = e.nativeEvent.contentOffset.y;
+  // Başlığın katlanması liste alanının boyunu değiştirir; en alttayken bu,
+  // kaydırma konumunun geri çekilmesine (yukarı kaydırma gibi görünür) ->
+  // başlığın tekrar açılmasına -> tekrar katlanmasına yol açıp ekranı
+  // titretiyordu. iOS'un en alttaki esnemesi (bounce) de aynı etkiyi
+  // yapıyordu. Korumalar: esneme bölgesindeki olaylar yok sayılır, her
+  // geçişten sonra animasyon bitene kadar yeni geçiş yok, en alt bölgede
+  // sadece gerçek yukarı kaydırma açar, kısa içerikte hiç katlanmaz.
+  const collapsedRef = useRef(false);
+  const toggleLockUntil = useRef(0);
+
+  function handleListScroll(e: {
+    nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } };
+  }) {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const y = contentOffset.y;
+    const maxY = contentSize.height - layoutMeasurement.height;
     const delta = y - lastScrollY.current;
-    if (y <= 10) setPillsVisible(true);
-    else if (delta > 6) setPillsVisible(false);
-    else if (delta < -6) setPillsVisible(true);
     lastScrollY.current = y;
-    reportScroll(y);
+
+    if (y < 0 || y > maxY) return; // iOS esnemesi
+    const now = Date.now();
+    if (now < toggleLockUntil.current) return;
+
+    let next = collapsedRef.current;
+    if (y <= 10) next = false;
+    else if (delta > 6 && maxY > COLLAPSE_MIN_SCROLL) next = true;
+    else if (delta < -6 && maxY - y > COLLAPSE_BOTTOM_ZONE) next = false;
+    if (next === collapsedRef.current) return;
+
+    collapsedRef.current = next;
+    toggleLockUntil.current = now + 450;
+    setPillsVisible(!next);
+    setChromeCollapsed(next);
   }
 
   useEffect(() => {
     showChrome();
+    collapsedRef.current = false;
   }, []);
 
   useEffect(() => {
