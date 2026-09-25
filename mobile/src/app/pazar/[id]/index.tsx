@@ -575,8 +575,10 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
 
 // Sepetteyken "+" yerinde kalır, altına doğru miktar ve "−" açılır (dikey,
 // şeffaf sütun; kartın yazı kısmının üstüne biner, kart boyu değişmez).
-const STEPPER_BTN = 36;
-const STEPPER_OPEN_HEIGHT = STEPPER_BTN + 34 + 32;
+// İnce sütun (28); ekleme öncesindeki 36'lık "+" ile aynı merkezde durur.
+const STEPPER_BTN = 28;
+const FLOAT_BTN = 36;
+const STEPPER_OPEN_HEIGHT = STEPPER_BTN + 32 + 28;
 
 function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
   qty: number; unit: string; name: string; floatBg: string; isDark: boolean; onChange: (q: number) => void;
@@ -599,7 +601,7 @@ function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
         accessibilityLabel={`${name} artır`}
         style={[styles.vStepperPlus, { backgroundColor: floatBg }]}
       >
-        <Ionicons name="add" size={22} color={theme.tint} />
+        <Ionicons name="add" size={18} color={theme.tint} />
       </Pressable>
       <View style={styles.vStepperQty}>
         <ThemedText style={[styles.vStepperQtyNum, { color: theme.text }]}>{formatQty(qty, unit)}</ThemedText>
@@ -613,7 +615,7 @@ function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
         accessibilityLabel={`${name} azalt`}
         style={styles.vStepperMinus}
       >
-        <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 16 : 20} color={theme.tint} />
+        <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 14 : 17} color={theme.tint} />
       </Pressable>
     </Animated.View>
   );
@@ -707,14 +709,16 @@ const styles = StyleSheet.create({
   // köşesi), aşağı doğru açılıp kartın yazı kısmına biner. Şeffaf zeminde
   // gölge/elevation (Android'de) gri leke bıraktığı için gölge yok.
   vStepper: {
-    position: 'absolute', right: Spacing.two, top: CARD_IMAGE_HEIGHT - Spacing.two - STEPPER_BTN,
+    position: 'absolute',
+    right: Spacing.two + (FLOAT_BTN - STEPPER_BTN) / 2,
+    top: CARD_IMAGE_HEIGHT - Spacing.two - (FLOAT_BTN + STEPPER_BTN) / 2,
     width: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, overflow: 'hidden', alignItems: 'center',
   },
   vStepperPlus: { width: STEPPER_BTN, height: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, alignItems: 'center', justifyContent: 'center' },
-  vStepperQty: { height: 34, alignItems: 'center', justifyContent: 'center' },
-  vStepperQtyNum: { fontSize: 13, lineHeight: 15, fontWeight: '800' },
-  vStepperQtyUnit: { fontSize: 10, lineHeight: 12, fontWeight: '700' },
-  vStepperMinus: { width: STEPPER_BTN, height: 32, alignItems: 'center', justifyContent: 'center' },
+  vStepperQty: { height: 32, alignItems: 'center', justifyContent: 'center' },
+  vStepperQtyNum: { fontSize: 12, lineHeight: 14, fontWeight: '800' },
+  vStepperQtyUnit: { fontSize: 9, lineHeight: 11, fontWeight: '700' },
+  vStepperMinus: { width: STEPPER_BTN, height: 28, alignItems: 'center', justifyContent: 'center' },
   soldOutVeil: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
