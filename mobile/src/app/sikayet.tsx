@@ -1,19 +1,25 @@
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { PrimaryButton } from '@/components/form-card';
+import { FormField, Notice } from '@/components/form-field';
+import { PageHeader } from '@/components/page-header';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { submitComplaint } from '@/lib/complaints';
-import { Spacing } from '@/constants/theme';
+import { CARD_BG, SCRIM, surface } from '@/constants/surfaces';
+import { Spacing, withAlpha } from '@/constants/theme';
+
+const MAX_LEN = 1000;
 
 export default function ComplaintScreen() {
-  const theme = useTheme();
-  const scheme = useColorScheme();
+  const isDark = useColorScheme() === 'dark';
+  const cardBg = isDark ? CARD_BG.dark : CARD_BG.light;
   const router = useRouter();
   const { user } = useAuth();
   const [message, setMessage] = useState('');
@@ -39,72 +45,72 @@ export default function ComplaintScreen() {
   }
 
   return (
-    <Screen edges={['bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
-          <ThemedText style={styles.backArrow}>←</ThemedText>
-        </Pressable>
-        <ThemedText type="subtitle">Şikayet ve Öneri</ThemedText>
-      </View>
-
-      {!user ? (
-        <View style={[styles.card, { backgroundColor: theme.tintSoft }]}>
-          <ThemedText type="smallBold">Giriş yapmadın</ThemedText>
-          <ThemedText themeColor="textSecondary" type="small" style={{ marginTop: 4, marginBottom: Spacing.one }}>
-            Şikayet veya önerini gönderebilmek için giriş yapmalısın.
-          </ThemedText>
-          <Pressable style={[styles.sendBtn, { backgroundColor: theme.tint }]} onPress={() => router.push('/giris')}>
-            <ThemedText style={{ color: '#fff' }} type="smallBold">Giriş Yap</ThemedText>
-          </Pressable>
-        </View>
-      ) : sent ? (
-        <View style={[styles.card, { backgroundColor: theme.tintSoft, alignItems: 'center', gap: Spacing.one }]}>
-          <Ionicons name="checkmark-circle" size={40} color={theme.tint} />
-          <ThemedText type="smallBold">Mesajın iletildi</ThemedText>
-          <ThemedText themeColor="textSecondary" type="small" style={{ textAlign: 'center' }}>
-            Şikayet ve önerin ekibimize ulaştı, en kısa sürede değerlendireceğiz.
-          </ThemedText>
-          <Pressable style={[styles.sendBtn, { backgroundColor: theme.tint, marginTop: Spacing.one }]} onPress={() => setSent(false)}>
-            <ThemedText style={{ color: '#fff' }} type="smallBold">Yeni Mesaj Gönder</ThemedText>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <ThemedText themeColor="textSecondary" type="small" style={{ marginBottom: Spacing.two }}>
-            Bir sorun mu yaşadın, yoksa bize bir önerin mi var? Aşağıya yazabilirsin.
-          </ThemedText>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Mesajını buraya yaz..."
-            placeholderTextColor={theme.textSecondary}
-            multiline
-            style={[
-              styles.input,
-              { borderColor: theme.border, color: theme.text, backgroundColor: scheme === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(252, 243, 228, 0.9)' },
-            ]}
-          />
-          {error && (
-            <ThemedText themeColor="danger" type="small" style={{ marginTop: Spacing.one }}>
-              {error}
-            </ThemedText>
-          )}
-          <Pressable style={[styles.sendBtn, { backgroundColor: theme.tint, marginTop: Spacing.two }]} onPress={handleSubmit} disabled={submitting}>
-            {submitting ? <ActivityIndicator color="#fff" /> : (
-              <ThemedText style={{ color: '#fff' }} type="smallBold">Gönder</ThemedText>
+    <Screen edges={['top', 'bottom']}>
+      <View style={[styles.flex, { backgroundColor: isDark ? SCRIM.dark : SCRIM.light }]}>
+        <PageHeader title="Şikayet ve Öneri" />
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <View style={[surface.card, surface.shadow, styles.card, { backgroundColor: cardBg }]}>
+            {!user ? (
+              <>
+                <Icon name="lock-outline" />
+                <ThemedText style={styles.title}>Giriş yapmalısın</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.text}>
+                  Şikayet veya önerini gönderebilmek için giriş yapmalısın.
+                </ThemedText>
+                <PrimaryButton label="Giriş Yap" onPress={() => router.push('/giris')} />
+              </>
+            ) : sent ? (
+              <>
+                <Icon name="check-decagram" />
+                <ThemedText style={styles.title}>Mesajın iletildi</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.text}>
+                  Şikayet ve önerin ekibimize ulaştı, en kısa sürede değerlendireceğiz.
+                </ThemedText>
+                <PrimaryButton label="Yeni Mesaj Gönder" arrow={false} onPress={() => setSent(false)} />
+              </>
+            ) : (
+              <>
+                <Icon name="message-text-outline" />
+                <ThemedText style={styles.title}>Seni dinliyoruz</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.text}>
+                  Bir sorun mu yaşadın, yoksa bize bir önerin mi var? Aşağıya yazabilirsin.
+                </ThemedText>
+                <View style={styles.formGap}>
+                  <FormField
+                    value={message}
+                    onChangeText={(v) => setMessage(v.slice(0, MAX_LEN))}
+                    placeholder="Mesajını buraya yaz..."
+                    multiline
+                    multilineHeight={170}
+                  />
+                  <ThemedText themeColor="textSecondary" style={styles.counter}>{message.length}/{MAX_LEN}</ThemedText>
+                </View>
+                {error && <Notice text={error} />}
+                <PrimaryButton label="Gönder" onPress={handleSubmit} loading={submitting} disabled={!message.trim()} />
+              </>
             )}
-          </Pressable>
-        </View>
-      )}
+          </View>
+        </ScrollView>
+      </View>
     </Screen>
   );
 }
 
+function Icon({ name }: { name: keyof typeof MaterialCommunityIcons.glyphMap }) {
+  const theme = useTheme();
+  return (
+    <View style={[surface.iconCircleLg, { backgroundColor: withAlpha(theme.tint, 0.14) }]}>
+      <MaterialCommunityIcons name={name} size={30} color={theme.tint} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three },
-  backBtn: { padding: Spacing.one },
-  backArrow: { fontSize: 20 },
-  card: { marginHorizontal: Spacing.three, borderRadius: 16, padding: Spacing.three },
-  input: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, minHeight: 140, textAlignVertical: 'top', fontSize: 14 },
-  sendBtn: { borderRadius: 999, paddingVertical: Spacing.two + 2, alignItems: 'center' },
+  flex: { flex: 1 },
+  scroll: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.five },
+  card: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.four, gap: Spacing.two },
+  title: { fontSize: 22, lineHeight: 27, fontWeight: '900', letterSpacing: -0.4, marginTop: Spacing.one },
+  text: { fontSize: 14, lineHeight: 19, marginBottom: Spacing.one },
+  formGap: { gap: 4 },
+  counter: { alignSelf: 'flex-end', fontSize: 11.5, lineHeight: 14, marginRight: 4 },
 });
