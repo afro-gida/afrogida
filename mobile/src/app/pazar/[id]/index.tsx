@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
+import { Animated, Easing, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -588,35 +588,55 @@ function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
   const open = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(open, { toValue: 1, duration: 180, useNativeDriver: false }).start();
+    // Yavaş, yumuşak geçiş: 36'lık "+" 32'ye incelirken sütun aşağı açılır.
+    Animated.timing(open, {
+      toValue: 1, duration: 600, easing: Easing.inOut(Easing.cubic), useNativeDriver: false,
+    }).start();
   }, [open]);
 
-  const height = open.interpolate({ inputRange: [0, 1], outputRange: [STEPPER_BTN, STEPPER_OPEN_HEIGHT] });
+  // "+" düğmesinin çapı 36 -> 32; merkez yerinde kalsın diye konum da kayar.
+  const size = open.interpolate({ inputRange: [0, 1], outputRange: [FLOAT_BTN, STEPPER_BTN] });
+  const inset = open.interpolate({ inputRange: [0, 1], outputRange: [0, (FLOAT_BTN - STEPPER_BTN) / 2] });
+  const height = open.interpolate({ inputRange: [0, 1], outputRange: [FLOAT_BTN, STEPPER_OPEN_HEIGHT] });
+  const reveal = open.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0, 1] });
 
   return (
-    <Animated.View style={[styles.vStepper, { height, backgroundColor: withAlpha(floatBg, isDark ? 0.55 : 0.6) }]}>
-      <Pressable
-        onPress={() => onChange(qty + step)}
-        hitSlop={6}
-        accessibilityLabel={`${name} artır`}
-        style={[styles.vStepperPlus, { backgroundColor: floatBg }]}
-      >
-        <Ionicons name="add" size={20} color={theme.tint} />
-      </Pressable>
-      <View style={styles.vStepperQty}>
-        <ThemedText style={[styles.vStepperQtyNum, { color: theme.text }]}>{formatQty(qty, unit)}</ThemedText>
-        <ThemedText style={[styles.vStepperQtyUnit, { color: theme.textSecondary }]}>
-          {formatUnit(unit).toLowerCase()}
-        </ThemedText>
-      </View>
-      <Pressable
-        onPress={() => onChange(qty - step)}
-        hitSlop={6}
-        accessibilityLabel={`${name} azalt`}
-        style={styles.vStepperMinus}
-      >
-        <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 15 : 18} color={theme.tint} />
-      </Pressable>
+    <Animated.View
+      style={[
+        styles.vStepper,
+        {
+          width: size, height, borderRadius: Animated.divide(size, 2),
+          right: Animated.add(inset, Spacing.two), top: Animated.add(inset, CARD_IMAGE_HEIGHT - Spacing.two - FLOAT_BTN),
+          backgroundColor: withAlpha(floatBg, isDark ? 0.55 : 0.6),
+        },
+      ]}
+    >
+      <Animated.View style={[styles.vStepperPlus, { width: size, height: size, borderRadius: Animated.divide(size, 2), backgroundColor: floatBg }]}>
+        <Pressable
+          onPress={() => onChange(qty + step)}
+          hitSlop={6}
+          accessibilityLabel={`${name} artır`}
+          style={styles.vStepperPlusHit}
+        >
+          <Ionicons name="add" size={20} color={theme.tint} />
+        </Pressable>
+      </Animated.View>
+      <Animated.View style={[styles.vStepperRest, { opacity: reveal }]}>
+        <View style={styles.vStepperQty}>
+          <ThemedText style={[styles.vStepperQtyNum, { color: theme.text }]}>{formatQty(qty, unit)}</ThemedText>
+          <ThemedText style={[styles.vStepperQtyUnit, { color: theme.textSecondary }]}>
+            {formatUnit(unit).toLowerCase()}
+          </ThemedText>
+        </View>
+        <Pressable
+          onPress={() => onChange(qty - step)}
+          hitSlop={6}
+          accessibilityLabel={`${name} azalt`}
+          style={styles.vStepperMinus}
+        >
+          <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 15 : 18} color={theme.tint} />
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -708,13 +728,11 @@ const styles = StyleSheet.create({
   // Dikey şeffaf sütun: üstü "+" düğmesiyle aynı yerde (görselin sağ alt
   // köşesi), aşağı doğru açılıp kartın yazı kısmına biner. Şeffaf zeminde
   // gölge/elevation (Android'de) gri leke bıraktığı için gölge yok.
-  vStepper: {
-    position: 'absolute',
-    right: Spacing.two + (FLOAT_BTN - STEPPER_BTN) / 2,
-    top: CARD_IMAGE_HEIGHT - Spacing.two - (FLOAT_BTN + STEPPER_BTN) / 2,
-    width: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, overflow: 'hidden', alignItems: 'center',
-  },
-  vStepperPlus: { width: STEPPER_BTN, height: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, alignItems: 'center', justifyContent: 'center' },
+  // Boyut/konum VerticalStepper içinde canlandırılıyor (36'lık "+" -> 32).
+  vStepper: { position: 'absolute', overflow: 'hidden', alignItems: 'center' },
+  vStepperPlus: { overflow: 'hidden' },
+  vStepperPlusHit: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  vStepperRest: { alignItems: 'center' },
   vStepperQty: { height: 32, alignItems: 'center', justifyContent: 'center' },
   vStepperQtyNum: { fontSize: 12, lineHeight: 14, fontWeight: '800' },
   vStepperQtyUnit: { fontSize: 9, lineHeight: 11, fontWeight: '700' },
