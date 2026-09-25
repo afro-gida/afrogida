@@ -32,6 +32,7 @@ const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 // (yeşil/turuncu) sadece kenarlıkta kalıyor, zemine yeşil ton karışmıyor.
 const CARD_BG_DARK = '#0e1411';
 const CARD_BG_LIGHT = '#f8ebd6';
+const CARD_IMAGE_HEIGHT = 128;
 // Bilgi etiketleri + kategori panelinin zemini — kartlardan farklı olarak
 // AÇIK TONDA ve daha şeffaf (koyu temada bile neredeyse siyah olmasın).
 const OVERLAY_BG_DARK = 'rgba(22, 28, 25, 0.94)';
@@ -538,30 +539,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
           >
             <Ionicons name="add" size={22} color={theme.tint} />
           </Pressable>
-        ) : (
-          // Sepetteyken "+" aynı yerde miktar hapına dönüşüyor; kart boyu değişmiyor.
-          <View style={[styles.stepper, { backgroundColor: withAlpha(theme.tint, 0.35) }]}>
-            <Pressable
-              onPress={() => setQty(product.id, qty - qtyStep(product.unit))}
-              hitSlop={6}
-              accessibilityLabel={`${product.name} azalt`}
-              style={styles.stepperBtn}
-            >
-              <Ionicons name={qty <= qtyStep(product.unit) ? 'trash-outline' : 'remove'} size={13} color="#fff" />
-            </Pressable>
-            <ThemedText style={styles.stepperQty}>
-              {formatQty(qty, product.unit)} {formatUnit(product.unit).toLowerCase()}
-            </ThemedText>
-            <Pressable
-              onPress={() => setQty(product.id, qty + qtyStep(product.unit))}
-              hitSlop={6}
-              accessibilityLabel={`${product.name} artır`}
-              style={styles.stepperBtn}
-            >
-              <Ionicons name="add" size={14} color="#fff" />
-            </Pressable>
-          </View>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.cardBody}>
@@ -580,7 +558,64 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
           </ThemedText>
         )}
       </View>
+
+      {!outOfStock && !hasOptions && qty > 0 && (
+        <VerticalStepper
+          qty={qty}
+          unit={product.unit}
+          name={product.name}
+          floatBg={floatBg}
+          isDark={isDark}
+          onChange={(q) => setQty(product.id, q)}
+        />
+      )}
     </View>
+  );
+}
+
+// Sepetteyken "+" yerinde kalır, altına doğru miktar ve "−" açılır (dikey,
+// şeffaf sütun; kartın yazı kısmının üstüne biner, kart boyu değişmez).
+const STEPPER_BTN = 36;
+const STEPPER_OPEN_HEIGHT = STEPPER_BTN + 34 + 32;
+
+function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
+  qty: number; unit: string; name: string; floatBg: string; isDark: boolean; onChange: (q: number) => void;
+}) {
+  const theme = useTheme();
+  const step = qtyStep(unit);
+  const open = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(open, { toValue: 1, duration: 180, useNativeDriver: false }).start();
+  }, [open]);
+
+  const height = open.interpolate({ inputRange: [0, 1], outputRange: [STEPPER_BTN, STEPPER_OPEN_HEIGHT] });
+
+  return (
+    <Animated.View style={[styles.vStepper, { height, backgroundColor: withAlpha(floatBg, isDark ? 0.55 : 0.6) }]}>
+      <Pressable
+        onPress={() => onChange(qty + step)}
+        hitSlop={6}
+        accessibilityLabel={`${name} artır`}
+        style={[styles.vStepperPlus, { backgroundColor: floatBg }]}
+      >
+        <Ionicons name="add" size={22} color={theme.tint} />
+      </Pressable>
+      <View style={styles.vStepperQty}>
+        <ThemedText style={[styles.vStepperQtyNum, { color: theme.text }]}>{formatQty(qty, unit)}</ThemedText>
+        <ThemedText style={[styles.vStepperQtyUnit, { color: theme.textSecondary }]}>
+          {formatUnit(unit).toLowerCase()}
+        </ThemedText>
+      </View>
+      <Pressable
+        onPress={() => onChange(qty - step)}
+        hitSlop={6}
+        accessibilityLabel={`${name} azalt`}
+        style={styles.vStepperMinus}
+      >
+        <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 16 : 20} color={theme.tint} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -650,7 +685,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  cardImageWrap: { height: 128, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  cardImageWrap: { height: CARD_IMAGE_HEIGHT, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cardBody: { paddingHorizontal: Spacing.two + 4, paddingTop: Spacing.two, paddingBottom: Spacing.two + 4, gap: 2 },
   cardPrice: { fontSize: 18, lineHeight: 22, fontWeight: '700' },
   cardUnit: { fontSize: 13, fontWeight: '500' },
@@ -668,17 +703,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 3,
   },
-  // Küçük ve çok şeffaf hap: resmi kapatmasın. Şeffaf zeminde gölge/elevation
-  // (Android'de) gri leke bıraktığı için gölge yok; okunurluk yazı gölgesiyle.
-  stepper: {
-    position: 'absolute', right: Spacing.one + 2, bottom: Spacing.one + 2,
-    height: 26, borderRadius: 13, flexDirection: 'row', alignItems: 'center', gap: 2,
+  // Dikey şeffaf sütun: üstü "+" düğmesiyle aynı yerde (görselin sağ alt
+  // köşesi), aşağı doğru açılıp kartın yazı kısmına biner. Şeffaf zeminde
+  // gölge/elevation (Android'de) gri leke bıraktığı için gölge yok.
+  vStepper: {
+    position: 'absolute', right: Spacing.two, top: CARD_IMAGE_HEIGHT - Spacing.two - STEPPER_BTN,
+    width: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, overflow: 'hidden', alignItems: 'center',
   },
-  stepperBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
-  stepperQty: {
-    color: '#fff', fontWeight: '700', fontSize: 12,
-    textShadowColor: 'rgba(0,0,0,0.45)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
-  },
+  vStepperPlus: { width: STEPPER_BTN, height: STEPPER_BTN, borderRadius: STEPPER_BTN / 2, alignItems: 'center', justifyContent: 'center' },
+  vStepperQty: { height: 34, alignItems: 'center', justifyContent: 'center' },
+  vStepperQtyNum: { fontSize: 13, lineHeight: 15, fontWeight: '800' },
+  vStepperQtyUnit: { fontSize: 10, lineHeight: 12, fontWeight: '700' },
+  vStepperMinus: { width: STEPPER_BTN, height: 32, alignItems: 'center', justifyContent: 'center' },
   soldOutVeil: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
