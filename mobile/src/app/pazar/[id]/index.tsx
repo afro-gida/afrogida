@@ -638,9 +638,8 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
         ]}
       />
       <Pressable onPress={onPress} accessibilityLabel="Sepete git" style={({ pressed }) => [styles.cartBarRow, { opacity: pressed ? 0.8 : 1 }]}>
-        {/* Ürün kartındaki "+" ile aynı: koyu temada siyah daire + yeşil ikon. */}
-        <View style={[styles.cartBarIcon, { backgroundColor: isDark ? '#0b0f0d' : '#fbf3e6' }]}>
-          <Ionicons name="basket" size={19} color={theme.tint} />
+        <View style={[styles.cartBarIcon, { backgroundColor: theme.tint }]}>
+          <Ionicons name="basket" size={19} color="#fff" />
           <View style={[styles.cartBarBadge, { borderColor: theme.tint }]}>
             <ThemedText style={[styles.cartBarBadgeText, { color: theme.tint }]}>{count}</ThemedText>
           </View>
