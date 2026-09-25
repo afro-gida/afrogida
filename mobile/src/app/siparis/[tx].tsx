@@ -63,10 +63,19 @@ function headline(o: Order): { title: string; text: string } {
 }
 
 const PAYMENT_LABEL: Record<string, string> = {
-  online_card: 'Online kart ile ödendi',
+  online_card: 'Online kart',
   pay_at_counter: 'Tezgahta ödeme',
   cash_on_delivery: 'Kapıda nakit',
 };
+
+/** "Online kart ile ödendi" sadece ödeme gerçekten alındıysa yazılır. */
+function paymentLabel(o: Order) {
+  const base = PAYMENT_LABEL[o.payment_method ?? ''] ?? o.payment_method ?? '';
+  if (o.payment_method !== 'online_card') return base;
+  if (o.payment_status === 'paid') return 'Online kart ile ödendi';
+  if (o.payment_status === 'failed') return 'Online kart · ödeme alınamadı';
+  return 'Online kart · ödeme bekleniyor';
+}
 
 function formatDateTime(iso?: string | null) {
   if (!iso) return '';
@@ -81,7 +90,9 @@ function formatDateTime(iso?: string | null) {
  * altında adım adım durum çizgisi, en altta sipariş özeti.
  */
 export default function OrderTrackingScreen() {
-  const { tx } = useLocalSearchParams<{ tx: string }>();
+  // odeme: online ödemeden dönüşte PayTR'ın eklediği sonuç ("tamam" | "hata"),
+  // bkz. backend services/payments.py::payment_return_urls.
+  const { tx, odeme } = useLocalSearchParams<{ tx: string; odeme?: string }>();
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
@@ -172,12 +183,74 @@ export default function OrderTrackingScreen() {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />}
         >
-          <Hero order={order} cardBg={cardBg} />
-          {order.order_status !== 'iptal_edildi' && <Timeline order={order} cardBg={cardBg} />}
+          <PaymentBanner order={order} returned={odeme} />
+          {/* Ödemesi alınamayan sipariş işleme alınmaz: animasyon/durum çizgisi gösterilmez. */}
+          {!paymentFailed(order, odeme) && <Hero order={order} cardBg={cardBg} />}
+          {order.order_status !== 'iptal_edildi' && !paymentFailed(order, odeme) && <Timeline order={order} cardBg={cardBg} />}
           <Summary order={order} cardBg={cardBg} />
         </ScrollView>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Online ödeme sonucu: PayTR'dan dönüşte (?odeme=tamam|hata) ya da sipariş
+ * online ödemeli olup henüz ödenmemiş/ödenememişse gösterilir. Ödemenin kesin
+ * sonucuna sunucuya gelen PayTR bildirimi karar verir; dönüşte bildirim birkaç
+ * saniye gecikebilir -> "onaylanıyor" durumu, ekran kendini yeniledikçe güncellenir.
+ */
+function paymentFailed(order: Order, returned?: string) {
+  return (
+    order.payment_method === 'online_card' &&
+    (order.payment_status === 'failed' || (returned === 'hata' && order.payment_status !== 'paid'))
+  );
+}
+
+function PaymentBanner({ order, returned }: { order: Order; returned?: string }) {
+  const theme = useTheme();
+  const router = useRouter();
+  if (order.payment_method !== 'online_card') return null;
+  const status = order.payment_status;
+  let tone: 'ok' | 'wait' | 'fail' | null = null;
+  let title = '';
+  let text = '';
+  if (paymentFailed(order, returned)) {
+    tone = 'fail';
+    title = 'Ödeme tamamlanamadı';
+    text = 'Ödeme alınamadığı için bu sipariş işleme alınmadı. Ürünleri tekrar sepete ekleyip yeniden deneyebilirsin.';
+  } else if (status === 'paid') {
+    if (returned !== 'tamam') return null;
+    tone = 'ok';
+    title = 'Ödemen alındı';
+    text = 'Teşekkürler! Siparişin pazara iletildi, buradan adım adım takip edebilirsin.';
+  } else {
+    tone = 'wait';
+    title = returned === 'tamam' ? 'Ödemen onaylanıyor' : 'Ödeme bekleniyor';
+    text = returned === 'tamam'
+      ? 'Bankadan onay bekleniyor, birkaç saniye içinde güncellenecek.'
+      : 'Bu siparişin online ödemesi henüz tamamlanmadı.';
+  }
+  const color = tone === 'fail' ? theme.danger : theme.tint;
+  const icon: keyof typeof Ionicons.glyphMap =
+    tone === 'ok' ? 'checkmark-circle' : tone === 'fail' ? 'close-circle' : 'time';
+  return (
+    <View style={[styles.payBanner, { backgroundColor: withAlpha(color, 0.14), borderColor: withAlpha(color, 0.35) }]}>
+      <Ionicons name={icon} size={24} color={color} />
+      <View style={[styles.flex, styles.payBannerBody]}>
+        <ThemedText style={[styles.payBannerTitle, { color }]}>{title}</ThemedText>
+        <ThemedText style={styles.payBannerText}>{text}</ThemedText>
+        {tone === 'fail' && (
+          <Pressable
+            onPress={() => router.replace('/')}
+            style={({ pressed }) => [styles.payBannerBtn, { backgroundColor: color, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <ThemedText style={styles.payBannerBtnText}>Alışverişe Dön</ThemedText>
+            <Ionicons name="arrow-forward" size={15} color="#fff" />
+          </Pressable>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -306,7 +379,7 @@ function Summary({ order, cardBg }: { order: Order; cardBg: string }) {
       {!!order.market_name && <InfoRow icon="storefront-outline" text={order.market_name} />}
       <InfoRow icon="time-outline" text={`${order.delivery_type === 'eve_servis' ? 'Teslimat' : 'Teslim alma'}: ${slot}`} />
       {!!addressLine && <InfoRow icon="location-outline" text={addressLine} />}
-      {!!order.payment_method && <InfoRow icon="card-outline" text={PAYMENT_LABEL[order.payment_method] ?? order.payment_method} />}
+      {!!order.payment_method && <InfoRow icon="card-outline" text={paymentLabel(order)} />}
     </View>
   );
 }
@@ -345,6 +418,16 @@ const styles = StyleSheet.create({
   emptyCard: { margin: Spacing.three, alignItems: 'center', gap: Spacing.two },
   centerText: { textAlign: 'center' },
   loginBtn: { borderRadius: 999, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, marginTop: Spacing.one },
+  // Ödeme sonucu bandı
+  payBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 4, borderRadius: 18, borderWidth: 1, padding: Spacing.three - 2 },
+  payBannerTitle: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  payBannerText: { fontSize: 13, lineHeight: 17 },
+  payBannerBody: { gap: 2 },
+  payBannerBtn: {
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 999, paddingHorizontal: Spacing.three, height: 36, marginTop: Spacing.two,
+  },
+  payBannerBtnText: { color: '#fff', fontSize: 13, lineHeight: 16, fontWeight: '800' },
   // Üst kart
   hero: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   heroArt: { borderRadius: 20, padding: 4, overflow: 'hidden' },

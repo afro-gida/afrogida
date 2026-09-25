@@ -84,7 +84,11 @@ export default function OrdersScreen() {
           data={orders}
           keyExtractor={(o) => o.tx_id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }: { item: Order }) => (
+          renderItem={({ item }: { item: Order }) => {
+            // Online ödemesi alınamayan sipariş işleme alınmaz — "Sipariş Alındı" değil.
+            const payFailed = item.payment_method === 'online_card' && item.payment_status === 'failed';
+            const bad = payFailed || item.order_status === 'iptal_edildi';
+            return (
             // Karta basınca sipariş takip ekranı (app/siparis/[tx].tsx) açılır.
             <Pressable
               onPress={() => router.push({ pathname: '/siparis/[tx]', params: { tx: item.tx_id } })}
@@ -95,15 +99,17 @@ export default function OrdersScreen() {
               ]}
             >
               <View style={styles.cardHeader}>
-                <View style={[styles.statusIcon, { backgroundColor: item.order_status === 'iptal_edildi' ? theme.backgroundSelected : theme.tintSoft }]}>
+                <View style={[styles.statusIcon, { backgroundColor: bad ? theme.backgroundSelected : theme.tintSoft }]}>
                   <MaterialCommunityIcons
-                    name={orderStatusIcon(item.order_status, item.delivery_type)}
+                    name={payFailed ? 'credit-card-off-outline' : orderStatusIcon(item.order_status, item.delivery_type)}
                     size={20}
-                    color={item.order_status === 'iptal_edildi' ? theme.danger : theme.tint}
+                    color={bad ? theme.danger : theme.tint}
                   />
                 </View>
                 <View style={styles.flex}>
-                  <ThemedText type="smallBold">{STATUS_LABEL[item.order_status] ?? item.order_status}</ThemedText>
+                  <ThemedText type="smallBold" style={payFailed ? { color: theme.danger } : undefined}>
+                    {payFailed ? 'Ödeme Alınamadı' : STATUS_LABEL[item.order_status] ?? item.order_status}
+                  </ThemedText>
                   <ThemedText themeColor="textSecondary" type="small">
                     {item.delivery_type === 'gel_al' ? 'Gel-Al' : 'Eve Servis'} ·{' '}
                     {new Date(item.created_at).toLocaleDateString('tr-TR')}
@@ -116,7 +122,8 @@ export default function OrdersScreen() {
                 {item.items.map((i) => `${i.name} (${formatQty(i.qty, i.unit)} ${formatUnit(i.unit)})`).join(', ')}
               </ThemedText>
             </Pressable>
-          )}
+            );
+          }}
           ListEmptyComponent={
             <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText themeColor="textSecondary" style={styles.emptyText}>

@@ -109,6 +109,8 @@ export type Order = {
   delivery_fee?: number;
   discount?: number;
   payment_method?: string;
+  /** "paid" | "pending" | "failed" | "unpaid" ... (online ödemede PayTR bildirimiyle güncellenir) */
+  payment_status?: string;
   market_name?: string;
   pickup_time?: string | null;
   delivery_slot_start?: string | null;

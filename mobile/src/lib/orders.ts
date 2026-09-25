@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import { api, ApiError } from '@/lib/api';
 import type { Order } from '@/lib/types';
 
@@ -16,6 +18,7 @@ type RawOrder = {
   delivery_fee?: number;
   discount?: number;
   payment_method?: string;
+  payment_status?: string;
   market_name?: string;
   pickup_time?: string | null;
   delivery_slot_start?: string | null;
@@ -46,6 +49,7 @@ function normalizeOrder(raw: RawOrder): Order {
     delivery_fee: raw.delivery_fee,
     discount: raw.discount,
     payment_method: raw.payment_method,
+    payment_status: raw.payment_status,
     market_name: raw.market_name,
     pickup_time: raw.pickup_time,
     delivery_slot_start: raw.delivery_slot_start,
@@ -123,6 +127,12 @@ export async function createOrder(
       ...(opts.deliverySlotEnd ? { delivery_slot_end: opts.deliverySlotEnd } : {}),
       ...(opts.couponCode ? { coupon_code: opts.couponCode } : {}),
       ...(opts.agreementsAccepted ? { agreements_accepted: true, legal_document_type: opts.legalDocumentType } : {}),
+      // Online ödeme bitince PayTR müşteriyi bu adresteki takip ekranına
+      // döndürür (backend izinli adres listesiyle doğrular). Sadece web'de;
+      // yoksa backend eski dönüş adresini kullanır.
+      ...(opts.paymentMethod === 'online_card' && Platform.OS === 'web' && typeof window !== 'undefined'
+        ? { app_url: window.location.origin }
+        : {}),
     });
     return { tx_id: res.tx_id, payment_url: res.payment_url };
   } catch (err) {

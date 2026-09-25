@@ -629,9 +629,12 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
     label = 'Ücretsiz teslimat kazandınız';
     done = true;
   }
-  const ratio = target > 0 ? Math.min(1, total / target) : 1;
+  // Hedef yoksa (pazarda minimum / ücretsiz teslimat tanımsız ya da ayarlar
+  // henüz yüklenmedi) çubuk DOLU değil boş kalır — dolu görünmesi "tamam" sanılıyordu.
+  const ratio = target > 0 ? Math.min(1, total / target) : 0;
 
-  const fill = useRef(new Animated.Value(ratio)).current;
+  // Çubuk BOŞ açılır (ilk ürün eklendiğinde), sonra mevcut orana kayarak ilerler.
+  const fill = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fill, { toValue: ratio, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [ratio, fill]);
