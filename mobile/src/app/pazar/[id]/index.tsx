@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,10 @@ const CART_PEEK = 20;
 // düşer, başlık açılır... döngü). En alttaki bu bölgede de yukarı "kayma"
 // başlığı açmaz (katlanmanın yarattığı geri çekilme sanılmasın).
 const COLLAPSE_MIN_SCROLL = 280;
+// Kategori paneli ölçüleri (ana / alt kategori düğmesi yüksekliği, panel içi boşluk).
+const CHIP_H = 30;
+const SUB_CHIP_H = 26;
+const CAT_GAP = 6;
 const COLLAPSE_BOTTOM_ZONE = 180;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -333,7 +337,7 @@ export default function MarketProductsScreen() {
 
       <Animated.View
         style={{
-          height: pillsAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 44] }),
+          height: pillsAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 38] }),
           opacity: pillsAnim,
           overflow: 'hidden',
         }}
@@ -403,7 +407,10 @@ export default function MarketProductsScreen() {
           }
           contentContainerStyle={[
             styles.grid,
-            { paddingTop: (subOptions.length > 0 ? 88 : 48) + Spacing.two },
+            {
+              paddingTop:
+                CAT_GAP + CHIP_H + CAT_GAP + (subOptions.length > 0 ? SUB_CHIP_H + CAT_GAP : 0) + Spacing.two,
+            },
           ]}
           ListEmptyComponent={
             <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
@@ -438,9 +445,9 @@ export default function MarketProductsScreen() {
                   ]}
                 >
                   {item === 'İndirimli' && (
-                    <Ionicons name="pricetag" size={14} color={active ? '#fff' : theme.tint} style={styles.chipIcon} />
+                    <Ionicons name="pricetag" size={12} color={active ? '#fff' : theme.tint} style={styles.chipIcon} />
                   )}
-                  <ThemedText type="small" style={{ color: active ? '#fff' : theme.text, fontWeight: '600' }}>
+                  <ThemedText style={[styles.chipText, { color: active ? '#fff' : theme.text }]}>
                     {item}
                   </ThemedText>
                 </Pressable>
@@ -468,7 +475,7 @@ export default function MarketProductsScreen() {
                       },
                     ]}
                   >
-                    <ThemedText type="small" style={{ color: active ? '#fff' : theme.text, fontWeight: '600' }}>
+                    <ThemedText style={[styles.subChipText, { color: active ? '#fff' : theme.text }]}>
                       {item}
                     </ThemedText>
                   </Pressable>
@@ -557,7 +564,8 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             accessibilityLabel={`${product.name} sepete ekle`}
             style={[styles.floatBtn, { backgroundColor: floatBg }]}
           >
-            <Ionicons name="add" size={22} color={theme.tint} />
+            {/* Biraz daha kalın "+" (Ionicons'unki çok inceydi); düğme boyu aynı. */}
+            <MaterialCommunityIcons name="plus" size={20} color={theme.tint} />
           </Pressable>
         ) : null}
       </View>
@@ -737,7 +745,7 @@ function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
           accessibilityLabel={`${name} artır`}
           style={styles.vStepperPlusHit}
         >
-          <Ionicons name="add" size={20} color={theme.tint} />
+          <MaterialCommunityIcons name="plus" size={18} color={theme.tint} />
         </Pressable>
       </Animated.View>
       <Animated.View style={[styles.vStepperRest, { opacity: reveal }]}>
@@ -753,7 +761,11 @@ function VerticalStepper({ qty, unit, name, floatBg, isDark, onChange }: {
           accessibilityLabel={`${name} azalt`}
           style={styles.vStepperMinus}
         >
-          <Ionicons name={qty <= step ? 'trash-outline' : 'remove'} size={qty <= step ? 15 : 18} color={theme.tint} />
+          <MaterialCommunityIcons
+            name={qty <= step ? 'trash-can-outline' : 'minus'}
+            size={qty <= step ? 16 : 18}
+            color={theme.tint}
+          />
         </Pressable>
       </Animated.View>
     </Animated.View>
@@ -770,7 +782,9 @@ const styles = StyleSheet.create({
   // Ağırlıklar ThemedText'te bir kademe yükseltiliyor (700 -> 800).
   headerTitle: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
   logoBadge: { width: 60, height: 60 },
-  infoList: { flexGrow: 0, flexShrink: 0, height: 34, marginTop: Spacing.two },
+  // Etiket satırı (30) + üstte 8 = 38; sarmalayıcı da 38 -> altta kategori
+  // paneline kadar boşluk kalmıyor.
+  infoList: { flexGrow: 0, flexShrink: 0, height: 30, marginTop: Spacing.two },
   infoRow: { paddingHorizontal: Spacing.three, gap: Spacing.two },
   infoPill: {
     flexDirection: 'row',
@@ -782,26 +796,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listArea: { flex: 1, position: 'relative' },
-  categoryOverlay: { position: 'absolute', top: 0, left: 0, right: 0 },
-  chipList: { flexGrow: 0, flexShrink: 0, height: 48 },
-  chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two, alignItems: 'center', height: 48 },
+  // Kategori paneli: üstte ve altta eşit boşluk (CAT_GAP), satırlar arası da
+  // aynı — alt kategoriler panelin alt kenarına yapışık bitmiyor.
+  categoryOverlay: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: CAT_GAP, paddingBottom: CAT_GAP, gap: CAT_GAP },
+  chipList: { flexGrow: 0, flexShrink: 0, height: CHIP_H },
+  chipRow: { paddingHorizontal: Spacing.three, gap: Spacing.two - 2, alignItems: 'center' },
   chip: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.three,
-    height: 36,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipIcon: { marginRight: 4 },
-  subChipList: { flexGrow: 0, flexShrink: 0, height: 40 },
-  subChip: {
     paddingHorizontal: Spacing.two + 4,
-    height: 30,
+    height: CHIP_H,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  chipText: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
+  chipIcon: { marginRight: 4 },
+  subChipList: { flexGrow: 0, flexShrink: 0, height: SUB_CHIP_H },
+  subChip: {
+    paddingHorizontal: Spacing.two + 2,
+    height: SUB_CHIP_H,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subChipText: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
   // Bölüm başlığı: kutu/çerçeve yok — büyük kalın başlık + sağda ürün sayısı.
   sectionHeader: {
     flexDirection: 'row',
