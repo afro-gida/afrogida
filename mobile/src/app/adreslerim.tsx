@@ -1,10 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { PrimaryButton } from '@/components/form-card';
 import { FormField, Notice } from '@/components/form-field';
+import { MapPicker, type PickedLocation } from '@/components/map-picker';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +24,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Spacing, withAlpha } from '@/constants/theme';
 
 const TITLE_OPTIONS = ['Ev', 'İş', 'Diğer'];
+// Harita seçici şimdilik web'de (Google Maps JS); uygulamada yerel harita eklenecek.
+const MAP_SUPPORTED = Platform.OS === 'web';
 
 
 const EMPTY_FORM: AddressInput = {
@@ -283,6 +286,7 @@ function AddressFormModal({
   const [form, setForm] = useState<AddressInput>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -294,8 +298,20 @@ function AddressFormModal({
           : EMPTY_FORM,
       );
       setError(null);
+      // Yeni adreste önce harita açılır (eski sitedeki gibi): kapı girişi
+      // işaretlenir, adres alanları oradan dolar.
+      setMapOpen(MAP_SUPPORTED && !initial);
+    } else {
+      setMapOpen(false);
     }
   }, [visible, initial]);
+
+  function handlePicked(p: PickedLocation) {
+    setForm((prev) => ({ ...prev, ...p.fields, lat: p.lat, lng: p.lng }));
+    setMapOpen(false);
+  }
+
+  const hasLocation = form.lat != null && form.lng != null;
 
   function set<K extends keyof AddressInput>(key: K, value: AddressInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -343,9 +359,28 @@ function AddressFormModal({
             })}
           </View>
 
-          {/* Google Haritalar ile konum seçme henüz yok — adres elle giriliyor
-              (anahtar eski sitede var; ayrı iş olarak eklenecek). */}
-          <Notice tone="info" text="Haritadan konum seçme yakında eklenecek — şimdilik adresi elle gir." />
+          {/* Haritadan işaretlenen kapı girişi adresle kaydedilir; siparişte
+              kuryeye Google Haritalar bağlantısı olarak gider. */}
+          {MAP_SUPPORTED && (
+            <Pressable
+              onPress={() => setMapOpen(true)}
+              style={({ pressed }) => [
+                styles.locationRow,
+                { backgroundColor: withAlpha(hasLocation ? theme.tint : theme.text, hasLocation ? 0.12 : 0.06), opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <View style={[surface.iconCircle, { backgroundColor: hasLocation ? theme.tint : withAlpha(theme.tint, 0.14) }]}>
+                <MaterialCommunityIcons name={hasLocation ? 'map-marker-check' : 'map-marker-plus-outline'} size={20} color={hasLocation ? '#fff' : theme.tint} />
+              </View>
+              <View style={styles.flex}>
+                <ThemedText style={styles.locationTitle}>{hasLocation ? 'Kapı girişi işaretlendi' : 'Haritadan konum seç'}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.locationHint}>
+                  {hasLocation ? 'Kurye seni bu noktadan bulacak' : 'Kuryenin kapını kolayca bulması için'}
+                </ThemedText>
+              </View>
+              <ThemedText style={[styles.locationAction, { color: theme.tint }]}>{hasLocation ? 'Değiştir' : 'Seç'}</ThemedText>
+            </Pressable>
+          )}
 
           <View style={styles.row2}>
             <View style={styles.flex}>
@@ -384,6 +419,14 @@ function AddressFormModal({
           <PrimaryButton label="Adresi Kaydet" arrow={false} onPress={handleSave} loading={submitting} />
         </ScrollView>
       </View>
+      {MAP_SUPPORTED && (
+        <MapPicker
+          visible={visible && mapOpen}
+          initial={hasLocation ? { lat: form.lat as number, lng: form.lng as number } : null}
+          onClose={() => setMapOpen(false)}
+          onPicked={handlePicked}
+        />
+      )}
     </Modal>
   );
 }
@@ -426,4 +469,8 @@ const styles = StyleSheet.create({
   row2: { flexDirection: 'row', gap: Spacing.two + 2 },
   row3: { flexDirection: 'row', gap: Spacing.two + 2 },
   center: { textAlign: 'center' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 4, borderRadius: 18, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 4 },
+  locationTitle: { fontSize: 14.5, lineHeight: 19, fontWeight: '900' },
+  locationHint: { fontSize: 12.5, lineHeight: 16 },
+  locationAction: { fontSize: 13.5, lineHeight: 17, fontWeight: '900' },
 });

@@ -101,6 +101,9 @@ export async function createOrder(
     deliveryType: DeliveryType;
     paymentMethod: PaymentMethod;
     address?: string;
+    /** Seçilen kayıtlı adresin id'si — sunucu haritadan işaretlenen konumu
+     *  bu adresten alıp siparişe (kuryeye) ekler. */
+    addressId?: string;
     /** Gel-Al için seçilen saat dilimi, ör. "14:00-15:00". Boşsa "Şimdi" (en yakın uygun saat). */
     pickupTime?: string;
     /** Eve Servis için seçilen saat dilimi. İkisi de boşsa "Şimdi". */
@@ -122,6 +125,7 @@ export async function createOrder(
       delivery_type: opts.deliveryType,
       payment_method: opts.paymentMethod,
       ...(opts.address ? { address: opts.address } : {}),
+      ...(opts.address && opts.addressId ? { address_id: opts.addressId } : {}),
       ...(opts.pickupTime ? { pickup_time: opts.pickupTime } : {}),
       ...(opts.deliverySlotStart ? { delivery_slot_start: opts.deliverySlotStart } : {}),
       ...(opts.deliverySlotEnd ? { delivery_slot_end: opts.deliverySlotEnd } : {}),

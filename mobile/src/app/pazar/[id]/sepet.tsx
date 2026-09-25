@@ -44,8 +44,11 @@ function generateTimeSlots(range: string | undefined, stepMinutes = 60): TimeSlo
 }
 
 function formatAddressLine(a: Address) {
+  // "Görükle" -> "Görükle Mah." (kurye okurken net olsun; sunucunun adres
+  // metninden konum eşleştirmesi de "Mah." ekini arıyor)
+  const neighborhood = a.neighborhood && !/\bmah/i.test(a.neighborhood) ? `${a.neighborhood} Mah.` : a.neighborhood;
   const parts = [
-    [a.neighborhood, a.street].filter(Boolean).join(' '),
+    [neighborhood, a.street].filter(Boolean).join(' '),
     a.building_no ? `No:${a.building_no}` : '',
     a.floor ? `K:${a.floor}` : '',
     a.apartment_no ? `D:${a.apartment_no}` : '',
@@ -291,6 +294,7 @@ export default function CartScreen() {
         deliveryType,
         paymentMethod,
         address,
+        addressId: deliveryType === 'eve_servis' ? selectedAddress?.id : undefined,
         pickupTime: deliveryType === 'gel_al' && selectedSlot ? `${selectedSlot.start}-${selectedSlot.end}` : undefined,
         deliverySlotStart: deliveryType === 'eve_servis' && selectedSlot ? selectedSlot.start : undefined,
         deliverySlotEnd: deliveryType === 'eve_servis' && selectedSlot ? selectedSlot.end : undefined,

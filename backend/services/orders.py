@@ -526,7 +526,18 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
 
     final_address = _clean_text(data.get("address") or "")[:600] or ("Tezgah" if delivery_type == "gel_al" else "")
     if delivery_type == "eve_servis" and final_address and "Konum:" not in final_address:
-        lat, lng = await _find_address_coordinates(current_user.get("user_id"), final_address)
+        lat, lng = None, None
+        # Uygulama seçilen kayıtlı adresin id'sini gönderir -> haritadan
+        # işaretlenen konum doğrudan o adresten alınır (sadece kullanıcının kendi adresi).
+        address_id = data.get("address_id")
+        if isinstance(address_id, str) and address_id:
+            addr = await db.addresses.find_one(
+                {"id": address_id, "user_id": current_user.get("user_id")}, {"_id": 0, "lat": 1, "lng": 1}
+            )
+            if addr and isinstance(addr.get("lat"), (int, float)) and isinstance(addr.get("lng"), (int, float)):
+                lat, lng = addr["lat"], addr["lng"]
+        if lat is None or lng is None:
+            lat, lng = await _find_address_coordinates(current_user.get("user_id"), final_address)
         if lat is not None and lng is not None:
             final_address += f"\nKonum: https://www.google.com/maps?q={lat},{lng}"
 

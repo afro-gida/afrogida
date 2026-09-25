@@ -395,9 +395,25 @@ async def auth_logout(authorization: Optional[str] = Header(None), request: Requ
 # _maybe_expire_no_show, NO_SHOW_* sabitleri) -> services/noshow.py
 
 
+def _coord(value, limit: float) -> Optional[float]:
+    """Harita koordinatı: sayı ve [-limit, limit] aralığında değilse None."""
+    if isinstance(value, bool):
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v != v or abs(v) > limit:  # NaN / aralık dışı
+        return None
+    return round(v, 7)
+
+
 def _normalize_address_payload(data: dict, user_id: str, existing_id: Optional[str] = None) -> dict:
     address_id = existing_id or data.get("id") or new_id("addr")
     title = _clean_text(data.get("title") or data.get("type") or "Evim")
+    lat, lng = _coord(data.get("lat"), 90), _coord(data.get("lng"), 180)
+    if lat is None or lng is None:  # konum ancak çift olarak anlamlı
+        lat = lng = None
     address = {
         "id": address_id,
         "user_id": user_id,
@@ -412,8 +428,8 @@ def _normalize_address_payload(data: dict, user_id: str, existing_id: Optional[s
         "site_name": _clean_text(data.get("site_name") or data.get("site_adi") or ""),
         "description": _clean_text(data.get("description") or data.get("adres_tarifi") or ""),
         "details": data.get("details"),
-        "lat": data.get("lat"),
-        "lng": data.get("lng"),
+        "lat": lat,
+        "lng": lng,
         "is_default": bool(data.get("is_default", False)),
         "updated_at": now_utc(),
     }

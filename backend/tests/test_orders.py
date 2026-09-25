@@ -200,6 +200,54 @@ def test_market_delivery_fee_and_free_threshold(client, make_user, product, mark
     assert order["amount"] == pytest.approx(subtotal + 20.0)
 
 
+def _saved_address(db, tx):
+    from core.crypto import dec_str
+    return dec_str(db.transactions.find_one({"tx_id": tx})["address"])
+
+
+def test_eve_servis_order_gets_map_location_from_address_id(client, make_user, db, product, market_with_limits):
+    """Haritadan işaretlenen konum, seçilen adresin id'si ile doğrudan kuryeye
+    gider (çok kelimeli mahalle adında metin eşleştirmesi tutmuyordu)."""
+    _, h = make_user()
+    r = client.post("/api/auth/addresses", headers=h, json={
+        "title": "Ev", "neighborhood": "30 Ağustos Zafer", "street": "Gül Sokak", "building_no": "7",
+        "lat": 40.2261234, "lng": 28.8712345,
+    })
+    assert r.status_code == 200, r.text
+    addr = r.json()["address"]
+    assert addr["lat"] == pytest.approx(40.2261234) and addr["lng"] == pytest.approx(28.8712345)
+
+    r = _order(client, h, [{"id": product["id"], "qty": 5}], market_id="market_test_limits",
+               delivery_type="eve_servis", payment_method="online_card",
+               address="30 Ağustos Zafer Gül Sokak No:7, Nilüfer/Bursa", address_id=addr["id"])
+    assert r.status_code == 200, r.text
+    assert "Konum: https://www.google.com/maps?q=40.2261234,28.8712345" in _saved_address(db, r.json()["order"]["tx_id"])
+
+
+def test_order_ignores_other_users_address_id(client, make_user, db, product, market_with_limits):
+    _, h_owner = make_user()
+    addr = client.post("/api/auth/addresses", headers=h_owner, json={
+        "neighborhood": "Görükle", "street": "Safran", "building_no": "1", "lat": 40.1, "lng": 28.1,
+    }).json()["address"]
+    _, h = make_user()
+    r = _order(client, h, [{"id": product["id"], "qty": 5}], market_id="market_test_limits",
+               delivery_type="eve_servis", payment_method="online_card",
+               address="Görükle Safran No:1, Bursa", address_id=addr["id"])
+    assert r.status_code == 200, r.text
+    assert "Konum:" not in _saved_address(db, r.json()["order"]["tx_id"])
+
+
+@pytest.mark.parametrize("lat,lng", [("abc", "x"), (91, 28.8), (40.2, 181), (True, False), (None, None)])
+def test_address_rejects_invalid_coordinates(client, make_user, lat, lng):
+    _, h = make_user()
+    r = client.post("/api/auth/addresses", headers=h, json={
+        "neighborhood": "Görükle", "street": "Safran", "building_no": "1", "lat": lat, "lng": lng,
+    })
+    assert r.status_code == 200, r.text
+    a = r.json()["address"]
+    assert a["lat"] is None and a["lng"] is None
+
+
 def test_market_cash_limit_enforced(client, make_user, db, product, market_with_limits):
     _, h = make_user()
     # 3 adet: pazarın gel_al_min_tutar'ını (50) geçer AMA nakit limitini (30) de aşar
