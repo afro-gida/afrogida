@@ -67,6 +67,8 @@ export function loadGoogleMaps(): Promise<GMaps> {
 type Component = { long_name: string; short_name: string; types: string[] };
 type GeocodeResult = { address_components: Component[]; types: string[] };
 
+// Google bazı adları "Ni̇lüfer" gibi i + birleşik üst nokta (U+0307) ile veriyor.
+const tidy = (s: string) => s.normalize('NFC').replace(/̇/g, '').trim();
 const stripNeighborhood = (s: string) => s.replace(/\s+(mahallesi|mah\.?|mh\.?)$/i, '').trim();
 const stripDistrict = (s: string) => s.replace(/\s+ilçesi$/i, '').trim();
 
@@ -80,7 +82,7 @@ export function addressFieldsFromGeocode(results: GeocodeResult[]): Partial<Addr
     for (const t of types) {
       for (const r of results) {
         const c = r.address_components.find((x) => x.types.includes(t));
-        if (c) return c.long_name;
+        if (c) return tidy(c.long_name);
       }
     }
     return '';
@@ -88,8 +90,8 @@ export function addressFieldsFromGeocode(results: GeocodeResult[]): Partial<Addr
   // Sokak / bina no yalnızca en yakın (ilk) sonuçtan: uzaktaki bir binanın
   // numarası yanlışlıkla forma dolmasın.
   const first = results[0]?.address_components ?? [];
-  const street = first.find((x) => x.types.includes('route'))?.long_name ?? '';
-  const buildingNo = first.find((x) => x.types.includes('street_number'))?.long_name ?? '';
+  const street = tidy(first.find((x) => x.types.includes('route'))?.long_name ?? '');
+  const buildingNo = tidy(first.find((x) => x.types.includes('street_number'))?.long_name ?? '');
 
   const out: Partial<AddressInput> = {};
   const neighborhood = stripNeighborhood(pick(['administrative_area_level_4', 'neighborhood', 'sublocality_level_1', 'sublocality']));
