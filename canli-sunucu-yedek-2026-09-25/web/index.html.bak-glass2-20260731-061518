@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Afro Gıda</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+
+      /* ================================================================
+         AFRO GIDA - SABİT DUVAR KAĞIDI (Telegram tarzı)
+         Hem DARK hem LIGHT MODE + MÜŞTERİ kısmında aktif.
+         ÖNEMLİ: Sayfa katmanlarını ŞEFFAF yapmıyoruz (bu, eski sayfaların
+         iç içe görünmesine yol açıyordu). Bunun yerine tam-ekran sayfa
+         katmanlarının arka planına duvar kağıdını SABİT resim olarak
+         basıyoruz. Sayfalar opak kalır (arkadakini gizler), duvar kağıdı
+         kartların arasındaki boşluklarda görünür ve kaydırınca sabit kalır.
+         ================================================================ */
+      /* KOYU MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-dark [data-afro-wp="1"] {
+        background-color: #0d0d0d !important;
+        background-image: url(/afro_wallpaper_dark.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+      /* AÇIK MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-light [data-afro-wp="1"] {
+        background-color: #f9f4ed !important;
+        background-image: url(/afro_wallpaper_light.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+
+      /* ================================================================
+         BUZLU CAM (frosted glass) - AÇIK MODDAKİ BEYAZ KART/PANELLER
+         Beyaz alanları yarı şeffaf + arka bulanıklık yapar; böylece
+         duvar kağıdı kartların arkasından bulanık şekilde görünür.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-glass="1"] {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.3) !important;
+        backdrop-filter: blur(14px) saturate(1.3) !important;
+      }
+    </style>
+  <meta name="theme-color" content="#14B67E">
+<meta name="description" content="Afro gıda - Bursa pazarlarında taze sebze meyve tezgahları.">
+<link rel="icon" href="/favicon.ico" /></head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+
+    <script>
+      (function () {
+        var htmlEl = document.documentElement;
+        var WP_ATTR = 'data-afro-wp';
+        var GLASS_ATTR = 'data-afro-glass';
+
+        function isDarkActive() {
+          var pref = null;
+          try { pref = localStorage.getItem('theme_preference'); } catch (e) {}
+          if (pref === 'dark') return true;
+          if (pref === 'light') return false;
+          try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; }
+        }
+
+        function isCustomerSection() {
+          // Müşteri kısmı = /admin ile başlamayan tüm sayfalar
+          return !/^\/admin(\/|$)/.test(location.pathname);
+        }
+
+        // Tam ekranı kaplayan ve OPAK arka planı olan sayfa/ekran katmanlarına
+        // duvar kağıdını bas. Kartlar/butonlar (küçük elemanlar) dokunulmaz kalır,
+        // böylece yazılar net okunur ve arkadaki eski sayfalar gizlenir.
+        function paintPageLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var root = document.getElementById('root');
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(WP_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            if (r.width >= vw * 0.6 && r.height >= vh * 0.5) {
+              var bg = getComputedStyle(el).backgroundColor;
+              // sadece opak (dolu) arka planı olan tam-ekran katmanlar
+              if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                el.setAttribute(WP_ATTR, '1');
+              }
+            }
+          }
+        }
+
+        // Açık moddaki BEYAZ kart/panel/bar elemanlarını buzlu cam yap.
+        // Tam ekran kaplamayan, beyazımsı opak arka planı olan ve yeterince
+        // büyük yüzeyler işaretlenir (küçük butonlar hariç).
+        function paintGlassLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var root = document.getElementById('root');
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(GLASS_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            // tam ekran katmanları atla (onlar duvar kağıdı alıyor)
+            if (r.width >= vw * 0.6 && r.height >= vh * 0.5) continue;
+            // yeterince büyük yüzeyler: kartlar ve barlar (küçük butonlar değil)
+            if (r.width < 200 || r.height < 50) continue;
+            var bg = getComputedStyle(el).backgroundColor;
+            var m = bg && bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            // beyazımsı ve opak
+            if (rr >= 245 && gg >= 245 && bb >= 245 && a >= 0.9) {
+              el.setAttribute(GLASS_ATTR, '1');
+            }
+          }
+        }
+
+        function unpaint() {
+          var marked = document.querySelectorAll('[' + WP_ATTR + ']');
+          for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(WP_ATTR);
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+        }
+
+        function unpaintGlassOnly() {
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+        }
+
+        function tick() {
+          var isCustomer = isCustomerSection();
+          var isDark = isDarkActive();
+          var active = isCustomer; // her iki temada da duvar kağıdı göster (müşteri kısmında)
+
+          if (active) {
+            if (!htmlEl.classList.contains('afro-wp')) htmlEl.classList.add('afro-wp');
+            // tema sınıflarını ekle
+            if (isDark) {
+              htmlEl.classList.add('afro-dark');
+              htmlEl.classList.remove('afro-light');
+            } else {
+              htmlEl.classList.add('afro-light');
+              htmlEl.classList.remove('afro-dark');
+            }
+            paintPageLayers();
+            // buzlu cam sadece açık modda beyaz kartlara uygulanır
+            if (isDark) {
+              unpaintGlassOnly();
+            } else {
+              paintGlassLayers();
+            }
+          } else {
+            if (htmlEl.classList.contains('afro-wp')) htmlEl.classList.remove('afro-wp');
+            htmlEl.classList.remove('afro-dark', 'afro-light');
+            unpaint();
+          }
+        }
+
+        // rota değişiminde/DOM güncellemesinde ANINDA boya (600ms boşluğu kapat)
+        var rafPending = false;
+        function scheduleTick() {
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(function () { rafPending = false; tick(); });
+        }
+
+        tick();
+        setInterval(tick, 600);
+        window.addEventListener('resize', tick);
+
+        // DOM her değiştiğinde (sayfa geçişi = yeni katmanlar) hemen boya
+        try {
+          var mo = new MutationObserver(scheduleTick);
+          var startObserve = function () {
+            var root = document.getElementById('root');
+            if (root) mo.observe(root, { childList: true, subtree: true });
+            else setTimeout(startObserve, 100);
+          };
+          startObserve();
+        } catch (e) {}
+
+        // SPA rota değişimlerini de yakala
+        try {
+          var _ps = history.pushState;
+          history.pushState = function () { _ps.apply(this, arguments); scheduleTick(); };
+          var _rs = history.replaceState;
+          history.replaceState = function () { _rs.apply(this, arguments); scheduleTick(); };
+          window.addEventListener('popstate', scheduleTick);
+        } catch (e) {}
+      })();
+    </script>
+
+  <script src="/_expo/static/js/web/entry-ef19456146b2f1940ae80106b2a5dfe1.js" defer></script>
+</body>
+</html>

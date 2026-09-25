@@ -1,0 +1,4 @@
+# Bu klasör canlı sunucunun birebir yedeği: kök .gitignore'daki *.bak-* vb.
+# kurallar burada GEÇERSİZ, her dosya depoya girer.
+!*
+!*/

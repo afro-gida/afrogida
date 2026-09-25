@@ -1,0 +1,17 @@
+[Unit]
+Description=Afro Gıda Backend
+After=network.target mongodb.service
+
+[Service]
+User=root
+WorkingDirectory=/root/afro-proje-yedek/afro-proje/backend
+EnvironmentFile=/root/afro-proje-yedek/afro-proje/backend/.env
+Environment="PATH=/root/afro-proje-yedek/afro-proje/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/root/afro-proje-yedek/afro-proje/backend/venv/bin/python3 -m uvicorn server:app --host 127.0.0.1 --port 8000 --workers 3 --backlog 2048 --timeout-keep-alive 30
+Restart=always
+RestartSec=5
+StandardOutput=append:/root/afro-proje-yedek/afro-proje/backend/backend.log
+StandardError=append:/root/afro-proje-yedek/afro-proje/backend/backend.log
+
+[Install]
+WantedBy=multi-user.target

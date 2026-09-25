@@ -1,0 +1,3615 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta httpEquiv="Pragma" content="no-cache" />
+    <meta httpEquiv="Expires" content="0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Afro Gıda</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+
+      /* ================================================================
+         AFRO GIDA - SABİT DUVAR KAĞIDI (Telegram tarzı)
+         Hem DARK hem LIGHT MODE + MÜŞTERİ kısmında aktif.
+         ÖNEMLİ: Sayfa katmanlarını ŞEFFAF yapmıyoruz (bu, eski sayfaların
+         iç içe görünmesine yol açıyordu). Bunun yerine tam-ekran sayfa
+         katmanlarının arka planına duvar kağıdını SABİT resim olarak
+         basıyoruz. Sayfalar opak kalır (arkadakini gizler), duvar kağıdı
+         kartların arasındaki boşluklarda görünür ve kaydırınca sabit kalır.
+         ================================================================ */
+      /* KOYU MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-dark [data-afro-wp="1"] {
+        background-color: #0d0d0d !important;
+        background-image: url(/afro_wallpaper_dark.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+      /* AÇIK MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-light [data-afro-wp="1"] {
+        background-color: #f9f4ed !important;
+        background-image: url(/afro_wallpaper_light.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+
+      /* ================================================================
+         BUZLU CAM (frosted glass) - AÇIK MODDAKİ BEYAZ KART/PANELLER
+         Beyaz alanları yarı şeffaf + arka bulanıklık yapar; böylece
+         duvar kağıdı kartların arkasından bulanık şekilde görünür.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-glass="1"] {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.3) !important;
+        backdrop-filter: blur(14px) saturate(1.3) !important;
+      }
+
+      /* KULLANICI İSTEĞİ: bilgi kutucukları (Pazar/Gel-Al saati) ve ana/alt
+         kategori butonlarının ARKASINDAKİ geniş beyaz-buzlu bandı KALDIR.
+         Bu bantlar tamamen şeffaf olur; böylece duvar kağıdı butonların
+         arkasından net görünür (butonların kendisi dokunulmadan kalır). */
+      html.afro-wp.afro-light [data-afro-glass-clear="1"] {
+        background-color: transparent !important;
+        background-image: none !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+      }
+
+      /* KULLANICI İSTEĞİ: KOYU MODDA da kategori/bilgi bantlarını şeffaflaştır */
+      html.afro-wp.afro-dark [data-afro-dark-clear="1"] {
+        background-color: transparent !important;
+        background-image: none !important;
+        box-shadow: none !important;
+      }
+
+      /* ================================================================
+         KULLANICI İSTEĞİ: ÜRÜNLER SAYFASI BÖLÜM BAŞLIĞI BANTLARI
+         ("Çok al az öde", "Domates", "Biber" ... = ana kategori isimleri)
+         Bu bantların arkasındaki buzlu-şeffaf zemin kaydırınca kayboluyordu
+         (uygulama onları saydam render ediyor, genel painter ise ancak soluk
+         renkli düğümleri yakaladığı için tutarsızdı). Özel painter ile HER
+         bant işaretlenir (data-afro-secband) -> zemin STABİL kalır + etrafına
+         turuncu (koyu temada yeşil) kenarlık eklenir. Bu blok tamamen geri
+         alınabilir: yedek index_wallpaper.html.bak-secband-* dosyalarında.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-secband="1"] {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.3) !important;
+        backdrop-filter: blur(14px) saturate(1.3) !important;
+        border: 1.5px solid rgb(251, 140, 60) !important;
+        border-radius: 9px !important;
+      }
+      html.afro-wp.afro-dark [data-afro-secband="1"] {
+        background-color: rgba(18, 40, 30, 0.38) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+        backdrop-filter: blur(14px) saturate(1.2) !important;
+        border: 1.5px solid rgb(20, 182, 126) !important;
+        border-radius: 9px !important;
+      }
+
+      /* ================================================================
+         TURUNCU BUTONLAR (HER İKİ MOD) - yeşil marka butonlarını
+         uygulamanın turuncu aksanına (rgb(251,140,60)) çevirir. Hem açık
+         hem koyu modda uygulanır.
+         ================================================================ */
+      /* AÇIK TEMA: dolu yeşil butonlar -> turuncu */
+      html.afro-wp.afro-light [data-afro-orange="1"] {
+        background-color: rgb(251, 140, 60) !important;
+        border-color: rgb(251, 140, 60) !important;
+      }
+      /* KOYU TEMA: dolu yeşil butonlar -> parlak yeşil */
+      html.afro-wp.afro-dark [data-afro-orange="1"] {
+        background-color: rgb(20, 182, 126) !important;
+        border-color: rgb(20, 182, 126) !important;
+      }
+      
+      /* HER İKİ MODDA TÜM YEŞİL YAZILARI/İKONLARI/KENARLIKLARI TURUNCU YAP */
+      /* AÇIK TEMA: yeşiller -> turuncu */
+      html.afro-wp.afro-light [data-afro-green-text="1"] {
+        color: rgb(251, 140, 60) !important;
+      }
+      html.afro-wp.afro-light [data-afro-green-border="1"] {
+        border-color: rgb(251, 140, 60) !important;
+      }
+      html.afro-wp.afro-light [data-afro-green-fill="1"] {
+        fill: rgb(251, 140, 60) !important;
+      }
+      /* KOYU TEMA: yeşiller -> parlak yeşil (farklı ton) */
+      html.afro-wp.afro-dark [data-afro-green-text="1"] {
+        color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-green-border="1"] {
+        border-color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-green-fill="1"] {
+        fill: rgb(20, 182, 126) !important;
+      }
+      /* KOYU TEMA: uygulamanın KENDİ turuncu rengini (rgb(251,140,60))
+         kullanan elemanları (aktif alt kategori çipi, "Siparişi Tamamla"
+         çubuğu vb.) parlak yeşile çevir. Bunlar build'e özgü atomik css
+         class'ları (.r-1s5ja4 vb.) olduğu için runtime taramayla işaretlenir. */
+      html.afro-wp.afro-dark [data-afro-d2g~="bg"] {
+        background-color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-d2g~="border"] {
+        border-color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-d2g~="text"] {
+        color: rgb(20, 182, 126) !important;
+      }
+      /* ==== AKSAN RENGİ BİRLEŞTİRME (STATİK - FLICKER YOK) ====
+         Uygulama; turuncu ve yeşil aksan renklerini derlenmiş ATOMİK css
+         class'larıyla uyguluyor (.r-1s5ja4 gibi). Bu class'ları doğrudan
+         statik CSS ile ezersek renk HER render'da anında doğru olur; JS
+         taramasının gecikmesinden kaynaklanan turuncu<->yeşil parlaması
+         (flicker) tamamen ortadan kalkar.
+         TEMA KURALI: AÇIK = turuncu rgb(251,140,60); KOYU = parlak yeşil
+         rgb(20,182,126). NOT: build yenilenirse class adları değişebilir;
+         JS tarayıcılar yedek olarak kalır. */
+
+      /* -- Uygulamanın TURUNCU atomik class'ları -- */
+      /* Açık tema: turuncu kalsın (uygulamanın kendi değeri zaten turuncu,
+         ama farklı turuncu tonlarını -255,165,0 / 249,115,22- tek tona
+         sabitlemek için açıkça yazıyoruz). */
+      html.afro-wp.afro-light .r-1s5ja4,
+      html.afro-wp.afro-light .r-u92y06 { background-color: rgb(251, 140, 60) !important; }
+      html.afro-wp.afro-light .r-15tdvqa,
+      html.afro-wp.afro-light .r-1ytj54j { color: rgb(251, 140, 60) !important; }
+      html.afro-wp.afro-light .r-rs0cj0,
+      html.afro-wp.afro-light .r-3nu3je { border-color: rgb(251, 140, 60) !important; }
+      /* Koyu tema: turuncu -> parlak yeşil */
+      html.afro-wp.afro-dark .r-1s5ja4,
+      html.afro-wp.afro-dark .r-u92y06 { background-color: rgb(20, 182, 126) !important; }
+      html.afro-wp.afro-dark .r-15tdvqa,
+      html.afro-wp.afro-dark .r-1ytj54j { color: rgb(20, 182, 126) !important; }
+      html.afro-wp.afro-dark .r-rs0cj0,
+      html.afro-wp.afro-dark .r-3nu3je { border-color: rgb(20, 182, 126) !important; }
+
+      /* -- INLINE STYLE ile gelen turuncu (SEPET uyarı yazıları) --
+         "Minimum Sipariş Tutarı", "Kalan Tutar" ve "Sepetinizde teslimata
+         uygun olmayan ürünler var." React'te style={{color: theme.orange}}
+         şeklinde INLINE basılıyor; atomik class DEĞİL. JS boyayıcı (d2g) bunu
+         yakalıyor ama rAF gecikmesiyle önce turuncu kare görünüp sonra yeşile
+         dönüyordu -> flicker. Tarayıcı inline rengi "rgb(251, 140, 60)"
+         biçiminde normalize eder; bu saf-CSS kuralı HER paint'te anında
+         uygulanır, React re-render'ı bunu kaldıramaz -> flicker tamamen biter.
+         Not: sadece color ezilir; inline turuncu arka planlı bir eleman olsa
+         bile yalnız yazı rengini etkiler (güvenli). */
+      html.afro-wp.afro-dark [style*="251, 140, 60"] { color: rgb(20, 182, 126) !important; }
+      html.afro-wp.afro-dark [style*="251,140,60"]   { color: rgb(20, 182, 126) !important; }
+
+      /* -- Uygulamanın YEŞİL atomik class'ları (20,182,126 / 37,211,102) -- */
+      /* Açık tema: yeşil -> turuncu */
+      html.afro-wp.afro-light .r-4bxdpc,
+      html.afro-wp.afro-light .r-1t70e42 { background-color: rgb(251, 140, 60) !important; }
+      html.afro-wp.afro-light .r-1oh7245 { color: rgb(251, 140, 60) !important; }
+      html.afro-wp.afro-light .r-1syw04g { border-color: rgb(251, 140, 60) !important; }
+      /* Koyu tema: uygulamanın yeşilini parlak yeşile (20,182,126) sabitle */
+      html.afro-wp.afro-dark .r-4bxdpc,
+      html.afro-wp.afro-dark .r-1t70e42 { background-color: rgb(20, 182, 126) !important; }
+      html.afro-wp.afro-dark .r-1oh7245 { color: rgb(20, 182, 126) !important; }
+      html.afro-wp.afro-dark .r-1syw04g { border-color: rgb(20, 182, 126) !important; }
+
+      /* KULLANICI İSTEĞİ: AÇIK MODDA yükleniyor spinner'ı (yeşil daire)
+         TURUNCU olsun. React ActivityIndicator merkez konumlu (cx=16 cy=16)
+         svg circle'larını hedefler; tüm boyutlarda (r değeri farketmez) geçerli.
+         Ürün ikonları farklı geometride (merkez offset) olduğu için etkilenmez.
+         Koyu modda yeşil kalır. */
+      html.afro-wp.afro-light svg circle[cx="16"][cy="16"] {
+        stroke: rgb(251, 140, 60) !important;
+      }
+      html.afro-wp.afro-dark svg circle[cx="16"][cy="16"] {
+        stroke: rgb(20, 182, 126) !important;
+      }
+
+      /* KULLANICI İSTEĞİ: SEPET SAYFASINDA turuncu dolu butonları ve sarımtırak
+         kutuları ŞEFFAF BUZLU yap (içi boş outline style, arkadan duvar kağıdı
+         görünsün). Buna dahil: "Pazardan Gel-Al", "Tezgahta Nakit/Pos" butonları,
+         "Teslim Alma Saati" kutusu, "Ara Toplam" özet kutusu. Profil/ürünler
+         sayfasındaki butonlar normal kalsın (sadece sepette uygula). */
+      html.afro-wp.afro-light [data-afro-cart-outline="1"] {
+        background-color: rgba(255, 255, 255, 0.65) !important;
+        border: 2px solid rgb(251, 140, 60) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+        backdrop-filter: blur(12px) saturate(1.2) !important;
+        color: rgb(251, 140, 60) !important;
+      }
+      /* KULLANICI İSTEĞİ: Sepette arka planı ŞEFFAF olup duvar kağıdı direkt
+         geçtiği için yazısı okunmayan bloklara ŞEFFAF BUZLU-CAM panel ekle
+         (renk yok; yarı şeffaf beyaz + güçlü blur, duvar kağıdı hafif geçsin).
+         İki tip: (frost) = tam panel (şeffaf bare bloklar: Sipariş Tamamlama +
+         üst başlık); (fill) = app'in zayıf beyaz kartlarına (özet/adres/
+         mahalleler) güçlü blur ekleyip buzlu cam yap, köşe/padding'i korunur. */
+      html.afro-wp.afro-light [data-afro-cart-frost="1"] {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(1.25) !important;
+        backdrop-filter: blur(18px) saturate(1.25) !important;
+        border-radius: 12px !important;
+        padding: 12px 14px !important;
+      }
+      html.afro-wp.afro-light [data-afro-cart-fill="1"] {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(1.25) !important;
+        backdrop-filter: blur(18px) saturate(1.25) !important;
+      }
+      /* Aktif teslimat/ödeme butonlarının (Eve Servis, Kapıda Nakit) iç yazısı
+         BEYAZdı, açık buzlu zeminde okunmuyordu -> turuncuya çevir (okunur). */
+      html.afro-wp.afro-light [data-afro-cart-outline="1"],
+      html.afro-wp.afro-light [data-afro-cart-outline="1"] * {
+        color: rgb(224, 108, 24) !important;
+      }
+      /* Üst başlık alt satırı ("X çeşit ürün • ₺..") soluk gri -> koyu okunur. */
+      html.afro-wp.afro-light [data-afro-cart-darktext="1"],
+      html.afro-wp.afro-light [data-afro-cart-darktext="1"] * {
+        color: rgb(40, 62, 50) !important;
+      }
+      /* Sipariş Oluştur butonu -> YEŞİL (yazı beyaz, okunur). */
+      html.afro-wp.afro-light [data-afro-order-btn="1"] {
+        background-color: rgb(20, 182, 126) !important;
+        border-color: rgb(20, 182, 126) !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+      html.afro-wp.afro-light [data-afro-order-btn="1"] * {
+        color: rgb(255, 255, 255) !important;
+      }
+      /* Alt menü çubuğu -> YÜZEN pill/ada: absolute konumla akıştan çıkar,
+         böylece kaydırma kabı tüm yüksekliği kaplar ve içerik/butonlar pill'in
+         ALTINDAN geçer (kesik bant kalkar). Her iki temada da geçerli konum. */
+      html.afro-wp [data-afro-navpill="1"] {
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 8px !important;
+        width: calc(100% - 28px) !important;
+        max-width: 470px !important;
+        margin: 0 auto !important;
+        border-radius: 32px !important;
+        box-shadow: 0 8px 26px rgba(70, 35, 0, 0.28) !important;
+        overflow: hidden !important;
+        z-index: 40 !important;
+      }
+      /* AÇIK tema pill görünümü */
+      html.afro-wp.afro-light [data-afro-navpill="1"] {
+        border: 1.5px solid rgba(251, 140, 60, 0.6) !important;
+        background-color: rgba(255, 255, 255, 0.28) !important;
+        -webkit-backdrop-filter: blur(9px) saturate(1.2) !important;
+        backdrop-filter: blur(9px) saturate(1.2) !important;
+      }
+      /* KOYU tema pill görünümü (koyu yarı-şeffaf zemin + YEŞİL kenar) */
+      html.afro-wp.afro-dark [data-afro-navpill="1"] {
+        border: 1.5px solid rgba(20, 182, 126, 0.6) !important;
+        background-color: rgba(22, 22, 26, 0.34) !important;
+        -webkit-backdrop-filter: blur(10px) saturate(1.2) !important;
+        backdrop-filter: blur(10px) saturate(1.2) !important;
+      }
+      /* Kaydırma kabına alt boşluk: son satır pill'in altında kalmasın. */
+      html.afro-wp [data-afro-navpad="1"] {
+        padding-bottom: 120px !important;
+        box-sizing: border-box !important;
+      }
+      /* Ürün sayfasındaki "Siparişi Tamamla" sepet çubuğu: yüzen pill ile
+         çakışmasın diye YUKARI kaydır (pill'in ÜSTÜNE otursun). Ayrıca alt
+         kategori kutuları gibi ŞEFFAF BUZLU + hafif doku (turuncu kimlik korunur,
+         saydamlık korunur, yazı okunur kalsın diye gölge). */
+      html.afro-wp [data-afro-cartbar="1"] {
+        bottom: 84px !important;
+        z-index: 41 !important;
+        -webkit-backdrop-filter: blur(10px) saturate(1.2) !important;
+        backdrop-filter: blur(10px) saturate(1.2) !important;
+        border-radius: 16px !important;
+      }
+      html.afro-wp.afro-light [data-afro-cartbar="1"] {
+        background-color: rgba(251, 140, 60, 0.34) !important;
+        background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 2px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 8px) !important;
+        border: 1.5px solid rgba(251, 140, 60, 0.6) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-cartbar="1"] {
+        background-color: rgba(20, 182, 126, 0.34) !important;
+        background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0px, rgba(255,255,255,0.12) 2px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 8px) !important;
+        border: 1.5px solid rgba(20, 182, 126, 0.6) !important;
+      }
+      html.afro-wp [data-afro-cartbar="1"] * {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45) !important;
+      }
+      /* MOBİL DÜZELTME: "Siparişi Tamamla" çubuğu absolute + kısa/kaydırılabilir
+         kapsayıcı yüzünden içeriğin ortasına düşüp ürün kartlarının "Ekle"
+         butonlarının üstüne biniyordu. Dar ekranda çubuğu VIEWPORT'a SABİTLE
+         (fixed), alt menü pill'inin hemen üstüne otursun. Masaüstü etkilenmez. */
+      @media (max-width: 768px) {
+        html.afro-wp [data-afro-cartbar="1"] {
+          position: fixed !important;
+          left: 8px !important;
+          right: 8px !important;
+          width: auto !important;
+          max-width: none !important;
+          bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+      }
+      /* Üstteki bilgi kutucukları (Pazar saati / Gel-Al saati / minimum vb.):
+         opak koyu yeşil yerine ŞEFFAF BUZLU CAM. Boyut korunur. Her iki tema. */
+      html.afro-wp [data-afro-infochip="1"] {
+        -webkit-backdrop-filter: blur(9px) saturate(1.2) !important;
+        backdrop-filter: blur(9px) saturate(1.2) !important;
+      }
+      html.afro-wp.afro-light [data-afro-infochip="1"] {
+        background-color: rgba(255, 255, 255, 0.34) !important;
+        border-color: rgba(251, 140, 60, 0.5) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-infochip="1"] {
+        background-color: rgba(20, 22, 26, 0.32) !important;
+        border-color: rgba(20, 182, 126, 0.55) !important;
+      }
+      /* "Çok al az öde" başlığı tıklanınca en üste kaydırır -> imleç işareti. */
+      html.afro-wp [data-afro-scrolltop="1"] {
+        cursor: pointer !important;
+      }
+      /* Profil/Ayarlar sayfasındaki opak kartları (menü satırları, bildirim,
+         tema, hesap) ŞEFFAF BUZLU CAM yap ki duvar kağıdı arkadan görünsün. */
+      html.afro-wp [data-afro-glasscard="1"] {
+        -webkit-backdrop-filter: blur(16px) saturate(1.2) !important;
+        backdrop-filter: blur(16px) saturate(1.2) !important;
+        border-radius: 24px !important;
+      }
+      html.afro-wp.afro-light [data-afro-glasscard="1"] {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        border-color: rgba(251, 140, 60, 0.6) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-glasscard="1"] {
+        background-color: rgba(18, 20, 24, 0.42) !important;
+        border-color: rgba(20, 182, 126, 0.55) !important;
+      }
+
+      /* REQ1: Ürünler/pazar sayfası ÜST BAŞLIK bloğu (market adı satırı) ->
+         tam genişlikte ŞEFFAF BUZLU panel (yazı duvar kağıdı üstünde okunsun). */
+      html.afro-wp [data-afro-headerpanel="1"] {
+        border-radius: 16px !important;
+        /* Dikey padding 8px -> 4px: panel daha kompakt olsun; native üst
+           kapsayıcı (overflow:hidden) bilgi çiplerinin ALTINI kesip yuvarlak
+           köşeleri düzleştiriyordu ("altı kesik/kapanmış"). Yatay 12px korunur. */
+        padding: 4px 12px !important;
+        -webkit-backdrop-filter: blur(11px) saturate(1.2) !important;
+        backdrop-filter: blur(11px) saturate(1.2) !important;
+      }
+      html.afro-wp.afro-light [data-afro-headerpanel="1"] {
+        background-color: rgba(255, 255, 255, 0.34) !important;
+        border: 1.5px solid rgba(251, 140, 60, 0.5) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-headerpanel="1"] {
+        background-color: rgba(20, 22, 26, 0.34) !important;
+        border: 1.5px solid rgba(20, 182, 126, 0.55) !important;
+      }
+      /* Bilgi çipleri panelinin NATIVE üst kapsayıcısı overflow:hidden ile
+         panelin altını kırpıyordu. Bu kapsayıcıyı overflow:visible yaparak
+         panelin yuvarlak alt köşeleri tam görünür ("altı kesik" düzelir). */
+      html.afro-wp [data-afro-headerclip="1"] {
+        overflow: visible !important;
+      }
+      /* Alt kategori çip ŞERİDİ: native dikey padding üstte 0 / altta 8px
+         olduğu için çip şeridin ÜSTÜNE YAPIŞIK duruyordu. Dengeli 5/5 padding
+         ile çip dikeyde ortalanır (üste yapışıklık düzelir). */
+      html.afro-wp [data-afro-substrip="1"] {
+        padding-top: 5px !important;
+        padding-bottom: 5px !important;
+      }
+
+      /* REQ2: Profil isim/yönetici kartı DOLU turuncuydu ve duvar kağıdıyla
+         karışıyordu -> ŞEFFAF BUZLU CAM (her iki tema). Açık temada iç yazı
+         okunur olsun diye koyu renk. */
+      html.afro-wp [data-afro-mgrcard="1"] {
+        -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+        backdrop-filter: blur(12px) saturate(1.2) !important;
+      }
+      html.afro-wp.afro-light [data-afro-mgrcard="1"] {
+        background-color: rgba(255, 255, 255, 0.4) !important;
+        border: 1.5px solid rgba(251, 140, 60, 0.55) !important;
+      }
+      html.afro-wp.afro-light [data-afro-mgrcard="1"] * {
+        color: rgb(40, 62, 50) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-mgrcard="1"] {
+        background-color: rgba(20, 22, 26, 0.4) !important;
+        border: 1.5px solid rgba(20, 182, 126, 0.5) !important;
+      }
+
+      /* REQ3: Sepet "Toplam/özet" kutusu -> belirgin ŞEFFAF BUZLU panel
+         (her iki tema, kenarlık ile kutu belli olur, saydamlık korunur). */
+      html.afro-wp [data-afro-cartsum="1"] {
+        border-radius: 20px !important;
+        -webkit-backdrop-filter: blur(16px) saturate(1.25) !important;
+        backdrop-filter: blur(16px) saturate(1.25) !important;
+      }
+      html.afro-wp.afro-light [data-afro-cartsum="1"] {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        border: 1.5px solid rgba(251, 140, 60, 0.45) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-cartsum="1"] {
+        background-color: rgba(20, 22, 26, 0.4) !important;
+        border: 1.5px solid rgba(20, 182, 126, 0.5) !important;
+      }
+
+      /* REQ5: ALT KATEGORİ çipleri (Domates/Kabak/Patlıcan/Biber/Diğer)
+         turuncuydu -> YEŞİL. Aktif: dolu yeşil + beyaz yazı. Pasif: yeşil
+         kenar + yeşil yazı. Ana kategori satırı etkilenmez. Her iki tema.
+         (Turuncu dönüştürücü kurallarından SONRA gelir; onları ezer.) */
+      html.afro-wp.afro-light [data-afro-subcat="1"],
+      html.afro-wp.afro-dark [data-afro-subcat="1"] {
+        background-color: rgba(20, 182, 126, 0.12) !important;
+        border-color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-light [data-afro-subcat="1"] *,
+      html.afro-wp.afro-dark [data-afro-subcat="1"] * {
+        color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-light [data-afro-subcat="active"],
+      html.afro-wp.afro-dark [data-afro-subcat="active"] {
+        background-color: rgb(20, 182, 126) !important;
+        border-color: rgb(20, 182, 126) !important;
+      }
+      html.afro-wp.afro-light [data-afro-subcat="active"] *,
+      html.afro-wp.afro-dark [data-afro-subcat="active"] * {
+        color: rgb(255, 255, 255) !important;
+      }
+      /* KULLANICI İSTEĞİ: kategori çiplerinin (ana + alt) SEÇİLİ OLMAYAN
+         beyaz/soluk dolgusu KALKSIN; içinden duvar kağıdı görünsün. Sadece
+         DOLGU şeffaflaşır; turuncu/yeşil KENARLIK ve YAZI korunur. Seçili
+         (dolu turuncu/yeşil) çiplere clearCatChipFill dokunmaz. Theme-scoped
+         (0,3,1) -> subcat/turuncu dolgu kurallarını ezmek için subcat'ten
+         SONRA gelir. */
+      html.afro-wp [data-afro-catchip-clear="1"] {
+        background-image: none !important;
+        -webkit-backdrop-filter: blur(10px) saturate(1.15) !important;
+        backdrop-filter: blur(10px) saturate(1.15) !important;
+        box-shadow: none !important;
+        /* Buzlu-cam zemini çipin yuvarlak (pill) formuna uydur; aksi halde
+           KARE zemin, seçili turuncu yuvarlak çipin arkasından köşelerde
+           taşıyordu (köşe taşması). 999px = tam pill. */
+        border-radius: 999px !important;
+      }
+      html.afro-wp.afro-light [data-afro-catchip-clear="1"] {
+        background-color: rgba(255, 255, 255, 0.28) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-catchip-clear="1"] {
+        background-color: rgba(20, 22, 26, 0.30) !important;
+      }
+      /* FLICKER azaltma: boyadığımız çip/butonlarda renk GEÇİŞ animasyonunu
+         kapat. Böylece kaydırmada oluşan kısa turuncu<->yeşil uyuşmazlığı
+         yumuşak fade ile "bulaşmaz", anlık değişir ve göze daha az batar. */
+      html.afro-wp [data-afro-subcat],
+      html.afro-wp [data-afro-subcat] *,
+      html.afro-wp [data-afro-orange],
+      html.afro-wp [data-afro-orange] *,
+      html.afro-wp [data-afro-cartbar],
+      html.afro-wp [data-afro-cartbar] *,
+      html.afro-wp [data-afro-catchip-clear],
+      html.afro-wp [data-afro-catchip-clear] * {
+        transition-property: none !important;
+        animation-duration: 0s !important;
+      }
+    </style>
+  <meta name="theme-color" content="#14B67E">
+<meta name="description" content="Afro gıda - Bursa pazarlarında taze sebze meyve tezgahları.">
+<link rel="icon" href="/favicon.ico" /></head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+
+    <script>
+      /* ================================================================
+         PAZAR BAZLI ÜRÜN FİLTRESİ (fetch interceptor)
+         Müşteri bir pazar seçtiğinde uygulama pazar adını localStorage'a
+         'selected_market_name' olarak yazıyor ama /api/products çağrısına
+         eklemiyordu; bu yüzden backend pazara göre filtreleyemiyordu.
+         Burada window.fetch'i sarıp müşteri ürün listeleme çağrılarına
+         (GET /products) seçili pazar adını 'market=' parametresi olarak
+         ekliyoruz. Backend bu pazarda satmayan tedarikçilerin ürünlerini
+         gizliyor. Tek ürün (/products/{id}), show_all ve zaten market içeren
+         çağrılara dokunulmaz. defer'li app bundle'ından ÖNCE kurulur. */
+      (function () {
+        if (window.__afroFetchPatched) return;
+        window.__afroFetchPatched = 1;
+        var origFetch = window.fetch;
+        if (typeof origFetch !== 'function') return;
+        function afroUrl(u) {
+          try {
+            if (!/\/products(\?|$)/.test(u)) return u;              // sadece liste ucu
+            if (/\/admin\//.test(u)) return u;                     // admin hariç
+            if (/\/products\/[^?]/.test(u)) return u;              // tek ürün /products/{id} hariç
+            var mkt = '';
+            try { mkt = localStorage.getItem('selected_market_name') || ''; } catch (e) {}
+            if (!mkt) return u;                                    // pazar seçili değilse dokunma
+            var abs = new URL(u, location.origin);
+            if (abs.searchParams.get('market')) return u;          // zaten market var
+            // ÖNEMLİ: yönetici görünümünde uygulama show_all=true gönderiyor ve
+            // bu backend'de pazar filtresini TAMAMEN kapatıyordu (ürün her pazarda
+            // görünüyordu). show_all'ı kaldırıp seçili pazarı ekliyoruz ki tedarikçi
+            // ataması olmayan pazarlarda ürün gizlensin.
+            abs.searchParams.delete('show_all');
+            abs.searchParams.set('market', mkt);
+            return /^https?:\/\//.test(u) ? abs.toString() : (abs.pathname + abs.search);
+          } catch (e) { return u; }
+        }
+        window.fetch = function (input, init) {
+          try {
+            var isGet = !init || !init.method || String(init.method).toUpperCase() === 'GET';
+            if (isGet) {
+              if (typeof input === 'string') {
+                input = afroUrl(input);
+              } else if (input && input.url) {
+                var nu = afroUrl(input.url);
+                if (nu !== input.url) input = new Request(nu, input);
+              }
+            }
+          } catch (e) {}
+          return origFetch.call(this, input, init);
+        };
+      })();
+    </script>
+    <script>
+      /* ================================================================
+         TEDARİKÇİ SİLİNCE ÜRÜNLERİ DE SİL (fetch interceptor)
+         Uygulamanın tedarikçi silme akışı ürünleri SİLMİYOR; her ürünü
+         PUT /admin/products/{id} ile kalan ilk tedarikçiye (supplier_group)
+         YENİDEN ATIYOR, sonra tedarikçiyi katalogdan çıkarıyor. İstenen:
+         tedarikçi silinince ürünleri de silinsin.
+         Yaklaşım (deadlock'suz, sıra-farkında):
+         - Ürün supplier'ını DEĞİŞTİREN PUT'ları tamponla, çağırana hemen
+           sahte 200 dön (Promise.all beklemesin, catalog PUT tetiklensin).
+         - Ardından gelen catalog-config PUT'unu incele:
+             * SAF SİLME (bir tedarikçi çıkmış, eklenen yok) -> tampondaki
+               ürünlere DELETE gönder (yeniden atamayı iptal et).
+             * RENAME/diğer -> tampondaki PUT'ları gerçek gönder (flush).
+         - Aynı tedarikçili normal düzenlemeler dokunulmadan geçer. */
+      (function () {
+        if (window.__afroDelPatched) return;
+        window.__afroDelPatched = 1;
+        var prevFetch = window.fetch;
+        if (typeof prevFetch !== 'function') return;
+
+        var prodSupplier = {};   // ürün id -> mevcut supplier_group
+        var suppliersList = null; // son bilinen tedarikçi listesi (trimli)
+        var buffered = [];        // bekleyen supplier-değişim PUT'ları
+
+        function trim(x) { try { return String(x).trim(); } catch (e) { return ''; } }
+        function parseBody(init) {
+          try {
+            if (!init || typeof init.body !== 'string') return null;
+            return JSON.parse(init.body);
+          } catch (e) { return null; }
+        }
+        function fakeOk() {
+          try {
+            return new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+          } catch (e) {
+            return { ok: true, status: 200, text: function () { return Promise.resolve('{"ok":true}'); }, json: function () { return Promise.resolve({ ok: true }); } };
+          }
+        }
+        function delInit(init) {
+          var h = (init && init.headers) ? init.headers : undefined;
+          return { method: 'DELETE', headers: h };
+        }
+        function flushAll() {
+          var list = buffered.slice();
+          buffered.length = 0;
+          list.forEach(function (e) {
+            try { clearTimeout(e.timer); } catch (x) {}
+            prevFetch.call(window, e.url, e.init).catch(function () {});
+          });
+        }
+
+        window.fetch = function (input, init) {
+          try {
+            var url = (typeof input === 'string') ? input : (input && input.url) || '';
+            var method = (init && init.method) ? String(init.method).toUpperCase()
+              : (typeof input !== 'string' && input && input.method ? String(input.method).toUpperCase() : 'GET');
+
+            // -- Ürün supplier-değişim PUT'u -> tamponla, sahte 200 dön --
+            var pm = url.match(/\/api\/admin\/products\/([^/?]+)$/);
+            if (method === 'PUT' && pm) {
+              var pid = decodeURIComponent(pm[1]);
+              var body = parseBody(init);
+              var newSg = body ? body.supplier_group : undefined;
+              var curSg = prodSupplier[pid];
+              var changed = (typeof newSg !== 'undefined') &&
+                (typeof curSg === 'undefined' || trim(newSg) !== trim(curSg));
+              if (changed) {
+                return new Promise(function (resolve) {
+                  var entry = { id: pid, url: url, init: init, resolve: resolve };
+                  entry.timer = setTimeout(function () {
+                    // catalog PUT gelmedi -> gerçek düzenleme, gerçekten gönder
+                    var idx = buffered.indexOf(entry);
+                    if (idx >= 0) buffered.splice(idx, 1);
+                    prevFetch.call(window, url, init).catch(function () {});
+                  }, 1500);
+                  buffered.push(entry);
+                  resolve(fakeOk()); // Promise.all ilerlesin
+                });
+              }
+            }
+
+            // -- catalog-config PUT'u -> silme mi rename mi? --
+            if (method === 'PUT' && /\/api\/(admin\/)?catalog-config$/.test(url)) {
+              var cbody = parseBody(init);
+              var newSups = (cbody && Array.isArray(cbody.suppliers))
+                ? cbody.suppliers.map(trim) : null;
+              if (newSups && Array.isArray(suppliersList) && buffered.length > 0) {
+                var removed = suppliersList.filter(function (x) { return newSups.indexOf(x) < 0; });
+                var added = newSups.filter(function (x) { return suppliersList.indexOf(x) < 0; });
+                if (removed.length > 0 && added.length === 0) {
+                  // SAF SİLME: yeniden atamayı iptal et, ürünleri DELETE et,
+                  // DELETE'ler bitince catalog PUT'u gönder (sıra korunur).
+                  var toDel = buffered.slice();
+                  buffered.length = 0;
+                  toDel.forEach(function (e) { try { clearTimeout(e.timer); } catch (x) {} });
+                  suppliersList = newSups;
+                  return Promise.all(toDel.map(function (e) {
+                    return prevFetch.call(window, e.url, delInit(e.init)).catch(function () {});
+                  })).then(function () {
+                    return prevFetch.call(window, input, init);
+                  });
+                } else {
+                  // RENAME/diğer: bekleyen PUT'ları gerçek gönder
+                  flushAll();
+                }
+              }
+              if (newSups) suppliersList = newSups;
+            }
+          } catch (e) {}
+
+          var p = prevFetch.call(window, input, init);
+
+          // -- Yanıtlardan önbellek doldur (ürün supplier'ları + tedarikçi listesi) --
+          try {
+            var curl = (typeof input === 'string') ? input : (input && input.url) || '';
+            if (/\/api\/(admin\/)?products(\?|$)/.test(curl)) {
+              p.then(function (r) {
+                try {
+                  r.clone().json().then(function (arr) {
+                    if (Array.isArray(arr)) arr.forEach(function (pr) {
+                      if (pr && pr.id) prodSupplier[pr.id] = pr.supplier_group;
+                    });
+                  }).catch(function () {});
+                } catch (x) {}
+              }).catch(function () {});
+            } else if (/\/api\/(admin\/)?catalog-config(\?|$)/.test(curl)) {
+              p.then(function (r) {
+                try {
+                  r.clone().json().then(function (cfg) {
+                    if (cfg && Array.isArray(cfg.suppliers)) suppliersList = cfg.suppliers.map(trim);
+                  }).catch(function () {});
+                } catch (x) {}
+              }).catch(function () {});
+            }
+          } catch (e) {}
+
+          return p;
+        };
+      })();
+    </script>
+    <script>
+      /* ================================================================
+         ALERT ONAY DÜZELTMESİ
+         Uygulamanın web bundle'ındaki React-Native-Web Alert polyfill'i
+         BOŞ bir no-op (class{static alert(){}}). Bu yüzden Alert.alert ile
+         açılan hiçbir onay diyaloğu görünmüyor ve çok-butonlu onaylarda
+         "Sil" gibi butonların onPress'i asla tetiklenmiyordu -> tedarikçi
+         silme butonu çalışmıyordu. Burada Metro require (__r) ile Alert
+         modülünü (id=458) bulup static alert'i web uyumlu hale getiriyoruz:
+         - 0/1 buton: window.alert + tek butonun onPress'i
+         - 2+ buton: window.confirm (OK -> aksiyon butonu, iptal -> cancel) */
+      (function () {
+        if (window.__afroAlertPatched) return;
+        function makeAlert() {
+          return function (title, message, buttons, options) {
+            try {
+              var text = [title, message].filter(Boolean).join('\n\n');
+              buttons = Array.isArray(buttons) ? buttons : [];
+              if (buttons.length <= 1) {
+                window.alert(text);
+                var b0 = buttons[0];
+                if (b0 && typeof b0.onPress === 'function') b0.onPress();
+                return;
+              }
+              var cancelBtn = buttons.filter(function (b) { return b && b.style === 'cancel'; })[0];
+              var actionBtn = buttons.filter(function (b) { return b && b.style !== 'cancel'; }).pop() || buttons[buttons.length - 1];
+              if (window.confirm(text)) {
+                if (actionBtn && typeof actionBtn.onPress === 'function') actionBtn.onPress();
+              } else {
+                if (cancelBtn && typeof cancelBtn.onPress === 'function') cancelBtn.onPress();
+              }
+            } catch (e) {
+              try { window.alert([title, message].filter(Boolean).join('\n\n')); } catch (e2) {}
+            }
+          };
+        }
+        function tryPatch() {
+          try {
+            if (typeof window.__r !== 'function') return false;
+            var m = window.__r(458);
+            if (m && m.default && typeof m.default.alert === 'function') {
+              var s = m.default.alert.toString().replace(/\s/g, '');
+              if (!m.default.__afroPatched) {
+                m.default.alert = makeAlert();
+                m.default.__afroPatched = 1;
+                window.__afroAlertPatched = 1;
+                return true;
+              }
+            }
+          } catch (e) {}
+          return false;
+        }
+        if (tryPatch()) return;
+        var tries = 0;
+        var iv = setInterval(function () {
+          tries++;
+          if (tryPatch() || tries > 100) clearInterval(iv);
+        }, 200);
+      })();
+    </script>
+    <script>
+      (function () {
+        var htmlEl = document.documentElement;
+        var WP_ATTR = 'data-afro-wp';
+        var GLASS_ATTR = 'data-afro-glass';
+        var GLASS_CLEAR_ATTR = 'data-afro-glass-clear';
+        var DARK_CLEAR_ATTR = 'data-afro-dark-clear';
+        var CART_OUTLINE_ATTR = 'data-afro-cart-outline';
+        var CART_FROST_ATTR = 'data-afro-cart-frost';
+        var CART_FILL_ATTR = 'data-afro-cart-fill';
+        var SEC_BAND_ATTR = 'data-afro-secband'; // ürünler sayfası bölüm başlığı bandı
+
+        function isDarkActive() {
+          var pref = null;
+          try { pref = localStorage.getItem('theme_preference'); } catch (e) {}
+          if (pref === 'dark') return true;
+          if (pref === 'light') return false;
+          try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; }
+        }
+
+        function isCustomerSection() {
+          // Müşteri kısmı = /admin ile başlamayan tüm sayfalar
+          return !/^\/admin(\/|$)/.test(location.pathname);
+        }
+
+        // Tam ekranı kaplayan ve OPAK arka planı olan sayfa/ekran katmanlarına
+        // duvar kağıdını bas. Kartlar/butonlar (küçük elemanlar) dokunulmaz kalır,
+        // böylece yazılar net okunur ve arkadaki eski sayfalar gizlenir.
+        function paintPageLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var root = document.getElementById('root');
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(WP_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            // SADECE gerçek sayfa arka planı: neredeyse tüm ekranı kaplayan
+            // VE köşesiz (radius<8) katmanlar. Yuvarlak köşeli kartlar (menü
+            // kartı gibi) uzun olsalar bile buraya girmez -> onlara duvar
+            // kağıdı basılmaz (aksi halde kartın içinde çizimler görünüyordu).
+            if (r.width >= vw * 0.85 && r.height >= vh * 0.7) {
+              var cs0 = getComputedStyle(el);
+              if ((parseFloat(cs0.borderRadius) || 0) >= 8) continue; // yuvarlak kart -> atla
+              var bg = cs0.backgroundColor;
+              // sadece opak (dolu) arka planı olan tam-ekran katmanlar
+              if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                el.setAttribute(WP_ATTR, '1');
+              }
+            }
+          }
+        }
+
+        // Açık moddaki BEYAZ/SOLUK kart/panel/bar elemanlarını buzlu cam yap.
+        // Tam ekran kaplamayan, beyazımsı/soluk opak arka planı olan ve yeterince
+        // büyük yüzeyler işaretlenir (küçük butonlar hariç).
+        function paintGlassLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          // #root DEĞİL, TÜM body taranır: modallar/popuplar (Şifre Değiştir,
+          // Şikayet ve Öneri, Haritadan Seç vb.) #root DIŞINDA ayrı bir portal
+          // katmanına render edildiği için body üzerinden yakalamak gerekir.
+          var root = document.body;
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(GLASS_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            var rad = parseFloat(cs.borderRadius) || 0;
+            // SADECE gerçek sayfa arka planını atla (köşesiz + neredeyse tam ekran).
+            // Yuvarlak köşeli büyük kartlar (mobildeki uzun menü kartı gibi) cam
+            // efekti ALIR; böylece mobilde de duvar kağıdı bulanık görünür.
+            if (rad < 8 && r.width >= vw * 0.85 && r.height >= vh * 0.7) continue;
+            // Uygun yüzeyler:
+            //  (A) kart/panel: yeterince büyük (>=200x50)
+            //  (B) geniş ama İNCE başlık/satır barları (tam genişliğe yakın, kısa)
+            //  (C) ürün kartı içindeki SOLUK alanlar (yeşil ikon bölgesi, beyaz bilgi):
+            //      boyut >=100x40 (ikon/bilgi alanı boyutları)
+            var isCard = (r.width >= 200 && r.height >= 50);
+            var isStrip = (r.width >= vw * 0.6 && r.height >= 18 && r.height < 50);
+            var isCardInner = (r.width >= 100 && r.height >= 40); // kart içi alanlar
+            // küçük çip/pill/saat butonu (Pazar saati, Gel-Al, Sebze etiketi,
+            // Ürünleri Göster, saat butonları vb.) -> bunlar da buzlu cam olur
+            var isChip = (r.width >= 40 && r.height >= 20);
+            // yuvarlak ikon rozetleri (menü/profil satırlarındaki ~38px daireler):
+            // neredeyse kare + büyük köşe yarıçapı (daire) -> soluk yeşil arka planlı
+            // olanlar da buzlu cam olur (içindeki turuncu simge kalır).
+            var minSide = Math.min(r.width, r.height);
+            var isIconCircle = (r.width >= 20 && r.width <= 64 &&
+                                Math.abs(r.width - r.height) <= 8 &&
+                                rad >= minSide * 0.35);
+            if (!isCard && !isStrip && !isCardInner && !isChip && !isIconCircle) continue;
+            var bg = cs.backgroundColor;
+            var m = bg && bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            // SOLUK (açık) renkler: beyaz (r,g,b>=230) VEYA soluk yeşil/bej (her RGB>=180).
+            // Yarı şeffaf da olsa yakala (a>=0.2). Tamamen görünmez (a<0.2) atla.
+            var isPale = ((rr >= 230 && gg >= 230 && bb >= 230) || (rr >= 180 && gg >= 180 && bb >= 180)) && a >= 0.2;
+            if (isPale) {
+              el.setAttribute(GLASS_ATTR, '1');
+            }
+          }
+        }
+
+        // KULLANICI İSTEĞİ: bilgi kutucukları (Pazar/Gel-Al saati) ve ana/alt
+        // kategori butonlarının ARKASINDAKİ geniş beyaz-buzlu bandı şeffaflaştır.
+        // Sadece GENİŞ kapsayıcı bantları hedefler (bireysel butonlara dokunmaz).
+        function clearNavGlass() {
+          var vw = window.innerWidth;
+          var g = document.querySelectorAll('[' + GLASS_ATTR + '="1"]');
+          for (var i = 0; i < g.length; i++) {
+            var el = g[i];
+            var r = el.getBoundingClientRect();
+            // Yalnızca geniş bantlar (>= ekran genişliğinin %50'si)
+            if (r.width < vw * 0.5) continue;
+            var t = el.innerText || '';
+            // Ana kategori: en az 2 ana kategori kelimesi içeriyorsa
+            var catHits = 0;
+            if (t.indexOf('İNDİRİMLİ') > -1) catHits++;
+            if (t.indexOf('Sebze') > -1) catHits++;
+            if (t.indexOf('Meyve') > -1) catHits++;
+            if (t.indexOf('Yeşillik') > -1) catHits++;
+            if (t.indexOf('Zeytin') > -1) catHits++;
+            // Alt kategori: en az 2 alt kategori kelimesi içeriyorsa
+            var subHits = 0;
+            if (t.indexOf('Domates') > -1) subHits++;
+            if (t.indexOf('Kabak') > -1) subHits++;
+            if (t.indexOf('Patlıcan') > -1) subHits++;
+            if (t.indexOf('Biber') > -1) subHits++;
+            if (t.indexOf('Diğer') > -1) subHits++;
+            var hasInfo = (t.indexOf('Pazar saati') > -1 || t.indexOf('Gel-Al') > -1);
+            // Üst başlık ("Ürünler"/"Fiyatlar" + market adı) bandı: sayfanın en
+            // üstünde (top<70) yer alan geniş ama kısa (<=90px) buzlu cam bandı.
+            // KULLANICI İSTEĞİ: koyu moddaki gibi şeffaf olsun, arkadan duvar
+            // kağıdı görünsün.
+            var isHeader = (r.top < 70 && r.height <= 90);
+            if (catHits >= 2 || subHits >= 2 || hasInfo || isHeader) {
+              el.removeAttribute(GLASS_ATTR);   // buzlu camı kaldır
+              el.setAttribute(GLASS_CLEAR_ATTR, '1'); // şeffaf olarak işaretle
+            }
+          }
+        }
+
+        function unpaintNavGlass() {
+          var c = document.querySelectorAll('[' + GLASS_CLEAR_ATTR + ']');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute(GLASS_CLEAR_ATTR);
+        }
+
+        function unpaintSectionBands() {
+          var s = document.querySelectorAll('[' + SEC_BAND_ATTR + ']');
+          for (var i = 0; i < s.length; i++) s[i].removeAttribute(SEC_BAND_ATTR);
+        }
+
+        // KULLANICI İSTEĞİ: ürünler sayfasındaki bölüm başlığı bantlarını
+        // ("Çok al az öde", "Domates", "Biber" ... = ana kategori isimleri)
+        // HER taramada yeniden işaretle. Uygulama bu bantları saydam render
+        // ediyor; genel paintGlassLayers yalnızca SOLUK renkli düğümleri
+        // yakaladığı için bantlar kaydırma/geri-dönüşüm sırasında tutarsız
+        // görünüyordu (buzlu zemin "siliniyor"du). Burada bantları build'e özgü
+        // atomik class + geometri ile kesin olarak seçip stabil frost + turuncu
+        // kenarlık uyguluyoruz. unpaint-then-rescan deseni: her taramada önce
+        // tüm işaretleri kaldır, sonra o anki bantları yeniden işaretle ->
+        // sticky/yeniden-oluşturulan başlık düğümleri de anında yakalanır,
+        // ekranda titreme olmaz (scroll + mutation + interval'da çalışır).
+        function paintSectionBands() {
+          // Sadece ürünler/fiyatlar sayfasında uygula
+          if (window.location.pathname.indexOf('/products') === -1) { unpaintSectionBands(); return; }
+          unpaintSectionBands();
+          var vw = window.innerWidth;
+          // r-184en5c: bu build'de bölüm başlığı bandına özgü atomik class
+          // (SectionList başlık kapsayıcısı). Geometri ile doğrulanır.
+          var cands = document.querySelectorAll('.r-184en5c');
+          for (var i = 0; i < cands.length; i++) {
+            var el = cands[i];
+            var r = el.getBoundingClientRect();
+            // Geniş (>=%50 ekran) + kısa (18-44px) bant; ürün kartları/uzun
+            // kapsayıcılar elenir. İçinde tek başlık düğümü bulunur.
+            if (r.width < vw * 0.5) continue;
+            if (r.height < 18 || r.height > 44) continue;
+            // Genel glass/glass-clear/dark-clear işaretleri varsa temizle ki
+            // yalnızca secband kuralı geçerli olsun (çakışma önlenir).
+            el.removeAttribute(GLASS_ATTR);
+            el.removeAttribute(GLASS_CLEAR_ATTR);
+            el.removeAttribute(DARK_CLEAR_ATTR);
+            el.setAttribute(SEC_BAND_ATTR, '1');
+          }
+        }
+
+        // KULLANICI İSTEĞİ: KOYU MODDA tüm "chrome" bantlarını (üst başlık,
+        // bilgi kutucukları, ana/alt kategori satırları ve "Çok al az öde"/
+        // "Domates" gibi bölüm başlıkları) ŞEFFAFLAŞTIR. Böylece açık moddaki
+        // gibi arkadan duvar kağıdı net görünür. Solid koyu-yeşil (rgb 2,7,3)
+        // GENİŞ ama KISA bantları hedefler; ürün kartları (uzun) ve tam sayfa
+        // kapsayıcıları (zaten şeffaf / çok geniş) dokunulmaz.
+        function clearNavDark() {
+          var vw = window.innerWidth;
+          var all = document.body.querySelectorAll('div');
+          for (var i = 0; i < all.length; i++) {
+            var el = all[i];
+            var r = el.getBoundingClientRect();
+            // Geniş bantlar (>= ekran genişliğinin %50'si). Mobilde bantlar
+            // tam ekran genişliğinde olabildiği için ÜST genişlik sınırı YOK;
+            // sayfa arka planını yükseklik filtresi eler.
+            if (r.width < vw * 0.5) continue;
+            // Bantlar (header/başlık/nav satırları/bilgi kutucuğu kapsayıcısı):
+            // 18-220px. Bilgi kutucukları kapsayıcısı ~140px olabiliyor. Ürün
+            // kartları ve tam sayfa arka planı çok daha uzun olduğu için ELENİR.
+            if (r.height < 18 || r.height > 220) continue;
+            var cs = getComputedStyle(el);
+            var bg = cs.backgroundColor;
+            if (!bg || bg.indexOf('rgb') === -1) continue;
+            var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3];
+            var a = (m[4] === undefined ? 1 : +m[4]);
+            if (a < 0.2) continue; // zaten görünmez -> atla
+            // Solid koyu yeşil/siyah ton (rgb 2,7,3 ve yakını): tüm kanallar düşük
+            var isDarkGreen = (rr <= 12 && gg <= 18 && bb <= 12);
+            if (!isDarkGreen) continue;
+            el.setAttribute(DARK_CLEAR_ATTR, '1');
+          }
+        }
+
+        function unpaintNavDark() {
+          var c = document.querySelectorAll('[' + DARK_CLEAR_ATTR + ']');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute(DARK_CLEAR_ATTR);
+        }
+
+        // KULLANICI İSTEĞİ: SEPET SAYFASINDA (/cart) turuncu dolu butonları ve
+        // sarımtırak kutuları ŞEFFAF-BUZLU OUTLINE style'a çevir. Buna dahil:
+        // "Pazardan Gel-Al", "Tezgahta Nakit/Pos" butonları, "Teslim Alma Saati"
+        // kutusu, "Ara Toplam" özet kutusu. Sadece AÇIK modda + sepet sayfasında.
+        function paintCartOutline() {
+          // Sadece sepet sayfasında uygula
+          if (window.location.pathname.indexOf('/cart') === -1) return;
+          // ÖNEMLİ (buton aktif/pasif takılması düzeltmesi): her taramada önce
+          // mevcut işaretleri KALDIR. Böylece override kalkar, getComputedStyle
+          // uygulamanın GERÇEK rengini döndürür; sadece ŞU AN turuncu (aktif) olan
+          // buton yeniden işaretlenir. Pasif hale gelen buton (surface rengi)
+          // artık işaretlenmez -> rengi "sönmüyor" bug'ı biter. Tümü senkron
+          // tek geçişte olduğu için ekranda titreme görünmez.
+          unpaintCartOutline();
+          var vw = window.innerWidth;
+          var all = document.body.querySelectorAll('div');
+          for (var i = 0; i < all.length; i++) {
+            var el = all[i];
+            if (el.getAttribute(CART_OUTLINE_ATTR) === '1') continue; // zaten işaretli
+            var r = el.getBoundingClientRect();
+            // Buton/kutu boyutunda: min 150px genişlik, 35-150px yükseklik.
+            // Dev sayfa kapsayıcılarını (>150px yükseklik) atla.
+            if (r.width < 150 || r.height < 35 || r.height > 150) continue;
+            var cs = getComputedStyle(el);
+            var bg = cs.backgroundColor;
+            if (!bg || bg.indexOf('rgb') === -1) continue;
+            var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3];
+            var a = (m[4] === undefined ? 1 : +m[4]);
+            if (a < 0.6) continue; // zaten yarı şeffaf olanları atla
+            // TURUNCU DOLU (rgb 251,140,60 ± tolerans) VEYA SARIMTRAK DOLU
+            // (rgb 255,235,210 civarı - özet kutusu) butonları/kutuları yakala
+            var isOrange = (rr > 240 && gg > 120 && gg < 160 && bb > 40 && bb < 80);
+            var isBeige = (rr > 240 && gg > 220 && bb > 190);
+            if (isOrange || isBeige) {
+              // Önce turuncu dolu stilini kaldır, sonra outline stilini uygula
+              el.removeAttribute('data-afro-orange');
+              el.setAttribute(CART_OUTLINE_ATTR, '1');
+            }
+          }
+        }
+
+        function unpaintCartOutline() {
+          var c = document.querySelectorAll('[' + CART_OUTLINE_ATTR + ']');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute(CART_OUTLINE_ATTR);
+        }
+
+        // KULLANICI İSTEĞİ: Sepette arka planı ŞEFFAF olup duvar kağıdı direkt
+        // görünen, bu yüzden yazısı okunmayan bloklara BUZLU-CAM panel ekle.
+        // Hedef: "Sipariş Tamamlama" bloğu (başlık + açıklama + sözleşme onay
+        // satırını kapsayan sarmalayıcı). Sadece AÇIK mod + sepet sayfası.
+        function paintCartFrost() {
+          if (window.location.pathname.indexOf('/cart') === -1) return;
+          var vw = window.innerWidth;
+          var headerDone = false;
+          var all = document.body.querySelectorAll('div');
+          for (var i = 0; i < all.length; i++) {
+            var el = all[i];
+            if (el.getAttribute(CART_FROST_ATTR) === '1' || el.getAttribute(CART_FILL_ATTR) === '1') continue;
+            var t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+            if (!t) continue;
+            var r = el.getBoundingClientRect();
+            // Üst başlık alt satırı ("X çeşit ürün • ₺..") soluk gri-yeşil ->
+            // duvar kağıdı üstünde okunması için KOYU renge çevir (genişlik kapısından önce).
+            if (/^\d+ çeşit ürün/.test(t) && r.top < 210 && r.height <= 40) {
+              el.setAttribute('data-afro-cart-darktext', '1');
+            }
+            if (r.width < 150) continue;
+            // Sipariş oluştur butonu -> YEŞİL yap (yazısı beyaz/okunur olsun).
+            if (t.indexOf('Siparişi Oluştur') > -1 && r.width > 300 && r.height >= 40 && r.height <= 90) {
+              el.setAttribute('data-afro-order-btn', '1');
+              continue;
+            }
+            var role = ''; // 'panel' = tam buzlu panel, 'fill' = kartı buzlu-cam doldur
+            // App'in zayıf yarı-şeffaf beyaz kartı mı? (rgba(255,255,255,~0.45))
+            var cs = getComputedStyle(el);
+            var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            var isWhiteCard = false;
+            if (m) {
+              var rr = +m[1], gg = +m[2], bb = +m[3], aa = (m[4] === undefined ? 1 : +m[4]);
+              isWhiteCard = (rr >= 250 && gg >= 250 && bb >= 250 && aa >= 0.3 && aa <= 0.6);
+            }
+            // A) Sözleşme bloğu (Sipariş Tamamlama başlık+açıklama+onay) -> tam panel.
+            //    "Sipariş Oluştur" butonunu da kapsayan büyük blokları atla.
+            if (t.indexOf('Sipariş Tamamlama') === 0 && t.indexOf('okudum ve kabul') > -1) {
+              if (r.height >= 50 && r.height <= 200) role = 'panel';
+            }
+            // (Üst "Sepetim" başlığı KULLANICI İSTEĞİYLE artık frost YAPILMIYOR;
+            //  duvar kağıdı görünsün diye şeffaf bırakılıyor.)
+            // C) SADECE istenen içerik kartlarını buzlu-cam doldur (buton/alt menü/
+            //    kupon gibi kontrollere DOKUNMA). Kart = zayıf beyaz arka planlı olan.
+            else if (isWhiteCard && r.height >= 30 && r.height <= 320) {
+              if (t.indexOf('Ara Toplam') > -1) role = 'fill';                        // özet kutusu
+              else if (t.indexOf('Eve servis verilen mahalleler') > -1) role = 'fill'; // mahalleler kutusu
+              else if (t.indexOf('Ürünleri Göster') > -1 && t.indexOf('çeşit ürün') > -1) role = 'fill'; // üst özet kartı
+              else if (r.height <= 120 && /(Mah\.|Mah |Sok|Sk\.|Cad|Cd\.|No:|Kat:|Daire)/i.test(t)) role = 'fill'; // adres kutusu
+            }
+            if (!role) continue;
+            // İç içe eşleşmeleri önle: bir atası zaten panel/fill olduysa atla
+            // (çift panel / çift blur olmasın, sadece en dıştaki işaretlensin).
+            var anc = el.parentElement, skip = false;
+            while (anc) {
+              if (anc.getAttribute && (anc.getAttribute(CART_FROST_ATTR) === '1' ||
+                  anc.getAttribute(CART_FILL_ATTR) === '1')) { skip = true; break; }
+              anc = anc.parentElement;
+            }
+            if (skip) continue;
+            el.setAttribute(role === 'panel' ? CART_FROST_ATTR : CART_FILL_ATTR, '1');
+          }
+        }
+
+        function unpaintCartFrost() {
+          var c = document.querySelectorAll('[' + CART_FROST_ATTR + '], [' + CART_FILL_ATTR + '], [data-afro-order-btn], [data-afro-cart-darktext]');
+          for (var i = 0; i < c.length; i++) {
+            c[i].removeAttribute(CART_FROST_ATTR);
+            c[i].removeAttribute(CART_FILL_ATTR);
+            c[i].removeAttribute('data-afro-order-btn');
+            c[i].removeAttribute('data-afro-cart-darktext');
+          }
+        }
+
+        // KULLANICI İSTEĞİ: Alttaki menü çubuğunu (Pazarlar/Fırsatlar/Sepet/
+        // Kuponlar/Profil) YÜZEN bir "ada/pill" şekline çevir (yuvarlak köşe,
+        // kenarlardan boşluk, gölge, buzlu cam). Tüm sayfalarda çalışır.
+        function paintNavPill() {
+          var all = document.body.querySelectorAll('div');
+          var pill = null;
+          for (var i = 0; i < all.length; i++) {
+            var el = all[i];
+            if (el.getAttribute('data-afro-navpill') === '1') { pill = el; continue; }
+            var t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+            if (t.length > 90) continue;
+            if (t.indexOf('Pazarlar') === -1 || t.indexOf('Sepet') === -1 ||
+                t.indexOf('Profil') === -1) continue;
+            var r = el.getBoundingClientRect();
+            // Menü çubuğunun kendisi: kısa (yükseklik ~50-90), geniş.
+            if (r.height < 45 || r.height > 95 || r.width < 300) continue;
+            var cs = getComputedStyle(el);
+            var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            var aa = m ? (m[4] === undefined ? 1 : +m[4]) : 0;
+            var hasBorder = parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
+            if (aa < 0.1 && !hasBorder) continue; // şeffaf iç satırı değil, asıl bar
+            el.setAttribute('data-afro-navpill', '1');
+            pill = el;
+          }
+          // Pill'i YÜZEN yap (absolute) + kardeş kaydırma kabına alt boşluk ekle ki
+          // içerik/butonlar pill'in ALTINDAN geçebilsin (kesik bant kalksın).
+          if (pill) {
+            var col = pill.parentElement;
+            if (col && !col.querySelector('[data-afro-navpad="1"]')) {
+              for (var c = 0; c < col.children.length; c++) {
+                var kid = col.children[c];
+                if (kid === pill) continue;
+                var found = null;
+                var kcs = getComputedStyle(kid);
+                if (kcs.overflowY === 'auto' || kcs.overflowY === 'scroll') found = kid;
+                if (!found) {
+                  var inner = kid.querySelectorAll('div');
+                  for (var s = 0; s < inner.length; s++) {
+                    var e2 = inner[s]; var e2cs = getComputedStyle(e2);
+                    if ((e2cs.overflowY === 'auto' || e2cs.overflowY === 'scroll') &&
+                        e2.scrollHeight > e2.clientHeight + 20) { found = e2; break; }
+                  }
+                }
+                if (found) found.setAttribute('data-afro-navpad', '1');
+              }
+            }
+          }
+        }
+        function unpaintNavPill() {
+          var c = document.querySelectorAll('[data-afro-navpill], [data-afro-navpad]');
+          for (var i = 0; i < c.length; i++) {
+            c[i].removeAttribute('data-afro-navpill');
+            c[i].removeAttribute('data-afro-navpad');
+          }
+        }
+
+        // Alt menü (tab bar) ikonları/etiketleri: PASİF sekmeler eski gri-yeşil
+        // rgb(120,144,130) renkte kalıyordu. Bunları temaya uygun MAT TURUNCU yap.
+        // AKTİF sekme uygulamanın parlak turuncusunda (251,140,60) kalsın ki
+        // hangi sekmede olduğumuz belli olsun. Her tick'te önce temizleyip yeniden
+        // boyar; böylece sekme değişince aktif/pasif doğru güncellenir.
+        function paintNavIcons() {
+          unpaintNavIcons();
+          var all = document.body.querySelectorAll('div');
+          var pill = null;
+          for (var i = 0; i < all.length; i++) {
+            var t = (all[i].innerText || '').replace(/\s+/g, ' ').trim();
+            if (t.indexOf('Pazarlar') > -1 && t.indexOf('Sepet') > -1 &&
+                t.indexOf('Profil') > -1) {
+              var r = all[i].getBoundingClientRect();
+              if (r.height > 40 && r.height < 110 && r.width > 300) { pill = all[i]; break; }
+            }
+          }
+          if (!pill) return;
+          var els = pill.querySelectorAll('*');
+          for (var j = 0; j < els.length; j++) {
+            var e = els[j];
+            if (e.children.length > 0) continue;      // sadece yaprak (glyph/etiket)
+            if (!(e.textContent || '').trim()) continue;
+            var m = getComputedStyle(e).color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!m) continue;
+            var R = +m[1], G = +m[2], B = +m[3];
+            // AKTİF sekme = parlak turuncu -> dokunma; gerisi (siyah/gri-yeşil vs.) mat turuncu
+            var isActive = (R >= 235 && G >= 110 && G <= 170 && B <= 95);
+            if (isActive) continue;
+            e.style.setProperty('color', 'rgb(230, 150, 95)', 'important');
+            e.setAttribute('data-afro-navicon', '1');
+          }
+        }
+        function unpaintNavIcons() {
+          var c = document.querySelectorAll('[data-afro-navicon]');
+          for (var i = 0; i < c.length; i++) {
+            c[i].style.removeProperty('color');
+            c[i].removeAttribute('data-afro-navicon');
+          }
+        }
+
+        // Ürün sayfasında sepete ürün eklenince alttan çıkan turuncu
+        // "Siparişi Tamamla" çubuğu, yüzen pill ile çakışır. Onu bulup işaretle;
+        // CSS pill'in ÜSTÜNE kaydırır.
+        function paintCartBar() {
+          var nodes = document.body.querySelectorAll('div');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute('data-afro-cartbar') === '1') continue;
+            var t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+            if (t.indexOf('Siparişi Tamamla') === -1) continue;
+            if (t.length > 55) continue; // sadece çubuk etiketi + tutar
+            var node = el, bar = null;
+            for (var k = 0; k < 6 && node; k++) {
+              var cs = getComputedStyle(node);
+              var r = node.getBoundingClientRect();
+              if ((cs.position === 'absolute' || cs.position === 'fixed') &&
+                  r.width > window.innerWidth * 0.5 && r.height < 130) {
+                bar = node; break;
+              }
+              node = node.parentElement;
+            }
+            if (bar) bar.setAttribute('data-afro-cartbar', '1');
+          }
+        }
+        function unpaintCartBar() {
+          var c = document.querySelectorAll('[data-afro-cartbar]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-cartbar');
+        }
+
+        // Üstteki bilgi kutucuklarını (Pazar saati / Gel-Al saati / minimum vb.)
+        // bul ve işaretle; CSS onları şeffaf buzlu cam yapar.
+        var INFO_CHIP_KEYS = ['Pazar saati', 'Gel-Al saati', 'Gel-Al minimum',
+          'Eve Servis Saati', 'Eve Servis minimum'];
+        function paintInfoChips() {
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            var t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+            var hit = false;
+            for (var q = 0; q < INFO_CHIP_KEYS.length; q++) {
+              if (t.indexOf(INFO_CHIP_KEYS[q]) === 0 && t.length < 40) { hit = true; break; }
+            }
+            if (!hit) continue;
+            // metin düğümünden yukarı çıkıp arka planı olan "pill"i bul
+            var node = e, chip = null;
+            for (var k = 0; k < 5 && node; k++) {
+              var cs = getComputedStyle(node);
+              var r = node.getBoundingClientRect();
+              var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+              var aa = m ? (m[4] === undefined ? 1 : +m[4]) : 0;
+              if (aa > 0.05 && r.height > 20 && r.height < 60 &&
+                  parseFloat(cs.borderTopLeftRadius) > 8) { chip = node; break; }
+              node = node.parentElement;
+            }
+            if (chip) chip.setAttribute('data-afro-infochip', '1');
+          }
+        }
+        function unpaintInfoChips() {
+          var c = document.querySelectorAll('[data-afro-infochip]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-infochip');
+        }
+
+        // "Çok al az öde" başlığına tıklanınca ürün listesini EN ÜSTE kaydır.
+        // (Diğer kategori çipleri kendi bölümüne kaydırıyor; bu başlık en üste
+        // dönmeyi sağlar.) Enjekte edilmiş, geri alınabilir bir davranış.
+        function findMainScroll() {
+          var sc = null;
+          var all = document.querySelectorAll('*');
+          for (var i = 0; i < all.length; i++) {
+            var e = all[i]; var cs = getComputedStyle(e);
+            if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') &&
+                e.scrollHeight > e.clientHeight + 40) {
+              if (!sc || e.clientHeight > sc.clientHeight) sc = e;
+            }
+          }
+          return sc;
+        }
+        function wireScrollTop() {
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.getAttribute('data-afro-scrolltop') === '1') continue;
+            var t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+            if (t !== 'Çok al az öde') continue;
+            var r = e.getBoundingClientRect();
+            if (r.height < 12 || r.height > 40 || r.width > 220) continue;
+            e.setAttribute('data-afro-scrolltop', '1');
+            e.addEventListener('click', function (ev) {
+              var sc = findMainScroll();
+              if (sc) { try { sc.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) { sc.scrollTop = 0; } }
+            }, true);
+          }
+        }
+        function unwireScrollTop() {
+          var c = document.querySelectorAll('[data-afro-scrolltop]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-scrolltop');
+        }
+
+        // Profil/Ayarlar sayfasındaki opak kartları bul (menü satırları, bildirim,
+        // tema, hesap kartları) ve işaretle; CSS onları şeffaf buzlu cam yapar.
+        // Koyu temada kartlar opak rgb(8,18,12); açık temada zaten yarı-şeffaf beyaz.
+        function paintGlassCards() {
+          // Profil/Ayarlar sayfalarındaki kartlar
+          var isProfileOrSettings = (location.pathname.indexOf('profile') > -1 ||
+                                      location.pathname.indexOf('settings') > -1);
+          // Teslimat adresi yönetim sayfası
+          var isAddressManager = (location.pathname.indexOf('address-manager') > -1 ||
+                                   location.pathname.indexOf('address') > -1);
+          
+          if (!isProfileOrSettings && !isAddressManager) return;
+          
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.getAttribute('data-afro-glasscard') === '1') continue;
+            var cs = getComputedStyle(e);
+            var br = parseFloat(cs.borderTopLeftRadius) || 0;
+            if (br < 12) continue; // yuvarlak köşeli kartlar (12px+ radius)
+            var r = e.getBoundingClientRect();
+            if (r.width < 280 || r.width > 660) continue; // içerik kolonu genişliği
+            if (r.height < 40) continue;
+            var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var R = +m[1], G = +m[2], B = +m[3];
+            var a = m[4] === undefined ? 1 : +m[4];
+            // Koyu tema kartı: neredeyse opak + koyu renk (turuncu başlık/yeşil
+            // seçili satır ELENMELİ; onlar koyu değil).
+            var isDarkCard = (a > 0.85 && R < 45 && G < 55 && B < 45);
+            // Açık tema kartı: yarı-şeffaf VEYA tam opak beyaz (a >= 0.2).
+            // Teslimat adresi kartları tam opak (a=1) olabiliyor.
+            var isLightCard = (a >= 0.2 && R > 220 && G > 220 && B > 220);
+            if (!isDarkCard && !isLightCard) continue;
+            e.setAttribute('data-afro-glasscard', '1');
+          }
+        }
+        function unpaintGlassCards() {
+          var c = document.querySelectorAll('[data-afro-glasscard]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-glasscard');
+        }
+
+        // REQ1: Ürünler/pazar sayfasının üst BAŞLIK satırına (market adı) tam
+        // genişlikte şeffaf buzlu panel işaretle.
+        function paintHeaderPanel() {
+          var TITLES = ['Ürünler', 'Olduğumuz Pazarlar'];
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            var t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+            if (TITLES.indexOf(t) === -1) continue;
+            var n = e;
+            for (var k = 0; k < 5 && n; k++) {
+              var r = n.getBoundingClientRect();
+              if (r.width > window.innerWidth * 0.6 && r.height >= 30 && r.height <= 92) {
+                if (n.getAttribute('data-afro-headerpanel') !== '1')
+                  n.setAttribute('data-afro-headerpanel', '1');
+                break;
+              }
+              n = n.parentElement;
+            }
+          }
+        }
+        function unpaintHeaderPanel() {
+          var c = document.querySelectorAll('[data-afro-headerpanel]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-headerpanel');
+          var k = document.querySelectorAll('[data-afro-headerclip]');
+          for (var j = 0; j < k.length; j++) k[j].removeAttribute('data-afro-headerclip');
+        }
+        // Kullanıcı isteği: "Ürünler" başlığına DEĞİL, BİLGİ KUTUCUKLARININ
+        // olduğu satıra tam genişlikte buzlu panel. Bilgi çipi (glyph + "saati"/
+        // "minimum"/"Servis"/"Teslimat") bul, yukarı çıkıp yatay kaydırma
+        // (overflowX auto/scroll) satırını işaretle -> CSS onu buzlu panel yapar.
+        function paintInfoRowPanel() {
+          var all = document.body.querySelectorAll('div');
+          var chip = null;
+          for (var i = 0; i < all.length; i++) {
+            var t = (all[i].innerText || '').replace(/\s+/g, ' ').trim();
+            if (!t || t.length > 40) continue;
+            if (t.charCodeAt(0) < 0xE000) continue; // ikon glyph ile başlamalı
+            if (t.indexOf('saati') === -1 && t.indexOf('minimum') === -1 &&
+                t.indexOf('Servis') === -1 && t.indexOf('Teslimat') === -1) continue;
+            if (all[i].offsetParent === null) continue;
+            var r = all[i].getBoundingClientRect();
+            if (r.height < 18 || r.height > 42 || r.width < 80 || r.width > 300) continue;
+            chip = all[i];
+            break;
+          }
+          if (!chip) return;
+          var n = chip, row = null;
+          for (var k = 0; k < 6 && n; k++) {
+            var cs = getComputedStyle(n);
+            if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') { row = n; break; }
+            n = n.parentElement;
+          }
+          if (!row) return;
+          if (row.getAttribute('data-afro-headerpanel') !== '1')
+            row.setAttribute('data-afro-headerpanel', '1');
+          // Panelin bir üstündeki NATIVE kapsayıcı overflow:hidden ile panelin
+          // yuvarlak alt köşelerini kırpıyor. Onu da işaretle -> CSS
+          // overflow:visible yapar ("altı kesik" düzelir).
+          var clip = row.parentElement;
+          if (clip && clip.getAttribute('data-afro-headerclip') !== '1')
+            clip.setAttribute('data-afro-headerclip', '1');
+        }
+
+        // REQ2: Profil sayfasındaki en üstteki DOLU (yeşil ya da turuncuya
+        // dönüşmüş) isim/yönetici kartını bul; CSS onu şeffaf buzlu cam yapar.
+        function paintMgrCard() {
+          if (location.pathname.indexOf('profile') === -1) return;
+          var divs = document.body.querySelectorAll('div');
+          var best = null, bestTop = 1e9;
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.getAttribute('data-afro-mgrcard') === '1') return; // zaten işaretli
+            var cs = getComputedStyle(e);
+            var br = parseFloat(cs.borderTopLeftRadius) || 0;
+            if (br < 16) continue;
+            var r = e.getBoundingClientRect();
+            if (r.width < 260 || r.width > 680) continue;
+            if (r.height < 90 || r.height > 230) continue;
+            var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var R = +m[1], G = +m[2], B = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            if (a < 0.7) continue;
+            var isGreen = (R <= 90 && G >= 120 && B >= 60 && B <= 190 && G > R + 40);
+            var isOrange = (R > 225 && G >= 110 && G <= 170 && B < 100);
+            if (!isGreen && !isOrange) continue;
+            if (r.top < bestTop) { bestTop = r.top; best = e; }
+          }
+          if (best) best.setAttribute('data-afro-mgrcard', '1');
+        }
+        function unpaintMgrCard() {
+          var c = document.querySelectorAll('[data-afro-mgrcard]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-mgrcard');
+        }
+
+        // REQ3: Sepet "Ara Toplam ... Toplam" özet kutusunu bul; CSS onu belirgin
+        // şeffaf buzlu panel yapar (her iki tema).
+        function paintCartSummary() {
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.getAttribute('data-afro-cartsum') === '1') continue;
+            var t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+            if (t.indexOf('Ara Toplam') === -1 || t.indexOf('Toplam') === -1) continue;
+            var cs = getComputedStyle(e);
+            var br = parseFloat(cs.borderTopLeftRadius) || 0;
+            if (br < 12) continue;
+            var r = e.getBoundingClientRect();
+            if (r.height < 60 || r.height > 460) continue;
+            if (r.width < 260) continue;
+            e.setAttribute('data-afro-cartsum', '1');
+          }
+        }
+        function unpaintCartSummary() {
+          var c = document.querySelectorAll('[data-afro-cartsum]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-cartsum');
+        }
+
+        // REQ5: ALT KATEGORİ çiplerini (ikinci kategori satırı) YEŞİL yap. İki
+        // kategori satırından ALTTAKİ (main satırın hemen altındaki) satır alt
+        // kategoridir; onu işaretle. Ürün rozetleri (aşağıda) hariç tutulur.
+        function isOrangeStr(str) {
+          var m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+          if (!m) return false;
+          var R = +m[1], G = +m[2], B = +m[3];
+          return R > 225 && G >= 110 && G <= 170 && B < 100;
+        }
+        function paintSubCatGreen() {
+          // Renkten BAĞIMSIZ satır-gruplama: kategori alanındaki tüm ÇİP
+          // şeklindeki (yuvarlak, düz metin) elemanları topla. En üstteki grup
+          // = ANA kategori satırı; hemen altındaki grup = ALT kategori satırı.
+          // Alt satırdaki TURUNCU çipleri yeşile boya. Koyu temada ana satırın
+          // aktif çipi yeşil olduğu için renge göre ayırmak güvenilmez; konum
+          // (satır sırası) kullanılır.
+          // ÖNCE eski etiketleri temizle: kaydırmada React düğümleri geri
+          // dönüştürünce eski "subcat" etiketi yanlış eleman üstünde takılı
+          // kalıp KISA YEŞİL PARLAMAYA yol açıyordu. Her boyamada sıfırla.
+          unpaintSubCatGreen();
+          var divs = document.body.querySelectorAll('div');
+          var cands = [];
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.offsetParent === null) continue; // gizli/display:none ağaçlar
+            var cs = getComputedStyle(e);
+            if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+            var br = parseFloat(cs.borderTopLeftRadius) || 0;
+            if (br < 40) continue; // yuvarlak pill değilse atla
+            var r = e.getBoundingClientRect();
+            if (r.top < 60 || r.top > 320) continue;
+            if (r.height < 16 || r.height > 40) continue;
+            if (r.width < 34 || r.width > 220) continue;
+            // Metni al: bilgi kutucukları / gün rozetleri / "İNDİRİMLİ" bir
+            // İKON glyph ile BAŞLAR (char code >= 0xE000). Gerçek kategori
+            // çipleri düz metindir (Domates, Biber...). Bunları ele.
+            var txt = (e.textContent || '').replace(/^\s+/, '');
+            if (txt) {
+              var c0 = txt.charCodeAt(0);
+              if (c0 >= 0xE000) continue; // ikon glyph ile başlıyor -> bilgi/rozet
+            }
+            if (txt.indexOf('Göster') !== -1) continue; // "Ürünleri Göster" butonu
+            var bgOrange = isOrangeStr(cs.backgroundColor);
+            var bordOrange = isOrangeStr(cs.borderTopColor);
+            cands.push({ el: e, top: Math.round(r.top), orange: (bgOrange || bordOrange), active: bgOrange });
+          }
+          if (cands.length < 2) return;
+          // Satırlara göre grupla (15px tolerans), üstten alta sırala.
+          cands.sort(function (a, b) { return a.top - b.top; });
+          var groups = [];
+          for (var g = 0; g < cands.length; g++) {
+            var placed = false;
+            for (var h = 0; h < groups.length; h++) {
+              if (Math.abs(groups[h].top - cands[g].top) <= 15) { groups[h].items.push(cands[g]); placed = true; break; }
+            }
+            if (!placed) groups.push({ top: cands[g].top, items: [cands[g]] });
+          }
+          groups.sort(function (a, b) { return a.top - b.top; });
+          if (groups.length < 2) return; // alt kategori satırı yok
+          // İkinci grup = ALT kategori satırı. Turuncu olanları yeşile boya.
+          var sub = groups[1].items;
+          for (var s = 0; s < sub.length; s++) {
+            if (!sub[s].orange) continue;
+            sub[s].el.setAttribute('data-afro-subcat', sub[s].active ? 'active' : '1');
+          }
+        }
+        function unpaintSubCatGreen() {
+          var c = document.querySelectorAll('[data-afro-subcat]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-subcat');
+        }
+
+        // KULLANICI İSTEĞİ: alt kategori çip ŞERİDİ, native dikey padding
+        // (üst 0 / alt 8px) yüzünden çip ŞERİDİN ÜSTÜNE YAPIŞIK duruyordu.
+        // Çiplerin buzlu-cam şerit atasını işaretle -> CSS dengeli 5/5 padding
+        // ile çipi dikeyde ortalar. Sadece ANA + ALT olmak üzere >=2 çip satırı
+        // varken (yani gerçek bir alt kategori şeridi mevcutken) uygulanır;
+        // aksi halde tek satırlı ana kategori şeridine dokunmayız.
+        function padSubCatStrip() {
+          unpadSubCatStrip();
+          var divs = document.body.querySelectorAll('div');
+          var cands = [];
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            if (e.offsetParent === null) continue;
+            var cs = getComputedStyle(e);
+            if ((parseFloat(cs.borderTopLeftRadius) || 0) < 40) continue; // pill değil
+            var r = e.getBoundingClientRect();
+            if (r.top < 120 || r.top > 320) continue; // kategori bölgesi
+            if (r.height < 16 || r.height > 40) continue;
+            if (r.width < 34 || r.width > 240) continue;
+            var txt = (e.textContent || '').replace(/^\s+/, '');
+            if (txt && txt.charCodeAt(0) >= 0xE000) continue; // ikon glyph -> bilgi/rozet
+            if (txt.indexOf('Göster') !== -1) continue;
+            cands.push({ el: e, top: Math.round(r.top) });
+          }
+          if (cands.length < 2) return;
+          // Satırlara ayır (15px tolerans); >=2 satır yoksa alt kategori yok.
+          var rows = [];
+          for (var g = 0; g < cands.length; g++) {
+            var placed = false;
+            for (var h = 0; h < rows.length; h++) {
+              if (Math.abs(rows[h].top - cands[g].top) <= 15) { rows[h].items.push(cands[g]); placed = true; break; }
+            }
+            if (!placed) rows.push({ top: cands[g].top, items: [cands[g]] });
+          }
+          if (rows.length < 2) return;
+          rows.sort(function (a, b) { return a.top - b.top; });
+          var sub = rows[rows.length - 1].items; // en alttaki satır = alt kategori
+          for (var p = 0; p < sub.length; p++) {
+            var n = sub[p].el;
+            for (var k = 0; k < 6 && n; k++) {
+              var ncs = getComputedStyle(n);
+              var m = ncs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+              var a = m ? (m[4] === undefined ? 1 : +m[4]) : 0;
+              var nr = n.getBoundingClientRect();
+              // Dolu-genişlikteki buzlu-cam şerit (yarı saydam zemin)
+              if (a > 0.05 && nr.width > 240) {
+                if (n.getAttribute('data-afro-substrip') !== '1')
+                  n.setAttribute('data-afro-substrip', '1');
+                break;
+              }
+              n = n.parentElement;
+            }
+          }
+        }
+        function unpadSubCatStrip() {
+          var c = document.querySelectorAll('[data-afro-substrip]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-substrip');
+        }
+
+        // KULLANICI İSTEĞİ: kategori çiplerinin (ana + alt) SEÇİLİ OLMAYAN
+        // beyaz/soluk/buzlu dolgusunu KALDIR; içinden duvar kağıdı görünsün.
+        // Sadece dolgu şeffaflaşır (turuncu/yeşil KENAR ve YAZI korunur).
+        // Seçili (dolu turuncu ya da dolu yeşil) çiplere DOKUNMAZ.
+        function clearCatChipFill() {
+          unpaintCatChipFill(); // flicker önleme: eski işaretleri temizle
+          var CATS = { 'İNDİRİMLİ': 1, 'Sebze': 1, 'Meyve': 1, 'Yeşillik': 1,
+                       'Zeytin Ürünleri': 1, 'Domates': 1, 'Kabak': 1,
+                       'Patlıcan': 1, 'Biber': 1, 'Diğer': 1 };
+          var divs = document.body.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            var e = divs[i];
+            var raw = (e.innerText || '').replace(/\s+/g, ' ').trim();
+            if (!raw || raw.length > 22) continue;
+            // ikon glyph'lerini at, saf kategori metnini bırak
+            var txt = raw.replace(/[\uE000-\uF8FF]/g, '').trim();
+            if (!CATS.hasOwnProperty(txt)) continue;
+            var r = e.getBoundingClientRect();
+            if (r.height < 20 || r.height > 46 || r.width < 40 || r.width > 240) continue;
+            // Seçili (dolu turuncu ya da dolu yeşil) çip mi? -> dokunma
+            var cs = getComputedStyle(e);
+            var m = cs.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (m) {
+              var R = +m[1], G = +m[2], B = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+              var isOrangeFill = (a > 0.55 && R > 220 && G >= 100 && G <= 185 && B < 120);
+              var isGreenFill  = (a > 0.55 && R < 70 && G > 140 && B >= 90 && B <= 170);
+              if (isOrangeFill || isGreenFill) continue; // seçili çip, dolu kalsın
+            }
+            // Pasif çip: buzlu-cam işaretini kaldır + dolguyu şeffaflaştır
+            if (e.getAttribute(GLASS_ATTR) === '1') e.removeAttribute(GLASS_ATTR);
+            if (e.getAttribute('data-afro-catchip-clear') !== '1')
+              e.setAttribute('data-afro-catchip-clear', '1');
+          }
+        }
+        function unpaintCatChipFill() {
+          var c = document.querySelectorAll('[data-afro-catchip-clear]');
+          for (var i = 0; i < c.length; i++) c[i].removeAttribute('data-afro-catchip-clear');
+        }
+
+        function unpaint() {
+          var marked = document.querySelectorAll('[' + WP_ATTR + ']');
+          for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(WP_ATTR);
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+          var o = document.querySelectorAll('[data-afro-orange]');
+          for (var k = 0; k < o.length; k++) o[k].removeAttribute('data-afro-orange');
+          unpaintGreenTexts();
+          unpaintNavGlass();
+          unpaintNavDark();
+          unpaintCartOutline();
+          unpaintCartFrost();
+          unpaintNavPill();
+          unpaintNavIcons();
+          unpaintCartBar();
+          unpaintInfoChips();
+          unwireScrollTop();
+          unpaintGlassCards();
+          unpaintHeaderPanel();
+          unpaintMgrCard();
+          unpaintCartSummary();
+          unpaintSubCatGreen();
+          unpadSubCatStrip();
+          unpaintCatChipFill();
+          unpaintSectionBands();
+        }
+
+        function unpaintGlassOnly() {
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+          unpaintNavGlass();
+          unpaintNavDark();
+        }
+
+        var ORANGE_ATTR = 'data-afro-orange';
+        // Açık modda DOLU YEŞİL arka planlı elemanları (marka yeşili
+        // rgb(20,182,126) ve yakın tonları) TURUNCU yap. Buna dahil:
+        //  - küçük yeşil butonlar ("Ekle", "Pazardan Gel-Al" vb.)
+        //  - üstteki yeşil "Yönetici Görünümü" bandı (köşesiz, geniş)
+        //  - profildeki büyük yeşil isim/başlık kartı
+        //  - alt menüdeki aktif yeşil pill (varsa)
+        //  - PAZAR KARTI "Siparişe Başla" butonları (flicker düzeltmesi)
+        // Beyaz yazılar turuncu üstünde okunur kaldığı için sorun olmaz.
+        // Soluk yeşiller (rgb(204,230,209)) buraya GİRMEZ; onlar buzlu cam olur.
+        function paintOrangeButtons() {
+          var root = document.body; // modallar dahil (bkz. paintGlassLayers notu)
+          if (!root) return;
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(ORANGE_ATTR) === '1') continue;
+            var cs = getComputedStyle(el);
+            var m = (cs.backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            if (a < 0.5) continue; // yarı saydam -> atla (dolu yeşiller hedef)
+            // DOLU marka yeşili ve yakın tonları (soluk yeşiller HARİÇ)
+            var isBrandGreen = (rr <= 90 && gg >= 130 && gg <= 220 && bb >= 70 && bb <= 180 && gg > rr + 50 && gg > bb + 15);
+            if (!isBrandGreen) continue;
+            var r = el.getBoundingClientRect();
+            if (r.width < 20 || r.height < 16) continue; // çok küçük -> atla
+            // Tam ekranı kaplayan bir katman OLMAMALI (güvenlik)
+            if (r.width >= vw * 0.97 && r.height >= vh * 0.8) continue;
+            el.setAttribute(ORANGE_ATTR, '1');
+          }
+          // FLICKER DÜZELTMESİ: Pazar kartı "Siparişe Başla" butonları React
+          // render döngüsünde backgroundColor: theme.primary ile render ediliyor
+          // ama statik CSS kuralları onları yakalamıyor. Metin bazlı tespit yapıp
+          // işaretleyerek her durumda turuncu kalmasını sağlarız.
+          var isMarketPage = (location.pathname === '/' || location.pathname.indexOf('/markets') > -1);
+          if (isMarketPage) {
+            var divs = root.querySelectorAll('div');
+            for (var j = 0; j < divs.length; j++) {
+              var btn = divs[j];
+              if (btn.getAttribute(ORANGE_ATTR) === '1') continue;
+              var txt = (btn.innerText || '').trim();
+              // "Siparişe Başla" veya "Sipariş Başla" (typo toleransı)
+              if (txt.indexOf('Sipari') === -1 || txt.indexOf('Ba') === -1) continue;
+              if (txt.length > 25) continue; // sadece buton metni, açıklama değil
+              var rb = btn.getBoundingClientRect();
+              // Buton boyutu: genişlik 90-400, yükseklik 30-80
+              if (rb.width < 90 || rb.width > 400 || rb.height < 30 || rb.height > 80) continue;
+              // ÖNEMLİ FLICKER DÜZELTMESİ: Buton enabled iken yeşil (#14B67E),
+              // fakat market verisi yeniden yüklenirken KISA süre disabled
+              // duruma geçip SOLUK YEŞİL (accentSurface #CCE6D1 = rgb(204,230,209))
+              // oluyor -> beyaz gibi görünüyor. Rengine göre koşul koymak yerine
+              // GÖRÜNÜR DOLGUSU olan (şeffaf olmayan) buton kutusunu -yeşil, soluk
+              // yeşil, beyaz, turuncu fark etmeksizin- turuncu işaretle. İç yazı
+              // sarmalayıcısı (şeffaf zemin) elenir; yalnızca dolu buton kutusu geçer.
+              var cBtn = getComputedStyle(btn);
+              var mbtn = (cBtn.backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+              if (!mbtn) continue;
+              var ba = (mbtn[4] === undefined ? 1 : +mbtn[4]);
+              // Görünür (şeffaf olmayan) dolgusu olan kutu = asıl buton.
+              if (ba < 0.5) continue;
+              btn.setAttribute(ORANGE_ATTR, '1');
+            }
+          }
+        }
+
+        function unpaintOrange() {
+          var o = document.querySelectorAll('[' + ORANGE_ATTR + ']');
+          for (var k = 0; k < o.length; k++) o[k].removeAttribute(ORANGE_ATTR);
+        }
+
+        // Açık modda TÜM YEŞİL yazıları/kenarlıkları/SVG'leri turuncu yap.
+        function paintGreenTextsOrange() {
+          var root = document.body; // modallar dahil (bkz. paintGlassLayers notu)
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var r = el.getBoundingClientRect();
+            if (r.width < 5 || r.height < 5) continue; // görünmez (offsetParent yerine boyut kontrolü)
+            // NOT: alt menü (bottom nav) artık İSTİSNA DEĞİL — aktif yeşil ikon
+            // ve etiketi de turuncu olsun (kullanıcı isteği). Pasif gri ikonlar
+            // yeşil olmadığı için etkilenmez.
+            var cs = getComputedStyle(el);
+            
+            // YAZI RENGİ (color)
+            if (!el.getAttribute('data-afro-green-text')) {
+              var col = cs.color;
+              var mc = col && col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mc) {
+                var cr = +mc[1], cg = +mc[2], cb = +mc[3];
+                // Yeşil: g > r+20 && g > b+20 && g >= 80 (koyu+açık yeşiller)
+                if (cg > cr + 20 && cg > cb + 20 && cg >= 80) {
+                  el.setAttribute('data-afro-green-text', '1');
+                }
+              }
+            }
+            
+            // KENARLIK (border-color)
+            if (!el.getAttribute('data-afro-green-border')) {
+              var bord = cs.borderTopColor || cs.borderColor;
+              var mb = bord && bord.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mb) {
+                var br = +mb[1], bg = +mb[2], bb = +mb[3];
+                if (bg > br + 20 && bg > bb + 20 && bg >= 80) {
+                  el.setAttribute('data-afro-green-border', '1');
+                }
+              }
+            }
+            
+            // SVG FILL (fill)
+            if (!el.getAttribute('data-afro-green-fill') && (el.tagName === 'svg' || el.tagName === 'path' || el.tagName === 'circle')) {
+              var fill = cs.fill;
+              var mf = fill && fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mf) {
+                var fr = +mf[1], fg = +mf[2], fb = +mf[3];
+                if (fg > fr + 20 && fg > fb + 20 && fg >= 80) {
+                  el.setAttribute('data-afro-green-fill', '1');
+                }
+              }
+            }
+          }
+        }
+
+        function unpaintGreenTexts() {
+          var attrs = ['data-afro-green-text', 'data-afro-green-border', 'data-afro-green-fill'];
+          for (var j = 0; j < attrs.length; j++) {
+            var marked = document.querySelectorAll('[' + attrs[j] + ']');
+            for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(attrs[j]);
+          }
+        }
+
+        // KOYU TEMA: uygulamanın kendi TURUNCU rengini (rgb(251,140,60)) kullanan
+        // elemanları parlak yeşile çevir. Turuncu tolerans aralığında bg/border/color
+        // olan elemanlara data-afro-d2g işareti koyar (CSS onları yeşile boyar).
+        function isAppOrange(str) {
+          var m = (str || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+          if (!m) return false;
+          var r = +m[1], g = +m[2], b = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+          if (a < 0.35) return false;
+          return r >= 235 && r <= 255 && g >= 118 && g <= 162 && b >= 42 && b <= 82;
+        }
+        function fixDarkOrangeToGreen() {
+          var root = document.body; if (!root) return;
+          // FLICKER DÜZELTMESİ (kupon kartı vb.): Bir eleman d2g ile yeşile
+          // boyanınca getComputedStyle YEŞİL döner -> isAppOrange(false) ->
+          // işaret kalkar -> tekrar turuncu -> tekrar yeşil... sonsuz TİTREME.
+          // Çözüm (paintCartOutline ile aynı desen): her taramada önce TÜM d2g
+          // işaretlerini KALDIR. Böylece override kalkar ve getComputedStyle
+          // uygulamanın GERÇEK rengini (turuncu) döndürür; sadece gerçekten
+          // turuncu olanlar yeniden işaretlenir. Tümü senkron tek geçişte olur,
+          // ekranda ara turuncu kare (paint) görünmez -> titreme tamamen biter.
+          // Bu yöntem, turuncu inline style ile de atomik class ile de gelse çalışır.
+          unfixDarkOrange();
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var cs = getComputedStyle(el);
+            var toks = [];
+            if (isAppOrange(cs.backgroundColor)) toks.push('bg');
+            var bw = parseFloat(cs.borderTopWidth) || 0;
+            if (bw > 0 && isAppOrange(cs.borderTopColor)) toks.push('border');
+            if (isAppOrange(cs.color)) toks.push('text');
+            if (toks.length) {
+              var v = toks.join(' ');
+              if (el.getAttribute('data-afro-d2g') !== v) el.setAttribute('data-afro-d2g', v);
+            } else if (el.getAttribute('data-afro-d2g')) {
+              el.removeAttribute('data-afro-d2g');
+            }
+          }
+        }
+        function unfixDarkOrange() {
+          var m = document.querySelectorAll('[data-afro-d2g]');
+          for (var i = 0; i < m.length; i++) m[i].removeAttribute('data-afro-d2g');
+        }
+
+        // Harita seçici (map-picker.html) AYNI KÖKENLİ bir <iframe> içinde çalışır
+        // ve "Bu Konumu Onayla" butonu (#confirm-btn) yeşildir (#22C55E). Ana
+        // belgedeki stiller iframe'e uygulanmadığı için, aynı köken avantajıyla
+        // iframe'in kendi <head>'ine küçük bir stil enjekte edip AÇIK modda
+        // butonu turuncu yaparız. KOYU modda enjekte edilen stili kaldırırız.
+        function paintMapIframe(makeOrange) {
+          try {
+            var ifr = document.querySelectorAll('iframe');
+            for (var i = 0; i < ifr.length; i++) {
+              var f = ifr[i];
+              var src = f.getAttribute('src') || '';
+              if (src.indexOf('map-picker') === -1) continue;
+              var doc = null;
+              try { doc = f.contentDocument; } catch (e) { doc = null; }
+              if (!doc || !doc.head) continue;
+              var st = doc.getElementById('afro-iframe-style');
+              if (makeOrange) {
+                if (!st) {
+                  st = doc.createElement('style');
+                  st.id = 'afro-iframe-style';
+                  st.textContent = '#confirm-btn{background:rgb(251,140,60) !important;}';
+                  doc.head.appendChild(st);
+                }
+              } else {
+                if (st && st.parentNode) st.parentNode.removeChild(st);
+              }
+            }
+          } catch (e) { /* sessizce geç */ }
+        }
+
+        // ============================================================
+        // ADMIN: "Tedarikçi Yetkilendir" penceresi geliştirmesi
+        // Uygulama derlenmiş (kaynak yok); bu ekranda (a) atanmış
+        // tedarikçileri İSİM + TELEFON ile listeleyen ve (b) her birinde
+        // "Kaldır" butonu olan bir bölümü DOM'a enjekte ederiz.
+        // Backend zaten kaldırmayı destekliyor: POST /admin/staff/assign
+        // {identifier, supplier_group:null} -> rol tekrar 'musteri' olur.
+        // Modal, input[placeholder*="user_id"] ile ucuzca tespit edilir;
+        // bu input modal kolonunun doğrudan çocuğudur, panelimizi o kolona
+        // ekleriz. React re-render'da kaldırırsa tick/observer geri koyar.
+        // ============================================================
+        function afroAdminToken() {
+          try {
+            var raw = localStorage.getItem('pazar_session_token');
+            if (!raw) return '';
+            try { var v = JSON.parse(raw); return (typeof v === 'string') ? v : String(v || ''); }
+            catch (e) { return raw; }
+          } catch (e) { return ''; }
+        }
+        function afroApi(path, opts) {
+          opts = opts || {};
+          var h = { 'Content-Type': 'application/json' };
+          var tk = afroAdminToken();
+          if (tk) h['Authorization'] = 'Bearer ' + tk;
+          return fetch('https://afrogida.com.tr/api' + path, {
+            method: opts.method || 'GET',
+            headers: h,
+            body: opts.body ? JSON.stringify(opts.body) : undefined
+          }).then(function (r) {
+            return r.text().then(function (t) {
+              var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { j = null; }
+              if (!r.ok) { throw new Error((j && j.detail) || ('Hata ' + r.status)); }
+              return j;
+            });
+          });
+        }
+        function afroSupCleanup() {
+          var w = document.getElementById('afro-sup-wrap');
+          if (w && w.parentNode) w.parentNode.removeChild(w);
+        }
+        // Para biçimlendir (₺)
+        function afroFmtTL(n) {
+          var v = Number(n || 0);
+          return v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+        }
+        function afroSupLoad() {
+          var list = document.getElementById('afro-sup-list');
+          if (!list) return;
+          // Personel listesi + tedarikçi satış özetini birlikte çek
+          Promise.all([
+            afroApi('/admin/staff'),
+            afroApi('/admin/supplier-sales-summary').catch(function () { return {}; })
+          ]).then(function (res) {
+            var rows = res[0] || [];
+            var summary = res[1] || {};
+            // Özeti normalize edilmiş anahtarla eşleştirmek için map kur
+            var normMap = {};
+            Object.keys(summary).forEach(function (k) {
+              normMap[(k || '').trim().toLocaleLowerCase('tr-TR')] = summary[k];
+            });
+            if (!Array.isArray(rows) || !rows.length) {
+              list.innerHTML = '<div style="color:#9fb3aa;font-size:13px;">Henüz atanmış tedarikçi yok.</div>';
+              return;
+            }
+            list.innerHTML = '';
+            rows.forEach(function (u) {
+              var sg = u.supplier_group || '';
+              var stat = normMap[sg.trim().toLocaleLowerCase('tr-TR')] || null;
+              var row = document.createElement('div');
+              row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(20,182,126,0.35);border-radius:10px;padding:8px 10px;';
+              var left = document.createElement('div');
+              left.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:0;';
+              var nm = document.createElement('div');
+              nm.style.cssText = 'color:#e6f5ee;font-weight:700;font-size:13px;';
+              nm.textContent = (u.name || 'İsimsiz') + (sg ? ' — ' + sg : '');
+              var ph = document.createElement('div');
+              ph.style.cssText = 'color:#8fe6c0;font-size:12px;';
+              ph.textContent = u.phone || '—';
+              // Toplanan tutar satırı (satılan/onaylanan ürünlerden, iade düşülmüş net)
+              var tot = document.createElement('div');
+              tot.style.cssText = 'color:#34d399;font-size:12px;font-weight:800;margin-top:2px;';
+              if (stat) {
+                tot.textContent = 'Toplanan: ' + afroFmtTL(stat.net_total) +
+                  ' (' + (stat.order_count || 0) + ' satış)';
+                if (Number(stat.total_refunded) > 0) {
+                  tot.textContent += ' • İade: ' + afroFmtTL(stat.total_refunded);
+                }
+              } else {
+                tot.textContent = 'Toplanan: 0,00 ₺';
+              }
+              left.appendChild(nm); left.appendChild(ph); left.appendChild(tot);
+              // Sağ taraf: butonlar (Satış Logu + Kaldır)
+              var right = document.createElement('div');
+              right.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;gap:6px;';
+              var logBtn = document.createElement('div');
+              logBtn.textContent = 'Satış Logu';
+              logBtn.style.cssText = 'color:#fff;background:#10b981;font-weight:700;font-size:12px;padding:7px 12px;border-radius:9px;cursor:pointer;text-align:center;';
+              logBtn.onclick = function () {
+                if (!sg) { window.alert('Bu personele atanmış tedarikçi yok.'); return; }
+                afroOpenSalesLog(sg);
+              };
+              var btn = document.createElement('div');
+              btn.textContent = 'Kaldır';
+              btn.style.cssText = 'color:#fff;background:#e5484d;font-weight:700;font-size:12px;padding:7px 12px;border-radius:9px;cursor:pointer;text-align:center;';
+              btn.onclick = function () { afroSupRemove(u, btn); };
+              right.appendChild(logBtn); right.appendChild(btn);
+              row.appendChild(left); row.appendChild(right);
+              list.appendChild(row);
+            });
+          }).catch(function (e) {
+            list.innerHTML = '<div style="color:#e5875a;font-size:13px;">Liste alınamadı: ' + ((e && e.message) || '') + '</div>';
+          });
+        }
+
+        // ============================================================
+        // TEDARİKÇİ SATIŞ LOGU SAYFASI (tam ekran modal)
+        // Seçili tedarikçinin satılan (teslim edilen) ürünlerini listeler;
+        // ürün/miktar/fiyat gösterir, iade olanları "İade edildi" işaretler
+        // ve tutarı net toplamdan düşer.
+        // ============================================================
+        function afroOpenSalesLog(supplierGroup) {
+          var old = document.getElementById('afro-saleslog-modal');
+          if (old && old.parentNode) old.parentNode.removeChild(old);
+          var m = document.createElement('div');
+          m.id = 'afro-saleslog-modal';
+          m.style.cssText = 'position:fixed;inset:0;z-index:2147483040;background:rgba(1,20,10,0.96);color:#eafff4;font-family:Arial,sans-serif;overflow:auto;';
+          var card = document.createElement('div');
+          card.style.cssText = 'max-width:920px;margin:32px auto;background:#062216;border:1px solid #135f42;border-radius:18px;padding:22px;box-shadow:0 16px 50px rgba(0,0,0,0.4);';
+          // Başlık
+          var top = document.createElement('div');
+          top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;';
+          var h = document.createElement('h2');
+          h.style.cssText = 'margin:0;font-size:20px;color:#eafff4;';
+          h.textContent = 'Satış Logu — ' + supplierGroup;
+          var closeBtn = document.createElement('button');
+          closeBtn.textContent = 'Kapat';
+          closeBtn.style.cssText = 'background:#10291e;color:#fff;border:0;border-radius:10px;padding:10px 15px;font-weight:800;cursor:pointer;';
+          closeBtn.onclick = function () { m.remove(); };
+          top.appendChild(h); top.appendChild(closeBtn);
+          var body = document.createElement('div');
+          body.innerHTML = '<div style="color:#9ccbb8;padding:20px 0;">Yükleniyor...</div>';
+          card.appendChild(top); card.appendChild(body);
+          m.appendChild(card);
+          document.body.appendChild(m);
+
+          afroApi('/admin/supplier-sales?supplier=' + encodeURIComponent(supplierGroup))
+            .then(function (data) {
+              body.innerHTML = '';
+              // ---- Özet kartı ----
+              var sum = document.createElement('div');
+              sum.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;margin:14px 0 6px;';
+              function chip(label, value, color) {
+                var c = document.createElement('div');
+                c.style.cssText = 'flex:1;min-width:150px;background:#03140d;border:1px solid #1b7d59;border-radius:12px;padding:12px 14px;';
+                c.innerHTML = '<div style="color:#9ccbb8;font-size:12px;font-weight:700;">' + label + '</div>' +
+                  '<div style="color:' + (color || '#eafff4') + ';font-size:19px;font-weight:900;margin-top:4px;">' + value + '</div>';
+                return c;
+              }
+              sum.appendChild(chip('Net Toplanan Tutar', afroFmtTL(data.net_total), '#34d399'));
+              sum.appendChild(chip('Brüt Satış', afroFmtTL(data.total_sold), '#eafff4'));
+              sum.appendChild(chip('Toplam İade', afroFmtTL(data.total_refunded), '#f87171'));
+              sum.appendChild(chip('Satış Sayısı', String(data.order_count || 0), '#eafff4'));
+              body.appendChild(sum);
+
+              var log = data.log || [];
+              if (!log.length) {
+                var empty = document.createElement('div');
+                empty.style.cssText = 'color:#9ccbb8;padding:24px 0;font-size:14px;';
+                empty.textContent = 'Bu tedarikçi için henüz teslim edilmiş (satılan) sipariş yok.';
+                body.appendChild(empty);
+                return;
+              }
+
+              // ---- Satış log kartları ----
+              log.forEach(function (e) {
+                var oc = document.createElement('div');
+                oc.style.cssText = 'background:#03140d;border:1px solid ' + (e.refunded ? '#7f1d1d' : '#154b36') +
+                  ';border-radius:12px;padding:12px 14px;margin-top:12px;';
+                // Sipariş başlığı
+                var oh = document.createElement('div');
+                oh.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;';
+                var dstr = '';
+                try { dstr = new Date(e.date).toLocaleString('tr-TR'); } catch (x) { dstr = e.date || ''; }
+                var oleft = document.createElement('div');
+                oleft.innerHTML = '<div style="color:#e6f5ee;font-weight:800;font-size:13px;">' + (e.customer || 'Müşteri') +
+                  '</div><div style="color:#8fe6c0;font-size:12px;">' + dstr +
+                  (e.delivery_type ? ' • ' + (e.delivery_type === 'gel_al' ? 'Gel-Al' : 'Eve Servis') : '') + '</div>';
+                var oright = document.createElement('div');
+                oright.style.cssText = 'text-align:right;';
+                if (e.refunded) {
+                  oright.innerHTML = '<span style="display:inline-block;background:#7f1d1d;color:#fecaca;font-weight:800;font-size:11px;padding:4px 9px;border-radius:8px;">' +
+                    (e.refund_label || 'İade edildi') + '</span>' +
+                    '<div style="color:#f87171;font-weight:900;font-size:15px;margin-top:4px;text-decoration:line-through;">' + afroFmtTL(e.subtotal) + '</div>' +
+                    '<div style="color:#34d399;font-weight:900;font-size:15px;">Net: ' + afroFmtTL(e.net) + '</div>';
+                } else {
+                  oright.innerHTML = '<div style="color:#34d399;font-weight:900;font-size:16px;">' + afroFmtTL(e.subtotal) + '</div>';
+                }
+                oh.appendChild(oleft); oh.appendChild(oright);
+                oc.appendChild(oh);
+                // Ürün tablosu
+                var tbl = document.createElement('table');
+                tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+                var thead = '<thead><tr>' +
+                  '<th style="text-align:left;color:#9ccbb8;border-bottom:1px solid #154b36;padding:6px 4px;">Ürün</th>' +
+                  '<th style="text-align:right;color:#9ccbb8;border-bottom:1px solid #154b36;padding:6px 4px;">Miktar</th>' +
+                  '<th style="text-align:right;color:#9ccbb8;border-bottom:1px solid #154b36;padding:6px 4px;">Birim Fiyat</th>' +
+                  '<th style="text-align:right;color:#9ccbb8;border-bottom:1px solid #154b36;padding:6px 4px;">Tutar</th>' +
+                  '</tr></thead>';
+                var tbody = '<tbody>';
+                (e.items || []).forEach(function (it) {
+                  var qtyStr = (Number(it.qty) || 0).toLocaleString('tr-TR') + (it.unit ? ' ' + it.unit : '');
+                  tbody += '<tr>' +
+                    '<td style="color:#e6f5ee;padding:6px 4px;border-bottom:1px solid #0d3325;">' + (it.name || 'Ürün') + '</td>' +
+                    '<td style="color:#cdeee0;text-align:right;padding:6px 4px;border-bottom:1px solid #0d3325;">' + qtyStr + '</td>' +
+                    '<td style="color:#cdeee0;text-align:right;padding:6px 4px;border-bottom:1px solid #0d3325;">' + afroFmtTL(it.price) + '</td>' +
+                    '<td style="color:#e6f5ee;text-align:right;font-weight:700;padding:6px 4px;border-bottom:1px solid #0d3325;">' + afroFmtTL(it.line_total) + '</td>' +
+                    '</tr>';
+                });
+                tbody += '</tbody>';
+                tbl.innerHTML = thead + tbody;
+                oc.appendChild(tbl);
+                body.appendChild(oc);
+              });
+            })
+            .catch(function (err) {
+              body.innerHTML = '<div style="color:#f87171;padding:20px 0;">Satış logu alınamadı: ' + ((err && err.message) || '') + '</div>';
+            });
+        }
+        function afroSupRemove(u, btn) {
+          if (!window.confirm((u.name || u.phone || 'Bu kişi') + ' için tedarikçi yetkisi kaldırılsın mı?')) return;
+          btn.textContent = '...'; btn.style.opacity = '0.6';
+          afroApi('/admin/staff/assign', { method: 'POST', body: { identifier: u.user_id, supplier_group: null } })
+            .then(function () { afroSupLoad(); })
+            .catch(function (e) {
+              btn.textContent = 'Kaldır'; btn.style.opacity = '1';
+              window.alert('Kaldırılamadı: ' + ((e && e.message) || ''));
+            });
+        }
+        function afroSupplierPanel() {
+          var input = document.querySelector('input[placeholder*="user_id"]');
+          if (!input) { afroSupCleanup(); return; }   // modal kapalı
+          var col = input.parentNode;
+          if (!col) return;
+          var wrap = document.getElementById('afro-sup-wrap');
+          if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'afro-sup-wrap';
+            wrap.style.cssText = 'margin-top:14px;border-top:1px solid rgba(255,255,255,0.12);padding-top:12px;';
+            wrap.innerHTML = '<div style="color:#e6f5ee;font-weight:800;font-size:14px;margin-bottom:8px;">Atanmış Tedarikçiler</div>'
+              + '<div id="afro-sup-list" style="display:flex;flex-direction:column;gap:8px;">'
+              + '<div style="color:#9fb3aa;font-size:13px;">Yükleniyor...</div></div>';
+            col.appendChild(wrap);
+            afroSupLoad();
+          } else if (wrap.parentNode !== col) {
+            col.appendChild(wrap); // React kaldırdıysa geri koy
+          }
+        }
+
+        // ============================================================
+        // TEDARİKÇİ DETAY SAYFASI: Satış Logu butonu ekle, hesaba ata butonunu gizle
+        // Screenshot'taki mobil tedarikçi detay ekranı için
+        // ============================================================
+        // Bir div'in SADECE kendi doğrudan text node'larını döndürür (çocuklar hariç)
+        function afroDirectText(el) {
+          var d = '';
+          for (var n = 0; n < el.childNodes.length; n++) {
+            if (el.childNodes[n].nodeType === 3) d += el.childNodes[n].nodeValue;
+          }
+          return d.trim();
+        }
+        function afroSupplierDetailPanel() {
+          // 1) "Bu tedarikçiyi hesaba ata" metnini taşıyan div'i bul
+          //    (React Native Web: <div class="css-...">, role/button yok)
+          var textDiv = null;
+          var divs = document.querySelectorAll('div');
+          for (var i = 0; i < divs.length; i++) {
+            if (afroDirectText(divs[i]) === 'Bu tedarikçiyi hesaba ata') { textDiv = divs[i]; break; }
+          }
+          if (!textDiv) return; // Tedarikçi detay sayfası değil
+
+          // 2) Tıklanabilir buton kutusunu bul (r-1loqt21 = RN Web pressable) ve gizle.
+          //    Her tick'te tekrar gizle (React yeniden render edip geri getirebilir).
+          var btnBox = textDiv;
+          for (var k = 0; k < 5 && btnBox; k++) {
+            if ((btnBox.className || '').toString().indexOf('r-1loqt21') >= 0) break;
+            btnBox = btnBox.parentElement;
+          }
+          if (!btnBox) btnBox = textDiv.parentElement;
+          if (btnBox && btnBox.style.display !== 'none') btnBox.style.display = 'none';
+
+          // 3) Tedarikçi adını bul: "Tedarikçi Detayı" etiketinin hemen sonraki kardeşi
+          var supplierName = '';
+          for (var j = 0; j < divs.length; j++) {
+            if (afroDirectText(divs[j]).toLocaleLowerCase('tr-TR') === 'tedarikçi detayı') {
+              var sib = divs[j].nextElementSibling;
+              if (sib) supplierName = (sib.textContent || '').trim();
+              break;
+            }
+          }
+          // Yedek: kalın (fw>=800), tepede ve "bağlı ürün" içermeyen metni ad kabul et
+          if (!supplierName) {
+            for (var m = 0; m < divs.length; m++) {
+              var el = divs[m];
+              var r = el.getBoundingClientRect();
+              if (r.top > 0 && r.top < 140) {
+                var dt = afroDirectText(el);
+                var fw = parseInt(getComputedStyle(el).fontWeight, 10) || 400;
+                if (dt && fw >= 800 && dt.toLocaleLowerCase('tr-TR') !== 'tedarikçi detayı' &&
+                    dt.indexOf('bağlı ürün') < 0 && dt.length > 1 && dt.length < 60) {
+                  supplierName = dt; break;
+                }
+              }
+            }
+          }
+
+          // 4) "Satış Logları" butonunu ekle (yoksa). React sildiyse tekrar eklenir.
+          var logBtnId = 'afro-supplier-detail-saleslog-btn';
+          if (document.getElementById(logBtnId)) return; // zaten ekranda
+
+          var logBtn = document.createElement('div');
+          logBtn.id = logBtnId;
+          logBtn.textContent = '📊 Satış Logları';
+          logBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;background:#10b981;color:#fff;font-weight:800;font-size:15px;padding:14px;border-radius:12px;cursor:pointer;margin-top:10px;box-shadow:0 4px 12px rgba(16,185,129,0.3);';
+          logBtn.onclick = function () {
+            if (!supplierName) { window.alert('Tedarikçi adı bulunamadı.'); return; }
+            afroOpenSalesLog(supplierName);
+          };
+
+          // "Bu tedarikçiyi hesaba ata" kutusunun bulunduğu yere (Ürün Ekle'nin altına) ekle
+          if (btnBox && btnBox.parentNode) {
+            btnBox.parentNode.insertBefore(logBtn, btnBox.nextSibling);
+          } else if (textDiv.parentNode) {
+            textDiv.parentNode.appendChild(logBtn);
+          }
+        }
+
+        function tick() {
+          var isCustomer = isCustomerSection();
+          var isDark = isDarkActive();
+          var active = isCustomer; // her iki temada da duvar kağıdı göster (müşteri kısmında)
+
+          if (active) {
+            if (!htmlEl.classList.contains('afro-wp')) htmlEl.classList.add('afro-wp');
+            // tema sınıflarını ekle
+            if (isDark) {
+              htmlEl.classList.add('afro-dark');
+              htmlEl.classList.remove('afro-light');
+            } else {
+              htmlEl.classList.add('afro-light');
+              htmlEl.classList.remove('afro-dark');
+            }
+            paintPageLayers();
+            // buzlu cam + turuncu butonlar/yazılar sadece AÇIK modda uygulanır
+            if (isDark) {
+              unpaintGlassOnly();
+              clearNavDark(); // koyu modda kategori/saat bantlarını şeffaflaştır
+              // KOYU TEMA: yeşil renk korunur (turuncu dönüşüm yok)
+              paintNavPill(); // alt menü çubuğu koyu modda da yüzen pill/ada
+              paintCartBar(); // "Siparişi Tamamla" çubuğunu pill'in üstüne kaydır
+              paintInfoChips(); // üst bilgi kutucukları şeffaf buzlu cam (koyu)
+              wireScrollTop(); // "Çok al az öde" -> en üste kaydır
+              paintGlassCards(); // profil/ayarlar opak kartları şeffaf buzlu (koyu)
+              paintInfoRowPanel(); // BİLGİ KUTUCUKLARI satırına tam genişlikte buzlu panel
+              paintMgrCard(); // profil isim/yönetici kartı şeffaf buzlu
+              paintCartSummary(); // sepet Toplam/özet kutusu şeffaf buzlu
+              clearCatChipFill(); // seçili olmayan kategori çip dolgusu şeffaf
+              padSubCatStrip(); // alt kategori çipi şeridin üstüne yapışmasın
+              fixDarkOrangeToGreen(); // uygulamanın kendi turuncularını parlak yeşile çevir
+              paintSectionBands(); // bölüm başlığı bantları: stabil buzlu zemin + yeşil kenarlık
+            } else {
+              paintGlassLayers();
+              clearNavGlass(); // kategori/saat butonlarının arkasındaki geniş buzlu bandı kaldır
+              paintOrangeButtons();
+              paintGreenTextsOrange();
+              paintMapIframe(true); // açık modda harita butonu TURUNCU
+              paintCartOutline(); // sepet sayfasında turuncu butonları şeffaf-buzlu yap
+              paintCartFrost(); // şeffaf kalıp yazısı okunmayan bloklara buzlu-cam panel
+              paintNavPill(); // alt menü çubuğunu yüzen pill/ada yap
+              paintNavIcons(); // pasif tab ikonları/etiketleri mat turuncu
+              paintCartBar(); // "Siparişi Tamamla" çubuğunu pill'in üstüne kaydır
+              paintInfoChips(); // üst bilgi kutucukları şeffaf buzlu cam (açık)
+              wireScrollTop(); // "Çok al az öde" -> en üste kaydır
+              paintGlassCards(); // profil/ayarlar kartlarına buzlu cam (açık)
+              paintInfoRowPanel(); // BİLGİ KUTUCUKLARI satırına tam genişlikte buzlu panel
+              paintMgrCard(); // profil isim/yönetici kartı şeffaf buzlu
+              paintCartSummary(); // sepet Toplam/özet kutusu şeffaf buzlu
+              unpaintSubCatGreen(); // AÇIK tema: alt kategoriler TURUNCU kalsın
+              clearCatChipFill(); // kategori bandı chipleri şeffaf (seçili hariç)
+              padSubCatStrip(); // alt kategori çipi şeridin üstüne yapışmasın
+              unfixDarkOrange(); // açık temada koyu-tema turuncu->yeşil işaretlerini temizle
+              paintSectionBands(); // bölüm başlığı bantları: stabil buzlu zemin + turuncu kenarlık
+            }
+          } else {
+            if (htmlEl.classList.contains('afro-wp')) htmlEl.classList.remove('afro-wp');
+            htmlEl.classList.remove('afro-dark', 'afro-light');
+            unpaint();
+          }
+
+          // ADMIN bölümü: "Tedarikçi Yetkilendir" penceresi açıksa atanmış
+          // tedarikçi listesini (isim+telefon) ve Kaldır butonlarını enjekte et.
+          // Ayrıca tedarikçi detay sayfasına Satış Logu butonu ekle.
+          // (Müşteri tarafında modal olmaz; orada sadece temizlik yaparız.)
+          try {
+            if (!isCustomer) {
+              afroSupplierPanel();
+              afroSupplierDetailPanel();
+            } else {
+              afroSupCleanup();
+            }
+          } catch (e) { /* sessizce geç */ }
+        }
+
+        // rota değişiminde/DOM güncellemesinde ANINDA boya (600ms boşluğu kapat)
+        var rafPending = false;
+        function scheduleTick() {
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(function () { rafPending = false; tick(); });
+        }
+
+        tick();
+        setInterval(tick, 600);
+        window.addEventListener('resize', tick);
+        // KAYDIRMA sırasında ANINDA yeniden boya. React iç scroll container'da
+        // kaydırınca çipleri yeniden çiziyor; capture=true ile o iç kaydırmaları
+        // da yakalarız. rAF ile throttle -> uygulamanın turuncu/yeşil arası
+        // KISA PARLAMASI (flicker) neredeyse görünmez olur.
+        window.addEventListener('scroll', scheduleTick, { passive: true, capture: true });
+
+        // DOM her değiştiğinde (sayfa geçişi = yeni katmanlar) hemen boya
+        try {
+          var mo = new MutationObserver(scheduleTick);
+          var startObserve = function () {
+            var root = document.getElementById('root');
+            if (root) mo.observe(root, { childList: true, subtree: true });
+            else setTimeout(startObserve, 100);
+          };
+          startObserve();
+        } catch (e) {}
+
+        // SPA rota değişimlerini de yakala
+        try {
+          var _ps = history.pushState;
+          history.pushState = function () { _ps.apply(this, arguments); scheduleTick(); };
+          var _rs = history.replaceState;
+          history.replaceState = function () { _rs.apply(this, arguments); scheduleTick(); };
+          window.addEventListener('popstate', scheduleTick);
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- ================================================================
+         ÜRÜN SEÇİM PANELİ MODÜLÜ (afro_panel_module.js)
+         ================================================================ -->
+    <script>
+/* ================================================================
+   ÜRÜN SEÇİM PANELİ (Getir/Yemeksepeti tarzı alt-sayfa / bottom-sheet)
+   ----------------------------------------------------------------
+   AMAÇ: Bir ürüne tıklanınca eskiden /product/{id} BİLGİ sayfasına
+   gidiliyordu (sadece fiyat + üretici notu; seçim/sepet yok). Bunun
+   yerine sayfanın ÜSTÜNDE bir panel açılır:
+     - adet seçimi (Kg -> 0.5 adım, adet -> 1 adım)
+     - özelleştirilebilir üründe malzeme/seçenek grupları + not
+     - "Sepete Ekle" butonu
+   ----------------------------------------------------------------
+   MİMARİ (derlenmiş Expo bundle'a müdahale edemediğimiz için):
+   * ADET: uygulamanın KENDİ "Ekle"/"+"/"-" butonları programatik
+     tıklanır. Böylece React state (G) + alt "Siparişi Tamamla"
+     çubuğu doğru güncellenir, sepet/afro_basket tutarlı kalır.
+   * ÖZELLEŞTİRME: uygulamanın CSel state'ine yazamadığımız için
+     seçimler 'afro_custom' localStorage anahtarına yazılır; sipariş
+     POST /api/orders isteği araya girilip her item'a selected_options
+     + note enjekte edilir. Backend fiyatı ÜRÜN TANIMINDAN yeniden
+     hesapladığı için (client'a güvenmiyor) para açısından güvenlidir.
+   ================================================================ */
+(function () {
+  if (window.__afroPanel) return;
+  window.__afroPanel = 1;
+
+  var CUSTOM_KEY = 'afro_custom';
+  var BASKET_KEY = 'afro_basket';
+
+  /* ---------- yardımcılar ---------- */
+  function jget(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function jset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function basket() { return jget(BASKET_KEY, {}) || {}; }
+  function customs() { return jget(CUSTOM_KEY, {}) || {}; }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function isDark() { try { return document.documentElement.classList.contains('afro-dark'); } catch (e) { return false; } }
+  function accent() { return isDark() ? 'rgb(20,182,126)' : 'rgb(251,140,60)'; }
+  function stepFor(unit) { return /kg/i.test(String(unit || '')) ? 0.5 : 1; }
+  function fmtTL(n) {
+    try { return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0)); }
+    catch (e) { return Number(n || 0).toFixed(2); }
+  }
+  function fmtQty(n) { var s = (Math.round(Number(n) * 100) / 100).toString(); return s; }
+  function basePrice(p) { return Number((p && (p.price != null ? p.price : (p.gel_al_price != null ? p.gel_al_price : p.eve_servis_price))) || 0); }
+
+  /* ---------- ürün önbelleği ---------- */
+  window.__afroProducts = window.__afroProducts || {};   // id -> product
+  function cacheProducts(arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(function (p) { if (p && p.id) window.__afroProducts[p.id] = p; });
+  }
+  function productNames() {
+    var s = {};
+    Object.keys(window.__afroProducts).forEach(function (id) {
+      var n = (window.__afroProducts[id].name || '').trim();
+      if (n) s[n] = id;
+    });
+    return s;
+  }
+  async function ensureProducts() {
+    if (Object.keys(window.__afroProducts).length) return;
+    try {
+      var tok = localStorage.getItem('pazar_session_token');
+      var mkt = localStorage.getItem('selected_market_name') || '';
+      var r = await fetch(location.origin + '/api/products' + (mkt ? ('?market=' + encodeURIComponent(mkt)) : ''),
+        { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
+      var j = await r.json();
+      cacheProducts(Array.isArray(j) ? j : (j.products || j.items || []));
+    } catch (e) {}
+  }
+
+  /* ================================================================
+     FETCH SARMALAYICI: (a) ürün listelerini önbelleğe al,
+     (b) sipariş POST'una özelleştirmeleri enjekte et.
+     ================================================================ */
+  (function () {
+    var prev = window.fetch;
+    if (typeof prev !== 'function') return;
+    function urlOf(input) { try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch (e) { return ''; } }
+
+    window.fetch = function (input, init) {
+      var url = urlOf(input);
+      var method = (init && init.method ? init.method : (input && input.method) || 'GET').toString().toUpperCase();
+
+      // (b) SİPARİŞ: POST /api/orders VE /api/payments/init -> item'lara
+      //     afro_basket (adet) + afro_custom (seçenek/not) enjekte et.
+      //     Sepet çubuğu gerçekte /payments/init kullanıyor; qty native G'den,
+      //     selected_options native CSel'den geliyordu -> bizim panelimizin
+      //     seçimleri faturaya HİÇ yansımıyordu. Artık afro_basket+afro_custom
+      //     TEK doğruluk kaynağı; backend fee'yi üründen yeniden hesaplar (güvenli).
+      try {
+        if (method === 'POST' && /\/api\/(orders|payments\/init)(\?|$)/.test(url) && !/\/admin\//.test(url) && init && typeof init.body === 'string') {
+          var body = JSON.parse(init.body);
+          var items = body.items || body.cart_items;
+          if (Array.isArray(items)) {
+            var cs = customs();
+            var bk = basket();
+            items.forEach(function (it) {
+              var id = it && (it.id || it.product_id);
+              if (!id) return;
+              // Adet: afro_basket yetkili (panelde değiştirilen adet native G
+              // stale kalsa bile doğru tahsil edilsin).
+              if (bk[id] != null && Number(bk[id]) > 0) { it.qty = Number(bk[id]); it.quantity = Number(bk[id]); }
+              // Seçenek/not: afro_custom yetkili (panel native editörü değiştirir).
+              var c = cs[id];
+              if (c) {
+                it.selected_options = (c.selected_options && c.selected_options.length) ? c.selected_options : [];
+                if (c.note && c.note.trim()) { it.note = c.note; it.customization_note = c.note; }
+              }
+            });
+            init = Object.assign({}, init, { body: JSON.stringify(body) });
+          }
+        }
+      } catch (e) { /* sipariş enjeksiyonu hata verirse orijinal gövde gider */ }
+
+      var p = prev.call(this, input, init);
+
+      // (a) ürün listesi yanıtını önbelleğe al
+      try {
+        if (method === 'GET' && /\/api\/products(\?|$)/.test(url) && !/\/products\/[^?]/.test(url)) {
+          p.then(function (resp) {
+            try {
+              resp.clone().json().then(function (j) {
+                cacheProducts(Array.isArray(j) ? j : (j && (j.products || j.items)) || []);
+              }).catch(function () {});
+            } catch (e) {}
+          }).catch(function () {});
+        }
+        // sipariş başarılıysa özelleştirmeleri temizle
+        if (method === 'POST' && /\/api\/(orders|payments\/init)(\?|$)/.test(url) && !/\/admin\//.test(url)) {
+          p.then(function (resp) { try { if (resp && resp.ok) localStorage.removeItem(CUSTOM_KEY); } catch (e) {} }).catch(function () {});
+        }
+      } catch (e) {}
+
+      return p;
+    };
+  })();
+
+  /* ================================================================
+     NATİF ADET SÜRÜCÜSÜ: ürün kartındaki uygulamanın kendi
+     "Ekle"/"+"/"-" butonlarını bulup programatik tıklar.
+     ================================================================ */
+  function fireClick(el) {
+    if (!el) return false;
+    var r = el.getBoundingClientRect();
+    var o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0, pointerId: 1, pointerType: 'mouse' };
+    try { el.dispatchEvent(new PointerEvent('pointerdown', o)); } catch (e) {}
+    try { el.dispatchEvent(new PointerEvent('pointerup', o)); } catch (e) {}
+    try { el.dispatchEvent(new MouseEvent('mousedown', o)); } catch (e) {}
+    try { el.dispatchEvent(new MouseEvent('mouseup', o)); } catch (e) {}
+    try { el.dispatchEvent(new MouseEvent('click', o)); } catch (e) {}
+    return true;
+  }
+  // Kart içindeki "Ekle" butonu (henüz sepette olmayan ürün).
+  function ekleBtn(card) {
+    return Array.prototype.slice.call(card.querySelectorAll('*')).filter(function (e) {
+      var t = (e.innerText || '').replace(/\s+/g, ' ').trim();
+      return /Ekle$/.test(t) && t.length < 12;
+    }).sort(function (a, b) { return a.querySelectorAll('*').length - b.querySelectorAll('*').length; })[0] || null;
+  }
+  // Stepper'ın DIŞ yuvarlak −/+ butonları (soldan sağa: [−, +]).
+  function roundBtns(card) {
+    return Array.prototype.slice.call(card.querySelectorAll('*')).filter(function (e) {
+      var r = e.getBoundingClientRect(); var cs;
+      try { cs = getComputedStyle(e); } catch (x) { return false; }
+      var br = parseFloat(cs.borderTopLeftRadius) || 0;
+      return r.width >= 30 && r.width <= 60 && r.height >= 30 && r.height <= 60 && br >= 12 && cs.cursor === 'pointer';
+    }).sort(function (a, b) { return a.getBoundingClientRect().left - b.getBoundingClientRect().left; });
+  }
+  // Kartın GÖRÜNEN adedini oku (React state'in doğru yansıması; afro_basket
+  // gecikmesine güvenmeyiz). "Ekle" görünüyorsa 0.
+  function getNativeQty(card) {
+    var e = ekleBtn(card);
+    if (e && e.offsetParent !== null) return 0;
+    var btns = roundBtns(card);
+    if (btns.length < 2) return 0;
+    var lx = btns[0].getBoundingClientRect().right;
+    var rx = btns[btns.length - 1].getBoundingClientRect().left;
+    var val = 0;
+    Array.prototype.slice.call(card.querySelectorAll('*')).forEach(function (n) {
+      if (n.children.length) return;
+      var t = (n.textContent || '').trim();
+      if (/^[0-9]+([.,][0-9]+)?$/.test(t)) {
+        var cr = n.getBoundingClientRect(); var cx = cr.left + cr.width / 2;
+        if (cx > lx - 4 && cx < rx + 4) val = parseFloat(t.replace(',', '.'));
+      }
+    });
+    return val;
+  }
+  async function setNativeQty(card, id, unit, target) {
+    if (!card) return 0;
+    var guard = 0;
+    if (getNativeQty(card) === 0 && target > 0) {
+      var ek = ekleBtn(card);
+      if (ek) { fireClick(ek); await wait(320); }
+    }
+    while (Math.abs(getNativeQty(card) - target) > 1e-6 && guard++ < 40) {
+      var c = getNativeQty(card);
+      var b = roundBtns(card);
+      if (b.length < 2) break;
+      var btn = c < target ? b[b.length - 1] : b[0];
+      fireClick(btn);
+      await wait(280);
+      if (getNativeQty(card) === c) { await wait(300); if (getNativeQty(card) === c) break; } // ilerleme yok -> dur
+    }
+    return getNativeQty(card);
+  }
+
+  /* ================================================================
+     SEPET STEPPER SÜRÜCÜSÜ: sepet satırındaki adet göstergesi bir DÜZ
+     SAYI yaprağı; −/+ butonları ise ikon-glyph (cursor:pointer) elemanlar.
+     roundBtns() bunları bulamıyordu (genişlik/köşe kriteri tutmuyor); bu
+     yüzden setNativeQty sepette çalışmıyor, adet native yeniden-çizime
+     kadar (~3-4sn) gecikiyordu. Aşağıdaki bulucu sayı yaprağını ve onu
+     saran −/+ pointer elemanlarını konuma göre bulur -> sentetik tık ile
+     uygulamanın KENDİ state'ini anında sürer (kanıtlandı: tık -> afro_basket
+     ve ara toplam anında güncelleniyor, kampanya indirimi native uygulanıyor).
+     ================================================================ */
+  function cartStepper(row) {
+    if (!row) return null;
+    var leaves = Array.prototype.slice.call(row.querySelectorAll('*')).filter(function (e) {
+      return e.children.length === 0 && (e.textContent || '').trim();
+    });
+    var numLeaf = null;
+    for (var i = 0; i < leaves.length; i++) {
+      if (/^[0-9]+([.,][0-9]+)?$/.test((leaves[i].textContent || '').trim())) { numLeaf = leaves[i]; break; }
+    }
+    if (!numLeaf) return null;
+    var nr = numLeaf.getBoundingClientRect();
+    var pointers = Array.prototype.slice.call(row.querySelectorAll('*')).filter(function (e) {
+      if (e.children.length > 1) return false;
+      try { return getComputedStyle(e).cursor === 'pointer'; } catch (x) { return false; }
+    });
+    var minus = pointers.filter(function (e) { return e.getBoundingClientRect().right <= nr.left + 3; })
+      .sort(function (a, b) { return b.getBoundingClientRect().left - a.getBoundingClientRect().left; })[0] || null;
+    var plus = pointers.filter(function (e) { return e.getBoundingClientRect().left >= nr.right - 3; })
+      .sort(function (a, b) { return a.getBoundingClientRect().left - b.getBoundingClientRect().left; })[0] || null;
+    return { numLeaf: numLeaf, minus: minus, plus: plus, val: parseFloat((numLeaf.textContent || '').replace(',', '.')) };
+  }
+  // Sepet satırındaki native adedi hedefe sür (uygulamanın kendi +/- tıklanır).
+  async function setCartQty(row, unit, target) {
+    var guard = 0, st = cartStepper(row);
+    while (st && Math.abs(st.val - target) > 1e-6 && guard++ < 60) {
+      var btn = st.val < target ? st.plus : st.minus;
+      if (!btn) break;
+      fireClick(btn);
+      await wait(120);
+      var nv = cartStepper(row);
+      if (!nv || nv.val === st.val) { await wait(220); nv = cartStepper(row); if (!nv || nv.val === st.val) break; }
+      st = nv;
+    }
+    return st ? st.val : null;
+  }
+
+  /* ================================================================
+     KART TESPİTİ: tıklanan ürün kartını ve ürünü çöz.
+     ================================================================ */
+  function findCard(node) {
+    var n = node, names = productNames();
+    for (var k = 0; k < 14 && n && n !== document.body; k++) {
+      if (n.nodeType === 1) {
+        var r = n.getBoundingClientRect();
+        var t = (n.innerText || '');
+        if (r.width >= 130 && r.width <= 340 && r.height >= 140 && r.height <= 360 && /₺/.test(t)) {
+          // ürün adını bul (DOM sırasında ilk eşleşen ad = ürün, sonrası tedarikçi)
+          var pid = matchProduct(n, names);
+          if (pid) return { card: n, id: pid };
+        }
+      }
+      n = n.parentElement;
+    }
+    return null;
+  }
+  function matchProduct(card, names) {
+    var leaves = Array.prototype.slice.call(card.querySelectorAll('*')).filter(function (e) {
+      return e.children.length === 0 && (e.textContent || '').trim();
+    });
+    for (var i = 0; i < leaves.length; i++) {
+      var txt = (leaves[i].textContent || '').trim();
+      if (names[txt] != null) return names[txt];
+    }
+    return null;
+  }
+  // Tıklama kartın hangi bölgesinde? 'control' (Ekle/stepper) mı 'body' mi?
+  function regionOf(card, ev) {
+    var r = card.getBoundingClientRect();
+    // alt ~64px kontrol şeridi
+    return (ev.clientY >= r.bottom - 66) ? 'control' : 'body';
+  }
+
+  /* ================================================================
+     PANEL (bottom-sheet) DOM'u
+     ================================================================ */
+  var el = {};
+  function buildPanel() {
+    if (el.wrap) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'afroPanelWrap';
+    wrap.setAttribute('data-afro-panel', '1');
+    wrap.innerHTML =
+      '<div class="afroPanelBackdrop"></div>' +
+      '<div class="afroPanelSheet" role="dialog" aria-modal="true">' +
+        '<div class="afroPanelHandle"></div>' +
+        '<button class="afroPanelClose" aria-label="Kapat">\u2715</button>' +
+        '<div class="afroPanelBody"></div>' +
+        '<div class="afroPanelFooter">' +
+          '<div class="afroQty">' +
+            '<button class="afroQtyBtn afroQtyMinus" aria-label="Azalt">\u2212</button>' +
+            '<span class="afroQtyVal">1</span>' +
+            '<button class="afroQtyBtn afroQtyPlus" aria-label="Artır">+</button>' +
+          '</div>' +
+          '<button class="afroAddBtn">Sepete Ekle</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    el.wrap = wrap;
+    el.backdrop = wrap.querySelector('.afroPanelBackdrop');
+    el.sheet = wrap.querySelector('.afroPanelSheet');
+    el.body = wrap.querySelector('.afroPanelBody');
+    el.close = wrap.querySelector('.afroPanelClose');
+    el.qtyVal = wrap.querySelector('.afroQtyVal');
+    el.minus = wrap.querySelector('.afroQtyMinus');
+    el.plus = wrap.querySelector('.afroQtyPlus');
+    el.add = wrap.querySelector('.afroAddBtn');
+
+    el.backdrop.addEventListener('click', closePanel);
+    el.close.addEventListener('click', closePanel);
+    el.minus.addEventListener('click', function () { changeQty(-1); });
+    el.plus.addEventListener('click', function () { changeQty(1); });
+    el.add.addEventListener('click', commit);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el.wrap && el.wrap.classList.contains('open')) closePanel(); });
+  }
+
+  var state = null; // {product, qty, step, sel:{title->choice}, note}
+
+  function closePanel() {
+    if (!el.wrap) return;
+    el.wrap.classList.remove('open');
+    state = null;
+    setTimeout(function () { if (el.wrap && !el.wrap.classList.contains('open')) el.wrap.style.display = 'none'; }, 260);
+  }
+
+  function currentTotal() {
+    if (!state) return 0;
+    var d = 0;
+    Object.keys(state.sel).forEach(function (t) { var c = state.sel[t]; if (c) d += Number(c.price_delta || 0); });
+    return (basePrice(state.product) + d) * state.qty;
+  }
+  function refreshFooter() {
+    if (!state) return;
+    el.qtyVal.textContent = fmtQty(state.qty);
+    el.add.textContent = (state.existing ? 'Güncelle' : 'Sepete Ekle') + ' \u00B7 \u20BA' + fmtTL(currentTotal());
+    var a = accent();
+    el.add.style.background = a;
+    [el.plus, el.minus].forEach(function (b) { b.style.color = a; b.style.borderColor = a; });
+  }
+  function changeQty(dir) {
+    if (!state) return;
+    var q = state.qty + dir * state.step;
+    if (q < state.step) q = state.step;
+    state.qty = Math.round(q * 100) / 100;
+    refreshFooter();
+  }
+
+  function renderBody() {
+    var p = state.product, a = accent();
+    var h = '';
+    h += '<div class="afroPName">' + escapeHtml(p.name || 'Ürün') + '</div>';
+    var sub = escapeHtml((p.supplier_group || '') + '');
+    h += '<div class="afroPPrice">\u20BA' + fmtTL(basePrice(p)) + '<span class="afroPUnit"> / ' + escapeHtml(p.unit || '') + '</span></div>';
+    if (p.description) h += '<div class="afroPDesc">' + escapeHtml(p.description) + '</div>';
+    var groups = (p.customization_options || []).filter(function (g) { return g && (g.choices || []).length; });
+    // "İstemiyorum" tarzı seçenekleri her grubun EN ALTINA taşı (kararlı sıralama).
+    groups.forEach(function (g) {
+      g.choices = (g.choices || []).slice().sort(function (a, b) {
+        return (/istemi/i.test(a.label || '') ? 1 : 0) - (/istemi/i.test(b.label || '') ? 1 : 0);
+      });
+    });
+    groups.forEach(function (g, gi) {
+      h += '<div class="afroGroup"><div class="afroGroupTitle">' + escapeHtml(g.title || ('Seçenek ' + (gi + 1))) + '</div>';
+      (g.choices || []).forEach(function (c, ci) {
+        var pd = Number(c.price_delta || 0);
+        var extra = pd > 0 ? '<span class="afroChoiceDelta">+\u20BA' + fmtTL(pd) + '</span>' : (pd < 0 ? '<span class="afroChoiceDelta">\u2212\u20BA' + fmtTL(Math.abs(pd)) + '</span>' : '');
+        h += '<label class="afroChoice" data-g="' + gi + '" data-c="' + ci + '">' +
+             '<span class="afroRadio"></span>' +
+             '<span class="afroChoiceLabel">' + escapeHtml(c.label || '') + '</span>' + extra + '</label>';
+      });
+      h += '</div>';
+    });
+    if (p.customization_note_enabled) {
+      var lbl = p.customization_note_label || 'Not ekleyin (opsiyonel)';
+      h += '<div class="afroGroup"><div class="afroGroupTitle">' + escapeHtml(lbl) + '</div>' +
+           '<textarea class="afroNote" rows="2" placeholder="' + escapeHtml(lbl) + '"></textarea></div>';
+    }
+    el.body.innerHTML = h;
+
+    // seçenekleri bağla
+    el.body.querySelectorAll('.afroChoice').forEach(function (row) {
+      row.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        var gi = +row.getAttribute('data-g'), ci = +row.getAttribute('data-c');
+        var g = groups[gi], c = g.choices[ci];
+        state.sel[g.title || ('__g' + gi)] = { title: g.title || '', label: c.label || '', price_delta: Number(c.price_delta || 0) };
+        // aynı gruptaki tüm satırların seçimini güncelle
+        el.body.querySelectorAll('.afroChoice[data-g="' + gi + '"]').forEach(function (r2) { r2.classList.remove('sel'); });
+        row.classList.add('sel');
+        refreshFooter();
+      });
+    });
+    var noteEl = el.body.querySelector('.afroNote');
+    if (noteEl) { noteEl.value = state.note || ''; noteEl.addEventListener('input', function () { state.note = noteEl.value; }); }
+
+    // varsayılan seçim: price_delta 0 / "İstemiyorum" varsa onu, yoksa ilk seçenek
+    groups.forEach(function (g, gi) {
+      var key = g.title || ('__g' + gi);
+      var chosen = state.sel[key];
+      var idx = -1;
+      if (chosen) {
+        (g.choices || []).forEach(function (c, ci) { if ((c.label || '') === chosen.label) idx = ci; });
+      }
+      if (idx < 0) {
+        // Varsayılan: "İstemiyorum" (varsa); yoksa gruptaki EN ALTTAKİ seçenek.
+        (g.choices || []).forEach(function (c, ci) { if (/istemi/i.test(c.label || '')) idx = ci; });
+        if (idx < 0) idx = (g.choices || []).length - 1;
+        if (idx < 0) idx = 0;
+        var c0 = g.choices[idx];
+        state.sel[key] = { title: g.title || '', label: c0.label || '', price_delta: Number(c0.price_delta || 0) };
+      }
+      var row = el.body.querySelector('.afroChoice[data-g="' + gi + '"][data-c="' + idx + '"]');
+      if (row) row.classList.add('sel');
+    });
+    refreshFooter();
+  }
+
+  function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]; }); }
+
+  async function openPanel(id) {
+    buildPanel();
+    await ensureProducts();
+    var p = window.__afroProducts[id];
+    if (!p) { // önbellekte yoksa tek ürünü çek
+      try {
+        var tok = localStorage.getItem('pazar_session_token');
+        var r = await fetch(location.origin + '/api/products/' + id, { headers: tok ? { Authorization: 'Bearer ' + tok } : {} });
+        p = await r.json(); if (p && p.id) window.__afroProducts[p.id] = p;
+      } catch (e) {}
+    }
+    if (!p) return;
+    var b = basket();
+    var existing = Number(b[id] || 0) > 0;
+    var step = stepFor(p.unit);
+    var saved = customs()[id] || {};
+    var sel = {};
+    (saved.selected_options || []).forEach(function (o) { sel[o.title || ''] = { title: o.title || '', label: o.label || '', price_delta: Number(o.price_delta || 0) }; });
+    state = {
+      product: p,
+      step: step,
+      qty: existing ? Number(b[id]) : step,
+      existing: existing,
+      sel: sel,
+      note: saved.note || ''
+    };
+    renderBody();
+    el.wrap.style.display = 'block';
+    // stil temasını uygula
+    applyThemeVars();
+    requestAnimationFrame(function () { el.wrap.classList.add('open'); });
+  }
+
+  function applyThemeVars() {
+    var dark = isDark();
+    el.sheet.style.background = dark ? 'rgb(14,22,17)' : '#ffffff';
+    el.sheet.style.color = dark ? '#eafaf2' : '#1a1a1a';
+  }
+
+  async function commit() {
+    if (!state) return;
+    var p = state.product, id = p.id;
+    // özelleştirmeleri sakla
+    var selArr = Object.keys(state.sel).map(function (k) { return state.sel[k]; }).filter(Boolean);
+    var cs = customs();
+    if (selArr.length || (state.note && state.note.trim())) {
+      cs[id] = { selected_options: selArr, note: (state.note || '').trim() };
+    } else { delete cs[id]; }
+    jset(CUSTOM_KEY, cs);
+
+    el.add.disabled = true;
+    var oldTxt = el.add.textContent; el.add.textContent = 'Ekleniyor...';
+
+    // (1) HER ZAMAN afro_basket'e yaz (kalıcılık garanti; uygulama
+    //     ekran focus/mount'ta afro_basket'ten okuyup state'e alır).
+    writeBasket(id, state.qty);
+
+    // (2) Kart görünürse uygulamanın KENDİ Ekle/+/− butonlarını programatik
+    //     sürerek React state'ini CANLI güncelle (alt "Siparişi Tamamla"
+    //     çubuğu anında çıksın). Native sürücü çalışmazsa (1)'deki yazı
+    //     bir sonraki focus/mount'ta okunur; her iki yol da kapsanır.
+    if (isCartPage()) {
+      // Sepette: uygulamanın KENDİ stepper'ını (ikon-glyph −/+) sentetik
+      // tıklayarak native adedi hedefe sür. Bu, React state'ini anında
+      // günceller -> stepper sayısı, alt yazı, satır + ara/genel toplam ve
+      // kampanya indirimi HEPSİ native olarak ve anında tutarlı olur.
+      var row = findCartRow(id);
+      if (row) { try { await setCartQty(row, p.unit, state.qty); } catch (e) {} }
+      try { await syncCartRow(id); } catch (e) {}
+      // Görsel emniyet: native tık kaçarsa kısa süre kaynak-doğrusundan yama.
+      burstPatchCart();
+    } else {
+      var found = findCardById(id);
+      if (found) { try { await setNativeQty(found.card, id, p.unit, state.qty); } catch (e) {} }
+    }
+
+    el.add.disabled = false; el.add.textContent = oldTxt;
+    closePanel();
+  }
+
+  // afro_basket'i {id:qty} formatında güncelle + meta'yı tazele.
+  // (Uygulama parseBasket ile bu objeyi okur; boşsa anahtarı siler.)
+  function writeBasket(id, qty) {
+    var b = basket();
+    if (Number(qty) > 0) b[id] = Number(qty); else delete b[id];
+    jset(BASKET_KEY, b);
+    try {
+      jset('afro_basket_meta', { updatedAt: Date.now(), dayKey: new Date().toISOString().slice(0, 10) });
+    } catch (e) {}
+    return b;
+  }
+
+  function findCardById(id) {
+    var name = (window.__afroProducts[id] || {}).name;
+    if (!name) return null;
+    var names = {}; names[name] = id;
+    var cards = document.querySelectorAll('div');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var r = c.getBoundingClientRect();
+      if (r.width >= 130 && r.width <= 340 && r.height >= 140 && r.height <= 360 && /₺/.test(c.innerText || '')) {
+        if (matchProduct(c, names) === id) return { card: c, id: id };
+      }
+    }
+    return null;
+  }
+
+  /* ================================================================
+     SEPET (/cart) ENTEGRASYONU
+     Sepetteki native "Özelleştir" düğmesini bizim panele bağlar.
+     Panel kaydedince (Güncelle) afro_custom yazılır (sipariş POST'u
+     zaten afro_custom'dan beslenir -> tahsilat DAİMA doğru) ve ek
+     olarak native chip'ler/not/adet best-effort programatik sürülerek
+     sepetin GÖSTERİMİ (satır + toplam) senkronlanır. Panelimiz grup
+     başına TEK seçim yapar (radyo). Sürüş başarısız olsa bile para
+     güvenli kalır; sadece gösterim güncellenmeyebilir.
+     ================================================================ */
+  function isCartPage() { return /\/cart(\?|$)/.test(location.pathname); }
+  function gcs(e) { try { return getComputedStyle(e); } catch (x) { return {}; } }
+  function normTxt(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+
+  function cartToggleFromNode(node) {
+    var n = node;
+    for (var k = 0; k < 5 && n && n !== document.body; k++) {
+      if (n.nodeType === 1) {
+        var t = normTxt(n.textContent);
+        if (t === 'Özelleştir' || t === 'Kapat') return n;
+      }
+      n = n.parentElement;
+    }
+    return null;
+  }
+  function cartRowId(node) {
+    var names = productNames();
+    var n = node;
+    for (var k = 0; k < 14 && n && n !== document.body; k++) {
+      if (n.nodeType === 1) { var pid = matchProduct(n, names); if (pid) return pid; }
+      n = n.parentElement;
+    }
+    return null;
+  }
+  function findCartRow(id) {
+    var name = (window.__afroProducts[id] || {}).name;
+    if (!name) return null;
+    var all = document.querySelectorAll('div'), best = null, bestH = 1e9;
+    for (var i = 0; i < all.length; i++) {
+      var d = all[i], r = d.getBoundingClientRect();
+      if (r.width < 180 || r.height < 56 || r.height > 900) continue;
+      var txt = d.innerText || '';
+      if (txt.indexOf(name) === -1) continue;
+      // Ürünün KENDİ satırı olmalı: birim fiyat kalıbı ("Kg x ₺..") içermeli ve
+      // TEK bir ürünü sarmalı. Özelleştir'i olmayan (seçeneksiz) ürünlerde eski
+      // /Özelleştir|Kapat/ koşulu komşu satırı da içeren büyük kabı seçip yanlış
+      // birim fiyat okumaya yol açıyordu; bunun yerine "x ₺" kalıbını sayıyoruz.
+      var mUnit = txt.match(/[x×]\s*₺/g);
+      if (!mUnit || mUnit.length !== 1) continue;
+      if (r.height < bestH) { bestH = r.height; best = d; }
+    }
+    return best;
+  }
+  function findToggleInRow(row) {
+    if (!row) return null;
+    var els = row.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) {
+      var t = normTxt(els[i].textContent);
+      if ((t === 'Özelleştir' || t === 'Kapat') && els[i].children.length <= 1) return els[i];
+    }
+    return null;
+  }
+  function findChipInRow(row, wantLabel) {
+    if (!row) return null;
+    var target = normTxt(wantLabel);
+    if (!target) return null;
+    var els = row.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) {
+      var e = els[i];
+      if (e.children.length > 2) continue;
+      var t = normTxt(e.textContent);
+      if (t === target || t.indexOf(target + ' ') === 0 || t.indexOf(target + '+') === 0) {
+        var c = e;
+        for (var k = 0; k < 4 && c && c !== row; k++) {
+          if (gcs(c).cursor === 'pointer') return c;
+          c = c.parentElement;
+        }
+        return e;
+      }
+    }
+    return null;
+  }
+  function setNativeInput(ta, val) {
+    try {
+      var proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
+      var desc = proto && Object.getOwnPropertyDescriptor(proto, 'value');
+      if (desc && desc.set) desc.set.call(ta, val); else ta.value = val;
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      ta.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {}
+  }
+  // NOT: Artık native React çiplerini sentetik tıklamayla SÜRMÜYORUZ (güvenilmez
+  // ve "olmadı" hatasının kaynağıydı). Seçimler afro_custom'da tutulur; gösterim
+  // patchCartTotals (birikmeyen toplam düzeltme) + injectOptSummary (kendi
+  // kontrolümüzdeki özet satırı) ile yapılır. Bu fonksiyon yalnızca eski
+  // çipli native editör açık kaldıysa onu KAPATIR (temizlik).
+  async function syncCartRow(id) {
+    try {
+      if (!isCartPage()) return;
+      var row = findCartRow(id);
+      if (!row) return;
+      var tgl = findToggleInRow(row);
+      if (tgl && /Kapat/.test(normTxt(tgl.textContent))) { fireClick(tgl); }
+    } catch (e) {}
+  }
+
+  // Sepet satırındaki adet (+/-) stepper'ının SATIRIN doğrudan çocuğu olan
+  // kabını döndür (tıklama bu bölgeye düşerse native adet değişimine bırakılır).
+  function stepperContainer(row) {
+    var st = cartStepper(row);
+    if (!st || !st.numLeaf) return null;
+    var n = st.numLeaf;
+    while (n && n.parentElement && n.parentElement !== row) n = n.parentElement;
+    return (n && n.parentElement === row) ? n : null;
+  }
+  // Tıklama NOKTASINDAKI (x,y) sepet ürün satırını çöz. elementFromPoint çoğu
+  // zaman tüm "Sepetim" kabını döndürdüğü için DOM'dan ada göre değil, her
+  // ürünün satır dikdörtgenini test ederek buluruz; noktayı içeren EN KÜÇÜK
+  // (en özgül) satırın ürününü döndür.
+  function cartRowIdAtPoint(x, y) {
+    var b = basket(), bestId = null, bestArea = 1e18;
+    Object.keys(b).forEach(function (id) {
+      if (!(Number(b[id]) > 0)) return;
+      var row = findCartRow(id);
+      if (!row) return;
+      var r = row.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        var area = r.width * r.height;
+        if (area < bestArea) { bestArea = area; bestId = id; }
+      }
+    });
+    return bestId;
+  }
+  // (x,y) satırdaki adet (+/-) stepper bölgesine mi düşüyor?
+  function pointInStepper(row, x, y) {
+    var st = cartStepper(row);
+    if (!st || !st.numLeaf) return false;
+    var nr = st.numLeaf.getBoundingClientRect();
+    var lo = st.minus ? st.minus.getBoundingClientRect().left : nr.left;
+    var hi = st.plus ? st.plus.getBoundingClientRect().right : nr.right;
+    return (x >= lo - 6 && x <= hi + 6 && y >= nr.top - 10 && y <= nr.bottom + 10);
+  }
+  // Sepetteki native "Özelleştir" pilini gizle. Artık seçim menüsü ürün
+  // satırına tıklanınca açılıyor; ayrı düğmeye gerek yok. (Her tick yeniden
+  // çalışır; native yeniden çizse de tekrar gizlenir.)
+  function hideOzellestirButtons() {
+    try {
+      var all = document.querySelectorAll('*');
+      for (var i = 0; i < all.length; i++) {
+        var e = all[i];
+        if (e.closest && e.closest('[data-afro-panel]')) continue;
+        var t = normTxt(e.textContent);
+        if (!/Özelleştir/.test(t) || t.length > 16) continue;
+        // pointer (tıklanabilir) olan en dış küçük kabı bul ve gizle
+        var host = e, cand = e;
+        for (var k = 0; k < 4 && cand && cand !== document.body; k++) {
+          var ct = normTxt(cand.textContent);
+          if (!/Özelleştir/.test(ct) || ct.length > 16) break;
+          try { if (getComputedStyle(cand).cursor === 'pointer') host = cand; } catch (x) {}
+          cand = cand.parentElement;
+        }
+        if (host.style.display !== 'none') host.style.display = 'none';
+        host.setAttribute('data-afro-ozhidden', '1');
+      }
+    } catch (e) {}
+  }
+
+  /* ================================================================
+     TIKLAMA YAKALAMA (capture): ürün kartına / sepet ürün satırına
+     tıklamayı yakala, native davranışı engelle, paneli aç.
+     ================================================================ */
+  function onClickCapture(ev) {
+    try {
+      // Sentetik (programatik) tıklamaları yok say -> re-entrancy önle.
+      // (syncCartRow/setNativeQty'nin fireClick'leri buraya düşmesin.)
+      if (!ev.isTrusted) return;
+      if (ev.target && ev.target.closest && ev.target.closest('[data-afro-panel]')) return; // panelin kendisi
+
+      // SEPET: native "Özelleştir"/"Kapat" -> bizim panel.
+      // Bir sepet toggle'ına tıklandıysa native inline editörü ASLA açtırma;
+      // her koşulda engelle, ürünü çözüp kendi panelimizi aç (önbellek boşsa
+      // async doldurup tekrar dene).
+      if (isCartPage()) {
+        // Ürün satırına tıklama -> seçim menüsü. ("Özelleştir" düğmesi kaldırıldı.)
+        // Tıklamayı KOORDİNATTAN çöz: elementFromPoint çoğunlukla tüm sepet
+        // kabını verdiği için ada göre climb ilk ürünü seçip yanlış olurdu.
+        var cid = cartRowIdAtPoint(ev.clientX, ev.clientY);
+        if (cid) {
+          var pc = window.__afroProducts[cid] || {};
+          var customizable = ((pc.customization_options || []).length > 0) || !!pc.customization_note_enabled;
+          if (customizable) {
+            // Adet (+/-) bölgesine tıklandıysa native adet değişimine bırak.
+            var row = findCartRow(cid);
+            if (row && pointInStepper(row, ev.clientX, ev.clientY)) return;
+            ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+            openPanel(cid);
+            return;
+          }
+        }
+        // Güvenli fallback: eski native "Özelleştir"/"Kapat" düğmesine tıklama.
+        var tgl = cartToggleFromNode(ev.target);
+        if (tgl) {
+          ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          var cid3 = cartRowId(tgl);
+          if (cid3) {
+            openPanel(cid3);
+          } else {
+            ensureProducts().then(function () {
+              var cid2 = cartRowId(tgl) || cartRowId(ev.target);
+              if (cid2) openPanel(cid2);
+            }).catch(function () {});
+          }
+        }
+        return;
+      }
+
+      if (!/\/products(\/|$|\?)/.test(location.pathname)) return; // sadece ürün listesi
+      var hit = findCard(ev.target);
+      if (!hit) return;
+      var region = regionOf(hit.card, ev);
+      var p = window.__afroProducts[hit.id] || {};
+      var customizable = ((p.customization_options || []).length > 0) || !!p.customization_note_enabled;
+      if (region === 'control') {
+        // Ekle/stepper bölgesi. Özelleştirilebilir ürün + henüz sepette yoksa
+        // "Ekle"ye basınca da paneli aç (malzeme seçimi atlanmasın).
+        var inBasket = Number(basket()[hit.id] || 0) > 0;
+        if (customizable && !inBasket) {
+          ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          openPanel(hit.id);
+        }
+        // aksi halde natif +/-/Ekle kendi işini yapsın (dokunma)
+        return;
+      }
+      // GÖVDE tıklaması: her zaman paneli aç (bilgi sayfasına gitme)
+      ev.preventDefault(); ev.stopPropagation(); if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      openPanel(hit.id);
+    } catch (e) {}
+  }
+  document.addEventListener('click', onClickCapture, true);
+
+  /* ================================================================
+     STİLLER
+     ================================================================ */
+  var css = document.createElement('style');
+  css.textContent = [
+    '#afroPanelWrap{position:fixed;inset:0;z-index:2147483000;display:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}',
+    '#afroPanelWrap .afroPanelBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;transition:opacity .25s ease;}',
+    '#afroPanelWrap.open .afroPanelBackdrop{opacity:1;}',
+    '#afroPanelWrap .afroPanelSheet{position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);width:100%;max-width:640px;',
+      'max-height:88vh;overflow-y:auto;border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.35);',
+      'transition:transform .28s cubic-bezier(.22,1,.36,1);padding:8px 14px calc(14px + env(safe-area-inset-bottom,0)) 14px;-webkit-overflow-scrolling:touch;}',
+    '#afroPanelWrap.open .afroPanelSheet{transform:translate(-50%,0);}',
+    '#afroPanelWrap .afroPanelHandle{width:44px;height:5px;border-radius:3px;background:rgba(150,150,150,.5);margin:6px auto 10px auto;}',
+    '#afroPanelWrap .afroPanelClose{position:absolute;top:12px;right:14px;width:34px;height:34px;border:none;border-radius:50%;',
+      'background:rgba(150,150,150,.18);color:inherit;font-size:16px;cursor:pointer;line-height:34px;text-align:center;}',
+    '#afroPanelWrap .afroPName{font-size:19px;font-weight:800;margin:0 40px 0 0;}',
+    '#afroPanelWrap .afroPPrice{font-size:15px;font-weight:800;color:var(--afroAcc);margin-bottom:0;}',
+    '#afroPanelWrap .afroPUnit{font-size:12px;font-weight:600;opacity:.6;}',
+    '#afroPanelWrap .afroPDesc{font-size:12.5px;opacity:.7;margin:4px 0 2px 0;line-height:1.35;}',
+    '#afroPanelWrap .afroGroup{margin-top:8px;}',
+    '#afroPanelWrap .afroGroupTitle{font-size:14px;font-weight:700;margin-bottom:3px;}',
+    '#afroPanelWrap .afroChoice{display:flex;align-items:center;gap:9px;padding:6px 10px;border:1px solid rgba(140,140,140,.26);',
+      'border-radius:9px;margin-bottom:4px;cursor:pointer;user-select:none;transition:border-color .15s,background .15s;}',
+    '#afroPanelWrap .afroChoice .afroRadio{width:18px;height:18px;border-radius:50%;border:2px solid rgba(140,140,140,.5);flex:0 0 auto;position:relative;transition:border-color .15s;}',
+    '#afroPanelWrap .afroChoice.sel{border-color:var(--afroAcc);background:var(--afroAccSoft);}',
+    '#afroPanelWrap .afroChoice.sel .afroRadio{border-color:var(--afroAcc);}',
+    '#afroPanelWrap .afroChoice.sel .afroRadio:after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--afroAcc);}',
+    '#afroPanelWrap .afroChoiceLabel{flex:1;font-size:14px;font-weight:600;}',
+    '#afroPanelWrap .afroChoiceDelta{font-size:12.5px;font-weight:700;opacity:.75;}',
+    '#afroPanelWrap .afroNote{width:100%;box-sizing:border-box;border:1.5px solid rgba(140,140,140,.28);border-radius:11px;padding:8px 10px;',
+      'font-family:inherit;font-size:14px;background:transparent;color:inherit;resize:vertical;}',
+    '#afroPanelWrap .afroPanelFooter{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 4px 0;margin-top:10px;',
+      'background:inherit;}',
+    '#afroPanelWrap .afroQty{display:flex;align-items:center;gap:10px;border:1px solid rgba(140,140,140,.3);border-radius:11px;padding:4px 8px;}',
+    '#afroPanelWrap .afroQtyBtn{width:32px;height:32px;border:1.5px solid;border-radius:9px;background:transparent;font-size:20px;font-weight:700;cursor:pointer;line-height:1;}',
+    '#afroPanelWrap .afroQtyVal{min-width:30px;text-align:center;font-size:17px;font-weight:800;}',
+    '#afroPanelWrap .afroAddBtn{flex:0 1 auto;border:none;border-radius:11px;color:#fff;font-size:15px;font-weight:700;padding:12px 22px;white-space:nowrap;cursor:pointer;}',
+    '#afroPanelWrap .afroAddBtn:disabled{opacity:.7;cursor:default;}'
+  ].join('');
+  document.head.appendChild(css);
+
+  /* ================================================================
+     SEPET TOPLAM YANSITMA: seçenek ücretlerini cart bar + /cart
+     sayfasındaki ara toplam/toplam satırlarına yansıt.
+     ----------------------------------------------------------------
+     React sürekli DOM'u yeniden çizdiği için her tick'te uygula.
+     Sonsuz döngü önleme: hesaplanan değer zaten mevcutsa dokunma.
+     ================================================================ */
+  // "₺10.00" veya "₺1.234,56" -> 10.0 / 1234.56 (iki format da)
+  function parseTL(txt) {
+    var m = (txt || '').match(/([\d][\d.,]*)/);
+    if (!m) return null;
+    var s = m[1];
+    if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.'); // 1.234,56
+    var v = parseFloat(s);
+    return isNaN(v) ? null : v;
+  }
+  // Bir ürünün afro_custom seçeneklerinin birim başına ek ücreti.
+  function optExtraFor(id) {
+    var c = customs()[id] || {}; var s = 0;
+    (c.selected_options || []).forEach(function (o) { s += Number(o.price_delta || 0); });
+    return Math.round(s * 100) / 100;
+  }
+  // Bir ₺ yaprağını MUTLAK değere ayarla. İdempotent + birikme imkansız:
+  // değeri DOM'dan okuyup toplamayız; her tick kaynak-doğrusundan (birim fiyat +
+  // seçenek ücretleri) × adet olarak sıfırdan hesaplayıp yazarız.
+  function setLeafAbs(leaf, value) {
+    var newTxt = '₺' + (Math.round((value || 0) * 100) / 100).toFixed(2);
+    if ((leaf.textContent || '').trim() !== newTxt) leaf.textContent = newTxt;
+  }
+  function exactTLLeaves(root) {
+    return Array.prototype.slice.call(root.querySelectorAll('*')).filter(function (e) {
+      return e.children.length === 0 && /^₺\s*[\d.,]+$/.test((e.textContent || '').trim());
+    });
+  }
+  // Satır içindeki SATIR TOPLAMI yaprağı (en sağdaki bağımsız ₺ değeri; chip
+  // "+₺10" fiyatları hariç -> onlar "^₺..$" kalıbına uymaz veya '+' önekli).
+  function lineTotalLeaf(row) {
+    var cands = exactTLLeaves(row).filter(function (l) { return !l.closest('[data-afro-optsum]'); });
+    if (!cands.length) return null;
+    cands.sort(function (a, b) { return b.getBoundingClientRect().left - a.getBoundingClientRect().left; });
+    return cands[0];
+  }
+  // "1.0 Kg x ₺10,00" satır metninden BİRİM fiyatı çöz.
+  function unitPriceFromRow(row) {
+    var m = (row.innerText || '').match(/[x×]\s*₺\s*([\d.,]+)/i);
+    return m ? parseTL('₺' + m[1]) : null;
+  }
+  function unitPriceOf(id, row) {
+    var u = row ? unitPriceFromRow(row) : null;
+    if (u != null && u > 0) return u;
+    return basePrice(window.__afroProducts[id] || {});
+  }
+  // Sepet satırına seçili seçenek + not ÖZETİNİ (salt-okunur) enjekte et.
+  function injectOptSummary(row, id) {
+    var c = customs()[id] || {};
+    var opts = c.selected_options || [];
+    var note = (c.note || '').trim();
+    // Küresel tekillik: findCartRow tik'ler arası farklı kapsayıcı döndürebildiği
+    // için dedup'ı BELGE genelinde yap; aksi halde her kapsayıcıya ayrı kutu
+    // eklenip özet MÜKERRER görünür. Bu ürün için tek kutu tut, fazlasını sil.
+    var existing = document.querySelectorAll('[data-afro-optsum][data-afro-for="' + id + '"]');
+    if (!opts.length && !note) { for (var d = 0; d < existing.length; d++) existing[d].remove(); return; }
+    var box = existing[0] || null;
+    for (var d2 = 1; d2 < existing.length; d2++) existing[d2].remove();
+    var labels = opts.map(function (o) { return o.label; }).filter(Boolean);
+    var txt = '';
+    if (labels.length) txt += 'Seçili: ' + labels.join(', ');
+    if (note) txt += (txt ? '  ·  ' : '') + 'Not: ' + note;
+    if (!box) {
+      box = document.createElement('div');
+      box.setAttribute('data-afro-optsum', '1');
+      box.setAttribute('data-afro-for', id);
+    }
+    // KARARLILIK: findCartRow tik'ler arası 91px/59px iç-içe kaplar arasında
+    // gidip geldiği için HER tik row.appendChild yapmak kutuyu ~4px oynatıp
+    // "yazılar hareket ediyor" titremesine yol açıyordu. Kutuyu yalnızca DOM'dan
+    // düşmüşse (React satırı yeniden çizmişse) yeniden ekle; aksi halde YERİNDE
+    // bırak -> titreme biter.
+    if (!box.isConnected) row.appendChild(box);
+    // Satır flex bir kap; kutuyu DAİMA tam-genişlik (kendi satırı) yaparak
+    // fiyatın yanına sıkışıp ürün adını dikey ezmesini engelle. cssText'i her
+    // tik yeniden yazmamak için değişiklik olduğunda uygula (gereksiz reflow yok).
+    var css = 'flex:0 0 100%;width:100%;margin-top:6px;font-size:12.5px;line-height:1.4;font-weight:600;color:' + accent() + ';';
+    if (box.getAttribute('data-afro-css') !== css) { box.style.cssText = css; box.setAttribute('data-afro-css', css); }
+    if (box.textContent !== txt) box.textContent = txt;
+  }
+  // Sepet ÖZET/BAR toplam yaprakları: "... çeşit ürün • ₺XX" başlıkları ve
+  // "Siparişi Tamamla/Onayla/Öde" barları. (Sepet satırı içindekiler hariç.)
+  function summaryLeaves() {
+    var hosts = Array.prototype.slice.call(document.querySelectorAll('*')).filter(function (e) {
+      var t = e.textContent || '';
+      // NOT: "Ödeme"nin ardından harf gelirse (ör. "ödemelerde") eşleşme -> bu,
+      // Kuponlar sayfası alt başlığını yakalayıp indirim rozetini bozuyordu.
+      // Negatif ileri-bakış ile yalnızca gerçek "Ödeme" (bar/başlık) eşleşsin.
+      if (!/(çeşit ürün|Siparişi|Tamamla|Onayla|Ödeme(?![a-zçğıöşü]))/i.test(t)) return false;
+      var lv = exactTLLeaves(e);
+      return lv.length >= 1 && lv.length <= 2 && e.children.length <= 10;
+    });
+    var out = [], seen = [];
+    hosts.forEach(function (h) {
+      exactTLLeaves(h).forEach(function (l) {
+        if (l.closest('[data-afro-cartrow]')) return;
+        if (seen.indexOf(l) > -1) return;
+        seen.push(l); out.push(l);
+      });
+    });
+    return out;
+  }
+  // Sepet toplamlarını KAYNAK-DOĞRUSUNDAN hesaplayıp yaz + her sepet satırına
+  // seçim özetini bas. Satır toplamı = (birim + seçenek ücretleri) × adet.
+  // Genel toplam = tüm satır toplamlarının toplamı. Backend'in tahsil ettiği
+  // ile birebir aynı (backend de options_fee_unit × qty uygular).
+  // Sepette açık kalmış ESKİ native inline editörleri kapat ("Kapat" toggle'ına
+  // sentetik tık; isTrusted=false olduğu için kendi capture handler'ımız yok sayar).
+  function closeStrayNativeEditors() {
+    try {
+      var els = document.querySelectorAll('*');
+      for (var i = 0; i < els.length; i++) {
+        var e = els[i];
+        if (e.children.length > 1) continue;
+        if (normTxt(e.textContent) === 'Kapat') { fireClick(e); break; }
+      }
+    } catch (e) {}
+  }
+  // Sepet satırındaki "1.0 Kg x ₺10,00" gibi adet etiketini afro_basket
+  // adediyle senkronla. (Panelde adet değiştirilince native stepper stale
+  // kalıp yanlış adet gösterebiliyordu; satır toplamı doğruyken adet metni
+  // eski kalıyordu. Bu, adet metnini kaynak-doğrusuyla eşitler.)
+  function fmtQtyLabel(qty, unit) {
+    var q = Number(qty) || 0;
+    if (/kg/i.test(String(unit || ''))) return q.toFixed(1);
+    return (q % 1 === 0) ? String(q) : q.toFixed(1);
+  }
+  function patchQtyLabel(row, qty, unit) {
+    try {
+      var qs = fmtQtyLabel(qty, unit);
+      var leaves = Array.prototype.slice.call(row.querySelectorAll('*')).filter(function (e) {
+        return e.children.length === 0 && /[x×]\s*\u20BA/.test(e.textContent || '') && /^\s*[\d.,]+/.test(e.textContent || '');
+      });
+      leaves.forEach(function (l) {
+        var t = l.textContent;
+        var nt = t.replace(/^(\s*)[\d.,]+/, '$1' + qs);
+        if (nt !== t) l.textContent = nt;
+      });
+    } catch (e) {}
+  }
+  // Sepet satırındaki − N + stepper'ının ORTA sayısını afro_basket adediyle
+  // eşitle. (Native "+" tıklaması sepet satırında güvenilir çalışmadığı için
+  // sayı eski değerde -0.5- takılı kalıyordu; artık kaynak-doğrusundan yazılır.)
+  function patchStepperQty(row, qty, unit) {
+    try {
+      var st = cartStepper(row); if (!st || !st.numLeaf) return;
+      var qs = fmtQtyLabel(qty, unit);
+      if ((st.numLeaf.textContent || '').trim() !== qs) st.numLeaf.textContent = qs;
+    } catch (e) {}
+  }
+
+  // Sepette adedi 0 olan (ör. sepet boşaltılan) ürünlerin özelleştirmelerini
+  // sil ki tekrar eklendiğinde eski seçimler ("Test 2/Test 4") işaretli
+  // gelmesin; varsayılan "İstemiyorum" olsun.
+  function pruneStaleCustoms() {
+    try {
+      var cs = customs(), bk = basket(), changed = false;
+      Object.keys(cs).forEach(function (id) {
+        if (!(Number(bk[id]) > 0)) { delete cs[id]; changed = true; }
+      });
+      if (changed) jset(CUSTOM_KEY, cs);
+    } catch (e) {}
+  }
+
+  // Bir kök içindeki tam-₺ yaprakları (belge sırasında).
+  function tlLeavesIn(root) {
+    return Array.prototype.slice.call(root.querySelectorAll('*')).filter(function (e) {
+      return e.children.length === 0 && /^₺\s*[\d.,]+$/.test((e.textContent || '').trim());
+    });
+  }
+  // Bir ETİKET yaprağının (ör. "Ara Toplam") satırındaki ₺ DEĞER yaprağını bul.
+  // Layout-bağımsız: etiketin en yakın ₺ içeren atasına çık, o ata içinde
+  // etiketten SONRA gelen ilk ₺ yaprağını al (satır düzeni "Etiket ... ₺Değer").
+  function valueLeafFor(labelLeaf) {
+    var node = labelLeaf.parentElement, anc = null;
+    for (var up = 0; up < 5 && node; up++, node = node.parentElement) {
+      if (tlLeavesIn(node).length) { anc = node; break; }
+    }
+    if (!anc) return null;
+    var tls = tlLeavesIn(anc);
+    for (var k = 0; k < tls.length; k++) {
+      if (labelLeaf.compareDocumentPosition(tls[k]) & 4 /*FOLLOWING*/) return tls[k];
+    }
+    return tls.length ? tls[tls.length - 1] : null;
+  }
+  // Sepet özetindeki Ara Toplam / Toplam -> grand, Kalan Tutar -> max(0, min-grand).
+  // "Minimum Sipariş Tutarı" ve "Gel-Al Saati" değerlerine DOKUNMA. Kutu geometrisi
+  // yerine etiket->değer eşlemesi kullanılır; her tema/düzende (Minimum/Kalan VEYA
+  // "teslim alınmadı" notu) güvenilir çalışır.
+  function patchSummaryBox(grand) {
+    var all = document.querySelectorAll('*');
+    var labels = [];
+    for (var i = 0; i < all.length; i++) {
+      var e = all[i];
+      if (e.children.length !== 0) continue;
+      var t = (e.textContent || '').trim();
+      if (/^Ara Toplam$/i.test(t) || /^Toplam$/i.test(t) ||
+          /^Kalan Tutar$/i.test(t) || /^Minimum/i.test(t)) {
+        labels.push({ leaf: e, t: t });
+      }
+    }
+    // 1) minimum sipariş tutarını oku (Kalan Tutar hesabı için)
+    var minimum = null;
+    labels.forEach(function (o) {
+      if (!/^Minimum/i.test(o.t)) return;
+      var vl = valueLeafFor(o.leaf); if (!vl) return;
+      var v = parseTL(vl.textContent); if (v != null) minimum = v;
+    });
+    // 2) değerleri kaynak-doğrusundan yaz
+    labels.forEach(function (o) {
+      if (/^Minimum/i.test(o.t)) return;                 // sabit eşik: dokunma
+      var vl = valueLeafFor(o.leaf); if (!vl) return;
+      if (/^Kalan Tutar$/i.test(o.t)) {
+        if (minimum != null) setLeafAbs(vl, Math.max(0, Math.round((minimum - grand) * 100) / 100));
+      } else {
+        setLeafAbs(vl, grand);                           // Ara Toplam / Toplam
+      }
+    });
+  }
+  // "N çeşit ürün • ₺X" başlığı TEK birleşik metin düğümü ("1 çeşit ürün • ₺50.00").
+  // İçindeki ₺ değerini grand ile değiştir (sayı-etiketi metin içinde gömülü).
+  function patchCesitHeaders(grand) {
+    var g = '₺' + (Math.round((grand || 0) * 100) / 100).toFixed(2);
+    var all = document.querySelectorAll('*');
+    for (var i = 0; i < all.length; i++) {
+      var e = all[i];
+      if (e.children.length !== 0) continue;
+      var t = e.textContent || '';
+      if (t.indexOf('çeşit ürün') === -1 || !/₺\s*[\d.,]+/.test(t)) continue;
+      var nt = t.replace(/₺\s*[\d.,]+/, g);
+      if (nt !== t) e.textContent = nt;
+    }
+  }
+
+  // ÜRÜNLER SAYFASI ALT BARI: /(tabs)/products sayfasındaki alttan çıkan
+  // "Siparişi Tamamla ₺XX" çubuğunun toplamını seçim ek ücretlerini içerecek
+  // şekilde düzelt. patchCartTotals() eskiden yalnızca /cart'ta özet/bar
+  // yamalıyordu; ürünler sayfasındaki bar seçim ücretlerini yansıtmıyordu
+  // (kullanıcı: "seçim tutarları sepete işlemiyor"). Yalnızca "Siparişi
+  // Tamamla" ibaresini taşıyan çubuğu hedefleriz -> Kuponlar/Ödeme gibi
+  // diğer sayfalardaki ₺ değerlerine ASLA dokunmaz (güvenli, dar kapsam).
+  function patchOrderBar(grand) {
+    try {
+      var hosts = Array.prototype.slice.call(document.querySelectorAll('*')).filter(function (e) {
+        var t = normTxt(e.textContent || '');
+        if (!/Sipari[şs]i\s*Tamamla/i.test(t)) return false;
+        if (e.children.length > 12) return false;
+        var lv = exactTLLeaves(e);
+        return lv.length >= 1 && lv.length <= 2;
+      });
+      var seen = [];
+      hosts.forEach(function (h) {
+        exactTLLeaves(h).forEach(function (l) {
+          if (l.closest('[data-afro-cartrow]')) return;
+          if (seen.indexOf(l) > -1) return;
+          seen.push(l);
+          setLeafAbs(l, grand);
+        });
+      });
+    } catch (e) {}
+  }
+
+  function patchCartTotals() {
+    try {
+      pruneStaleCustoms();
+      var b = basket();
+      var grand = 0, anyExtra = false, qtyDiff = false, onCart = isCartPage();
+      if (onCart) { closeStrayNativeEditors(); hideOzellestirButtons(); }
+      Object.keys(b).forEach(function (id) {
+        var qty = Number(b[id] || 0); if (qty <= 0) return;
+        var extra = optExtraFor(id); if (extra > 0) anyExtra = true;
+        var row = onCart ? findCartRow(id) : null;
+        var unit = unitPriceOf(id, row);
+        var line = Math.round((unit + extra) * qty * 100) / 100;
+        grand += line;
+        if (row) {
+          row.setAttribute('data-afro-cartrow', '1');
+          var pu = (window.__afroProducts[id] || {}).unit;
+          // Özelleştirilebilir ürün satırını tıklanabilir göster (menü açılır).
+          var prod = window.__afroProducts[id] || {};
+          if (((prod.customization_options || []).length > 0) || prod.customization_note_enabled) {
+            if (row.style.cursor !== 'pointer') row.style.cursor = 'pointer';
+          }
+          injectOptSummary(row, id);
+          // Native stepper afro_basket'ten sapmışsa (panelde adet değişti ama
+          // native "+" güncellenmedi) sayıyı + alt yazıyı + toplamı eşitle.
+          var st = cartStepper(row);
+          var nq = st ? st.val : qty;
+          if (Math.abs(nq - qty) > 1e-6) { qtyDiff = true; patchStepperQty(row, qty, pu); }
+          patchQtyLabel(row, qty, pu);
+          var lineLeaf = lineTotalLeaf(row);
+          if (lineLeaf) setLeafAbs(lineLeaf, line);
+        }
+      });
+      grand = Math.round(grand * 100) / 100;
+      // Ekstra seçim ücreti VEYA adet sapması varken SEPET SAYFASINDAKİ özet/bar
+      // toplamlarını kaynak-doğrusundan düzelt.
+      // ÖNEMLİ (kupon hatası düzeltmesi): bu blok eskiden HER sayfada çalışıyordu.
+      // summaryLeaves() Kuponlar sayfasını da yakalıyordu (alt başlık "Sadece
+      // online ödemelerde geçerlidir" -> /Ödeme/ eşleşmesi + sayfadaki tek ₺
+      // rozet <=2 filtresine takılıyor) ve kuponun indirim tutarını SEPET
+      // TOPLAMIYLA eziyordu (ör. ₺100 -> ₺90). Artık yalnızca /cart sayfasında
+      // çalışır; sepet dışındaki hiçbir ₺ değerine (kupon rozeti vb.) dokunmaz.
+      if ((anyExtra || qtyDiff) && onCart) {
+        summaryLeaves().forEach(function (leaf) { setLeafAbs(leaf, grand); });
+        patchSummaryBox(grand); patchCesitHeaders(grand);
+      }
+      // SEPET DIŞI (ör. ürünler sayfası): alttaki "Siparişi Tamamla" barını
+      // seçim ücretlerini içerecek şekilde düzelt. Yalnızca ek ücret varken
+      // ve yalnızca o çubuğu hedefler (diğer sayfaların ₺ değerlerine dokunmaz).
+      if (anyExtra && !onCart) {
+        patchOrderBar(grand);
+      }
+    } catch (e) {}
+  }
+
+  // Yoğun yeniden-yama penceresi: "Güncelle"den sonra HER ekran karesinde
+  // (requestAnimationFrame) ~1.5sn boyunca patchCartTotals çağır. Panel kapanma
+  // animasyonu bitip uygulama satırı native değeriyle yeniden çizse bile o
+  // frame'de anında üzerine doğru değer yazılır -> gözle görülür gecikme kalmaz.
+  var _burstUntil = 0, _burstRunning = false;
+  function burstPatchCart(ms) {
+    _burstUntil = Date.now() + (ms || 1500);
+    if (_burstRunning) return;
+    _burstRunning = true;
+    (function loop() {
+      try { patchCartTotals(); } catch (e) {}
+      if (Date.now() < _burstUntil) {
+        (window.requestAnimationFrame || function (f) { setTimeout(f, 16); })(loop);
+      } else { _burstRunning = false; }
+    })();
+  }
+
+  // tema değişkenlerini + sepet toplamlarını periyodik uygula
+  function syncThemeVars() {
+    var a = accent();
+    var soft = isDark() ? 'rgba(20,182,126,.14)' : 'rgba(251,140,60,.14)';
+    document.documentElement.style.setProperty('--afroAcc', a);
+    document.documentElement.style.setProperty('--afroAccSoft', soft);
+    if (el.body) {
+      var pp = el.body.querySelector('.afroPPrice');
+      if (pp) pp.style.color = a;
+    }
+    patchCartTotals();
+  }
+  setInterval(syncThemeVars, 350);
+  syncThemeVars();
+
+  // FLAŞ ÖNLEME: 350ms'lik aralık gelene kadar native "Özelleştir" pili ilk
+  // açılışta bir an görünüyordu. DOM değişimlerini izleyip aynı ekran karesinde
+  // (rAF) gizle -> göze çarpan flaş kalmaz. Kare başına en çok bir tarama olsun
+  // diye rAF ile debounce edilir.
+  var _hideScheduled = false;
+  function scheduleHideOz() {
+    if (_hideScheduled) return;
+    _hideScheduled = true;
+    (window.requestAnimationFrame || function (f) { setTimeout(f, 16); })(function () {
+      _hideScheduled = false;
+      try { if (isCartPage()) hideOzellestirButtons(); } catch (e) {}
+    });
+  }
+  try {
+    new MutationObserver(scheduleHideOz).observe(document.documentElement, { childList: true, subtree: true });
+    scheduleHideOz();
+  } catch (e) {}
+
+  // Ürün önbelleğini önden doldur: /cart'a doğrudan girişte ürün adı->id
+  // eşleşmesi (cartRowId) ilk tıkta hazır olsun.
+  try { ensureProducts(); } catch (e) {}
+
+  // ============================================================
+  // SİPARİŞ YÖNETİM PANELİ: Final durumlarda değişiklik engelle
+  // ============================================================
+  function lockFinalOrderStatus() {
+    try {
+      var path = window.location.pathname || '';
+      // Admin sipariş detay sayfası mı? (URL'de order veya admin geçiyor mu kontrol et)
+      if (!(path.includes('/order') || path.includes('/admin'))) return;
+
+      // Tüm select/picker elementlerini tara
+      var selects = document.querySelectorAll('select, [role="combobox"], [role="listbox"]');
+      selects.forEach(function(sel) {
+        try {
+          // Seçili option'ın text'ini al
+          var selectedText = '';
+          if (sel.tagName === 'SELECT') {
+            var opt = sel.options[sel.selectedIndex];
+            selectedText = opt ? (opt.textContent || opt.innerText || '').trim() : '';
+          } else {
+            // React Native picker için: seçili değeri içeren text'i bul
+            selectedText = (sel.textContent || sel.innerText || '').trim();
+          }
+
+          // Final durum kontrolü (büyük/küçük harf duyarsız)
+          var finalStatuses = [
+            'teslim edildi', 'teslim_edildi',
+            'iptal edildi', 'iptal_edildi', 'iptäl',
+            'teslim alınmadı', 'teslim_alinmadi',
+            'müşteri gelmedi', 'musteri_gelmedi'
+          ];
+          var isFinal = finalStatuses.some(function(s) {
+            return selectedText.toLowerCase().includes(s);
+          });
+
+          if (isFinal) {
+            // Dropdown'u kilitle
+            sel.disabled = true;
+            sel.style.pointerEvents = 'none';
+            sel.style.opacity = '0.5';
+            sel.style.cursor = 'not-allowed';
+            sel.setAttribute('data-afro-locked', '1');
+          }
+        } catch (e) {}
+      });
+
+      // "İptal" veya "Cancel" butonu varsa gizle (final durumda)
+      var buttons = document.querySelectorAll('button, [role="button"]');
+      buttons.forEach(function(btn) {
+        try {
+          var text = (btn.textContent || btn.innerText || '').trim().toLowerCase();
+          // İptal butonu + sayfada final durum var mı?
+          if ((text.includes('iptal') || text.includes('cancel')) && 
+              document.querySelector('[data-afro-locked="1"]')) {
+            btn.style.display = 'none';
+            btn.style.visibility = 'hidden';
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
+  // Periyodik çalıştır (React sayfayı yeniden çizebilir)
+  setInterval(lockFinalOrderStatus, 400);
+  lockFinalOrderStatus();
+})();
+    </script>
+
+  <script src="/_expo/static/js/web/entry-ef19456146b2f1940ae80106b2a5dfe1.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Afro Gıda</title>
+    <style id="expo-reset">
+      html, body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      
+      /* ===== AFRO GIDA LOADER (3D FLIP ANIMATION) ===== */
+      #afro-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        transition: opacity 0.4s ease-out;
+      }
+      #afro-loader.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .afro-loader__logo {
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        object-fit: cover;
+        animation: afroFlip 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+      }
+      @keyframes afroFlip {
+        0% { transform: perspective(600px) rotateY(0deg); }
+        50% { transform: perspective(600px) rotateY(180deg); }
+        100% { transform: perspective(600px) rotateY(360deg); }
+      }
+    </style>
+    <meta name="theme-color" content="#14B67E">
+    <meta name="description" content="Afro gıda - Bursa pazarlarında taze sebze meyve tezgahları.">
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+
+  <body>
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    
+    <!-- AFRO GIDA LOADING SCREEN -->
+    <div id="afro-loader">
+      <img class="afro-loader__logo" src="/afro_logo.png" alt="Afro Gıda" />
+    </div>
+
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+    
+    <script>
+      // Hide loader when React renders
+      window.addEventListener('DOMContentLoaded', function() {
+        // Wait for root to have content, then fade out loader
+        var checkRoot = setInterval(function() {
+          var root = document.getElementById('root');
+          if (root && root.children.length > 0) {
+            clearInterval(checkRoot);
+            var loader = document.getElementById('afro-loader');
+            if (loader) {
+              loader.classList.add('hide');
+              setTimeout(function() { loader.remove(); }, 500);
+            }
+          }
+        }, 100);
+        
+        // Fallback: hide after 8 seconds max
+        setTimeout(function() {
+          var loader = document.getElementById('afro-loader');
+          if (loader) {
+            loader.classList.add('hide');
+            setTimeout(function() { loader.remove(); }, 500);
+          }
+        }, 8000);
+      });
+    </script>
+    
+    <script src="/_expo/static/js/web/entry-ef19456146b2f1940ae80106b2a5dfe1.js" defer></script>
+  </body>
+</html>

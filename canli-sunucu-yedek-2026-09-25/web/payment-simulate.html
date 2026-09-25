@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Afro Gıda - Güvenli Ödeme Simülasyonu</title>
+    <style>
+        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f4f4f9; }
+        .card { background: white; padding: 30px; borderRadius: 15px; boxShadow: 0 4px 15px rgba(0,0,0,0.1); textAlign: center; maxWidth: 400px; width: 90%; }
+        h1 { color: #10b981; margin-bottom: 20px; }
+        p { color: #666; line-height: 1.6; }
+        .btn { display: inline-block; background: #10b981; color: white; padding: 12px 25px; borderRadius: 10px; textDecoration: none; fontWeight: bold; marginTop: 20px; cursor: pointer; border: none; width: 100%; fontSize: 16px; }
+        .btn-fail { background: #ef4444; marginTop: 10px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Güvenli Ödeme</h1>
+        <p>Afro Gıda ödeme simülasyon sayfasındasınız. Bu aşamada gerçek bir kart işlemi yapılmamaktadır.</p>
+        <p id="tx-info"></p>
+        <button class="btn" onclick="simulate('success')">Ödemeyi Başarıyla Tamamla</button>
+        <button class="btn btn-fail" onclick="simulate('fail')">Ödemeyi İptal Et</button>
+        <div class="footer">Afro Gıda • Güvenli Ödeme Altyapısı ⚜️</div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const txId = urlParams.get('tx');
+        if (txId) {
+            document.getElementById('tx-info').innerText = "İşlem No: " + txId;
+        }
+
+        async function simulate(status) {
+            if (!txId) {
+                alert("İşlem numarası bulunamadı.");
+                return;
+            }
+
+            if (status === 'success') {
+                try {
+                    const res = await fetch('/api/payments/simulate-success/' + txId, { method: 'POST' });
+                    if (res.ok) {
+                        alert("Ödeme başarılı! Uygulamaya dönebilirsiniz.");
+                        window.close(); // Sekmeyi kapatmayı dene
+                    } else {
+                        alert("Bir hata oluştu.");
+                    }
+                } catch (e) {
+                    alert("Bağlantı hatası.");
+                }
+            } else {
+                try {
+                    const token = localStorage.getItem('pazar_session_token') || '';
+                    const res = await fetch('/api/admin/orders/' + txId, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                        },
+                        body: JSON.stringify({ order_status: 'iptal' })
+                    });
+                    if (res.ok) {
+                        alert("Ödeme iptal edildi, sipariş iptal edildi.");
+                    } else {
+                        alert("Ödeme iptal edildi ama sipariş güncellenemedi.");
+                    }
+                } catch (e) {
+                    alert("Ödeme iptal edildi ama bağlantı hatası oluştu.");
+                }
+                window.close();
+            }
+        }
+    </script>
+</body>
+</html>

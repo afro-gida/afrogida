@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Afro Gıda</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+
+      /* ================================================================
+         AFRO GIDA - SABİT DUVAR KAĞIDI (Telegram tarzı)
+         Hem DARK hem LIGHT MODE + MÜŞTERİ kısmında aktif.
+         ÖNEMLİ: Sayfa katmanlarını ŞEFFAF yapmıyoruz (bu, eski sayfaların
+         iç içe görünmesine yol açıyordu). Bunun yerine tam-ekran sayfa
+         katmanlarının arka planına duvar kağıdını SABİT resim olarak
+         basıyoruz. Sayfalar opak kalır (arkadakini gizler), duvar kağıdı
+         kartların arasındaki boşluklarda görünür ve kaydırınca sabit kalır.
+         ================================================================ */
+      /* KOYU MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-dark [data-afro-wp="1"] {
+        background-color: #0d0d0d !important;
+        background-image: url(/afro_wallpaper_dark.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+      /* AÇIK MOD DUVAR KAĞIDI */
+      html.afro-wp.afro-light [data-afro-wp="1"] {
+        background-color: #f9f4ed !important;
+        background-image: url(/afro_wallpaper_light.jpg) !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
+      }
+
+      /* ================================================================
+         BUZLU CAM (frosted glass) - AÇIK MODDAKİ BEYAZ KART/PANELLER
+         Beyaz alanları yarı şeffaf + arka bulanıklık yapar; böylece
+         duvar kağıdı kartların arkasından bulanık şekilde görünür.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-glass="1"] {
+        /* BEYAZ DEĞİL: sıcak turuncu tonu. Duvar kağıdı arkadan hafif
+           bulanık görünür, yazılar (koyu) okunur kalır. */
+        background-color: rgba(255, 226, 199, 0.62) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(1.35) !important;
+        backdrop-filter: blur(14px) saturate(1.35) !important;
+      }
+
+      /* ================================================================
+         TURUNCU BUTONLAR (sadece AÇIK MOD) - yeşil marka butonlarını
+         uygulamanın turuncu aksanına (rgb(251,140,60)) çevirir. Koyu
+         modda butonlar yeşil kalır.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-orange="1"] {
+        background-color: rgb(251, 140, 60) !important;
+        border-color: rgb(251, 140, 60) !important;
+      }
+      
+      /* AÇIK MODDA TÜM YEŞİL YAZILARI/İKONLARI/KENARLIKLARI TURUNCU YAP */
+      html.afro-wp.afro-light [data-afro-green-text="1"] {
+        color: rgb(251, 140, 60) !important;
+      }
+      html.afro-wp.afro-light [data-afro-green-border="1"] {
+        border-color: rgb(251, 140, 60) !important;
+      }
+      html.afro-wp.afro-light [data-afro-green-fill="1"] {
+        fill: rgb(251, 140, 60) !important;
+      }
+
+      /* AÇIK MODDA MAT/SOLUK YEŞİL-GRİ (sage/teal) TONLARI NÖTR GRİ YAP.
+         Uygulamanın ikincil metin rengi rgb(120,144,130) gibi yeşile çalan
+         gri tonlar (alt menü PASİF ikon/etiketleri, ürün alt başlıkları,
+         bölüm başlıkları, saat rozeti yazıları vb.) açık modda hafif yeşil
+         görünüyordu. Bunları turuncu YAPMIYORUZ (100+ gövde metni turuncu
+         olursa okunması zorlaşır); bunun yerine yeşil tonu alıp NÖTR GRİ
+         yapıyoruz. Aktif menü ögesi zaten turuncu kalır (ayrım korunur). */
+      html.afro-wp.afro-light [data-afro-degreen="1"] {
+        color: rgb(125, 125, 125) !important;
+      }
+      html.afro-wp.afro-light [data-afro-degreen-fill="1"] {
+        fill: rgb(125, 125, 125) !important;
+      }
+
+      /* ANA KATEGORİ BAŞLIĞI ("Domates" vb. bölüm ayıracı) etrafında çok
+         boşluk/siyahlık kalmasın diye başlık metnini bir KUTU/KART içine al.
+         Açık modda buzlu cam, koyu modda koyu yarı saydam panel. */
+      html.afro-wp.afro-light [data-afro-section-box="1"] {
+        display: inline-block !important;
+        align-self: flex-start !important;
+        width: auto !important;
+        max-width: calc(100% - 32px) !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        background: rgba(255, 214, 181, 0.7) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        backdrop-filter: blur(8px) !important;
+        border: 2px solid rgba(251, 140, 60, 0.6) !important;
+        border-radius: 12px !important;
+        padding: 6px 16px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+      }
+      html.afro-wp.afro-dark [data-afro-section-box="1"] {
+        display: inline-block !important;
+        align-self: flex-start !important;
+        width: auto !important;
+        max-width: calc(100% - 32px) !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        background: rgba(40, 40, 40, 0.72) !important;
+        -webkit-backdrop-filter: blur(8px) !important;
+        backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-radius: 12px !important;
+        padding: 6px 16px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+      }
+      /* Başlık kutusunu DOĞRUDAN çocuk olarak içeren KONTEYNER'in kendi
+         arka planı/buzlu cam şeridi kalksın; yalnızca içteki kompakt kutu
+         görünsün. "Kabak" yazısının yanındaki geniş şeffaf şeridi kaldırır. */
+      html.afro-wp [data-afro-section-parent="1"],
+      html.afro-wp *:has(> [data-afro-section-box="1"]) {
+        background: transparent !important;
+        background-color: transparent !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        border: 0 !important;
+        box-shadow: none !important;
+      }
+      /* Bölüm başlığı kutusu bir İKON + METİN satırı içeriyorsa ("Çok al az
+         öde" gibi, başında etiket ikonu var) kutu inline-FLEX olsun ki ikon
+         ve yazı yan yana, ortalı ve tek kutuda dursun. */
+      html.afro-wp [data-afro-section-box="1"]:has(*) {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+      }
+
+      /* ================================================================
+         ÜST GRUP KARTI (Option B): kategori butonları + bilgilendirme
+         kutucuklarının arkasındaki KENARDAN KENARA beyaz buzlu bandı,
+         kenarlara değmeyen, köşeli, kalın turuncu çerçeveli bir KART yapar.
+         İç içe geçmiş bantlar (data-afro-glass-band-inner) şeffaflaştırılır
+         ki çift buzlanma/çift çerçeve olmasın.
+         ================================================================ */
+      html.afro-wp.afro-light [data-afro-glass-band="1"] {
+        box-sizing: border-box !important;
+        width: auto !important;
+        max-width: calc(100% - 6px) !important;
+        margin: 6px 3px !important;   /* dış boşluk azaltıldı (8→6) */
+        background-color: rgba(255, 226, 199, 0.62) !important;
+        border: 2px solid rgba(251, 140, 60, 0.6) !important;
+        border-radius: 16px !important;
+        padding: 5px 6px !important;   /* iç boşluk sıkıştırıldı (8→5/6), butonlar yakın */
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.10) !important;
+      }
+      /* Kart İÇİNDEKİ kategori butonu yazılarını (İNDİRİMLİ/Sebze/Meyve/
+         Yeşillik) DAHA DA KÜÇÜLT. Alt kategori çipleri (Domates/Kabak...)
+         daha da küçük. */
+      html.afro-wp.afro-light [data-afro-glass-band="1"] .r-1b43r93.r-ovu0ai {
+        font-size: 11px !important;
+      }
+      html.afro-wp.afro-light [data-afro-glass-band="1"] .r-1gkfh8e {
+        font-size: 9.5px !important;
+      }
+      /* Kart İÇİNDEKİ butonların (pill/çip) KENDİ buzlu cam arka planını
+         KALDIR: kart zaten buzlu, çift buzlanma olmasın. Aktif TURUNCU
+         buton hariç (o dolu turuncu kalır). İç bantlar zaten şeffaf. */
+      html.afro-wp.afro-light [data-afro-glass-band="1"] [data-afro-glass="1"]:not([data-afro-orange="1"]):not([data-afro-glass-band-inner="1"]) {
+        background-color: transparent !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+        padding-left: 9px !important;
+        padding-right: 9px !important;
+      }
+      /* Aktif turuncu pill'in de iç boşluğunu küçült (daha kompakt). */
+      html.afro-wp.afro-light [data-afro-glass-band="1"] [data-afro-orange="1"] {
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+        padding-left: 9px !important;
+        padding-right: 9px !important;
+      }
+      html.afro-wp.afro-light [data-afro-glass-band-inner="1"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      /* Ürünler sayfasındaki uzun BOŞ üst kutu: kartlaştırma. Şeffaf yapılır
+         (frosted arka plan, turuncu çerçeve ve gölge kaldırılır) ve dikey
+         boşluk toplanmaya çalışılır ki dev boş kutu kaybolsun. */
+      html.afro-wp.afro-light [data-afro-glass-band-tallinfo="1"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        flex: 0 0 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      html.afro-wp.afro-light [data-afro-glass-band-tallinfo="1"] * {
+        min-height: 0 !important;
+      }
+
+      /* NOT: Turuncu kenarlıkları GENEL olarak kalınlaştırma kuralı KALDIRILDI.
+         (Önceden tüm turuncu çerçeveleri 2px yapıyordu; bu, "Ekle" gibi küçük
+         butonların etrafında istenmeyen belirgin kutular oluşturuyordu.)
+         Kalın turuncu çerçeve YALNIZCA üst grup kartında ([data-afro-glass-band])
+         ve ana kategori adı kutularında ([data-afro-section-box]) kendi
+         kurallarıyla uygulanır. Diğer yerlerde kenarlıklar sadece RENK olarak
+         turuncuya döner, kalınlıkları değişmez. */
+    </style>
+  <meta name="theme-color" content="#14B67E">
+<meta name="description" content="Afro gıda - Bursa pazarlarında taze sebze meyve tezgahları.">
+<link rel="icon" href="/favicon.ico" /></head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+
+    <script>
+      (function () {
+        var htmlEl = document.documentElement;
+        var WP_ATTR = 'data-afro-wp';
+        var GLASS_ATTR = 'data-afro-glass';
+        var GLASS_BAND_ATTR = 'data-afro-glass-band';
+        var GLASS_BAND_INNER_ATTR = 'data-afro-glass-band-inner';
+
+        function isDarkActive() {
+          var pref = null;
+          try { pref = localStorage.getItem('theme_preference'); } catch (e) {}
+          if (pref === 'dark') return true;
+          if (pref === 'light') return false;
+          try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; }
+        }
+
+        function isCustomerSection() {
+          // Müşteri kısmı = /admin ile başlamayan tüm sayfalar
+          return !/^\/admin(\/|$)/.test(location.pathname);
+        }
+
+        // Tam ekranı kaplayan ve OPAK arka planı olan sayfa/ekran katmanlarına
+        // duvar kağıdını bas. Kartlar/butonlar (küçük elemanlar) dokunulmaz kalır,
+        // böylece yazılar net okunur ve arkadaki eski sayfalar gizlenir.
+        function paintPageLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var root = document.getElementById('root');
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(WP_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            // SADECE gerçek sayfa arka planı: neredeyse tüm ekranı kaplayan
+            // VE köşesiz (radius<8) katmanlar. Yuvarlak köşeli kartlar (menü
+            // kartı gibi) uzun olsalar bile buraya girmez -> onlara duvar
+            // kağıdı basılmaz (aksi halde kartın içinde çizimler görünüyordu).
+            if (r.width >= vw * 0.85 && r.height >= vh * 0.7) {
+              var cs0 = getComputedStyle(el);
+              if ((parseFloat(cs0.borderRadius) || 0) >= 8) continue; // yuvarlak kart -> atla
+              var bg = cs0.backgroundColor;
+              // sadece opak (dolu) arka planı olan tam-ekran katmanlar
+              if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                el.setAttribute(WP_ATTR, '1');
+              }
+            }
+          }
+        }
+
+        // Açık moddaki BEYAZ/SOLUK kart/panel/bar elemanlarını buzlu cam yap.
+        // Tam ekran kaplamayan, beyazımsı/soluk opak arka planı olan ve yeterince
+        // büyük yüzeyler işaretlenir (küçük butonlar hariç).
+        function paintGlassLayers() {
+          var vw = window.innerWidth, vh = window.innerHeight;
+          // #root DEĞİL, TÜM body taranır: modallar/popuplar (Şifre Değiştir,
+          // Şikayet ve Öneri, Haritadan Seç vb.) #root DIŞINDA ayrı bir portal
+          // katmanına render edildiği için body üzerinden yakalamak gerekir.
+          var root = document.body;
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(GLASS_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            var rad = parseFloat(cs.borderRadius) || 0;
+            // SADECE gerçek sayfa arka planını atla (köşesiz + neredeyse tam ekran).
+            // Yuvarlak köşeli büyük kartlar (mobildeki uzun menü kartı gibi) cam
+            // efekti ALIR; böylece mobilde de duvar kağıdı bulanık görünür.
+            if (rad < 8 && r.width >= vw * 0.85 && r.height >= vh * 0.7) continue;
+            // Uygun yüzeyler:
+            //  (A) kart/panel: yeterince büyük (>=200x50)
+            //  (B) geniş ama İNCE başlık/satır barları (tam genişliğe yakın, kısa)
+            //  (C) ürün kartı içindeki SOLUK alanlar (yeşil ikon bölgesi, beyaz bilgi):
+            //      boyut >=100x40 (ikon/bilgi alanı boyutları)
+            var isCard = (r.width >= 200 && r.height >= 50);
+            var isStrip = (r.width >= vw * 0.6 && r.height >= 18 && r.height < 50);
+            var isCardInner = (r.width >= 100 && r.height >= 40); // kart içi alanlar
+            // küçük çip/pill/saat butonu (Pazar saati, Gel-Al, Sebze etiketi,
+            // Ürünleri Göster, saat butonları vb.) -> bunlar da buzlu cam olur
+            var isChip = (r.width >= 40 && r.height >= 20);
+            // yuvarlak ikon rozetleri (menü/profil satırlarındaki ~38px daireler):
+            // neredeyse kare + büyük köşe yarıçapı (daire) -> soluk yeşil arka planlı
+            // olanlar da buzlu cam olur (içindeki turuncu simge kalır).
+            var minSide = Math.min(r.width, r.height);
+            var isIconCircle = (r.width >= 20 && r.width <= 64 &&
+                                Math.abs(r.width - r.height) <= 8 &&
+                                rad >= minSide * 0.35);
+            if (!isCard && !isStrip && !isCardInner && !isChip && !isIconCircle) continue;
+            var bg = cs.backgroundColor;
+            var m = bg && bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            // SOLUK (açık) renkler: beyaz (r,g,b>=230) VEYA soluk yeşil/bej (her RGB>=180).
+            // Yarı şeffaf da olsa yakala (a>=0.2). Tamamen görünmez (a<0.2) atla.
+            var isPale = ((rr >= 230 && gg >= 230 && bb >= 230) || (rr >= 180 && gg >= 180 && bb >= 180)) && a >= 0.2;
+            if (isPale) {
+              el.setAttribute(GLASS_ATTR, '1');
+            }
+          }
+        }
+
+        function unpaint() {
+          var marked = document.querySelectorAll('[' + WP_ATTR + ']');
+          for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(WP_ATTR);
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+          var o = document.querySelectorAll('[data-afro-orange]');
+          for (var k = 0; k < o.length; k++) o[k].removeAttribute('data-afro-orange');
+          unpaintGreenTexts();
+          unpaintSectionBoxes();
+          unpaintGlassBands();
+        }
+
+        function unpaintGlassOnly() {
+          var g = document.querySelectorAll('[' + GLASS_ATTR + ']');
+          for (var j = 0; j < g.length; j++) g[j].removeAttribute(GLASS_ATTR);
+        }
+
+        var ORANGE_ATTR = 'data-afro-orange';
+        // Açık modda DOLU YEŞİL arka planlı elemanları (marka yeşili
+        // rgb(20,182,126) ve yakın tonları) TURUNCU yap. Buna dahil:
+        //  - küçük yeşil butonlar ("Ekle", "Pazardan Gel-Al" vb.)
+        //  - üstteki yeşil "Yönetici Görünümü" bandı (köşesiz, geniş)
+        //  - profildeki büyük yeşil isim/başlık kartı
+        //  - alt menüdeki aktif yeşil pill (varsa)
+        // Beyaz yazılar turuncu üstünde okunur kaldığı için sorun olmaz.
+        // Soluk yeşiller (rgb(204,230,209)) buraya GİRMEZ; onlar buzlu cam olur.
+        function paintOrangeButtons() {
+          var root = document.body; // modallar dahil (bkz. paintGlassLayers notu)
+          if (!root) return;
+          var vw = window.innerWidth, vh = window.innerHeight;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(ORANGE_ATTR) === '1') continue;
+            var cs = getComputedStyle(el);
+            var m = (cs.backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+            if (!m) continue;
+            var rr = +m[1], gg = +m[2], bb = +m[3], a = (m[4] === undefined ? 1 : +m[4]);
+            if (a < 0.5) continue; // yarı saydam -> atla (dolu yeşiller hedef)
+            // DOLU marka yeşili ve yakın tonları (soluk yeşiller HARİÇ)
+            var isBrandGreen = (rr <= 90 && gg >= 130 && gg <= 220 && bb >= 70 && bb <= 180 && gg > rr + 50 && gg > bb + 15);
+            if (!isBrandGreen) continue;
+            var r = el.getBoundingClientRect();
+            if (r.width < 20 || r.height < 16) continue; // çok küçük -> atla
+            // Tam ekranı kaplayan bir katman OLMAMALI (güvenlik)
+            if (r.width >= vw * 0.97 && r.height >= vh * 0.8) continue;
+            el.setAttribute(ORANGE_ATTR, '1');
+          }
+        }
+
+        function unpaintOrange() {
+          var o = document.querySelectorAll('[' + ORANGE_ATTR + ']');
+          for (var k = 0; k < o.length; k++) o[k].removeAttribute(ORANGE_ATTR);
+        }
+
+        // Açık modda TÜM YEŞİL yazıları/kenarlıkları/SVG'leri turuncu yap.
+        function paintGreenTextsOrange() {
+          var root = document.body; // modallar dahil (bkz. paintGlassLayers notu)
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            var r = el.getBoundingClientRect();
+            if (r.width < 5 || r.height < 5) continue; // görünmez (offsetParent yerine boyut kontrolü)
+            // NOT: alt menü (bottom nav) artık İSTİSNA DEĞİL — aktif yeşil ikon
+            // ve etiketi de turuncu olsun (kullanıcı isteği). Pasif gri ikonlar
+            // yeşil olmadığı için etkilenmez.
+            var cs = getComputedStyle(el);
+            
+            // YAZI RENGİ (color)
+            if (!el.getAttribute('data-afro-green-text') && !el.getAttribute('data-afro-degreen')) {
+              var col = cs.color;
+              var mc = col && col.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mc) {
+                var cr = +mc[1], cg = +mc[2], cb = +mc[3];
+                var cmin = Math.min(cr, cb);
+                // MAT/SAGE yeşil-gri (ör. rgb(120,144,130), rgb(73,101,83)):
+                // yeşil baskın ama DÜŞÜK doygunluk -> NÖTR GRİ yap (turuncu değil).
+                if (cg >= cr && cg >= cb && (cg - cmin) >= 10 && (cg - cmin) <= 45 && cg >= 60 && cg <= 190) {
+                  el.setAttribute('data-afro-degreen', '1');
+                }
+                // PARLAK/DOYGUN yeşil -> TURUNCU (mevcut davranış).
+                else if (cg > cr + 20 && cg > cb + 20 && cg >= 80) {
+                  el.setAttribute('data-afro-green-text', '1');
+                }
+              }
+            }
+            
+            // KENARLIK (border-color)
+            if (!el.getAttribute('data-afro-green-border')) {
+              var bord = cs.borderTopColor || cs.borderColor;
+              var mb = bord && bord.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mb) {
+                var br = +mb[1], bg = +mb[2], bb = +mb[3];
+                if (bg > br + 20 && bg > bb + 20 && bg >= 80) {
+                  el.setAttribute('data-afro-green-border', '1');
+                }
+              }
+            }
+            
+            // SVG FILL (fill)
+            if (!el.getAttribute('data-afro-green-fill') && !el.getAttribute('data-afro-degreen-fill') && (el.tagName === 'svg' || el.tagName === 'path' || el.tagName === 'circle')) {
+              var fill = cs.fill;
+              var mf = fill && fill.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+              if (mf) {
+                var fr = +mf[1], fg = +mf[2], fb = +mf[3];
+                var fmin = Math.min(fr, fb);
+                // MAT/SAGE yeşil-gri fill -> NÖTR GRİ
+                if (fg >= fr && fg >= fb && (fg - fmin) >= 10 && (fg - fmin) <= 45 && fg >= 60 && fg <= 190) {
+                  el.setAttribute('data-afro-degreen-fill', '1');
+                }
+                // PARLAK/DOYGUN yeşil fill -> TURUNCU
+                else if (fg > fr + 20 && fg > fb + 20 && fg >= 80) {
+                  el.setAttribute('data-afro-green-fill', '1');
+                }
+              }
+            }
+          }
+        }
+
+        function unpaintGreenTexts() {
+          var attrs = ['data-afro-green-text', 'data-afro-green-border', 'data-afro-green-fill', 'data-afro-degreen', 'data-afro-degreen-fill'];
+          for (var j = 0; j < attrs.length; j++) {
+            var marked = document.querySelectorAll('[' + attrs[j] + ']');
+            for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(attrs[j]);
+          }
+        }
+
+        // Ana kategori BÖLÜM BAŞLIKLARINI ("Domates", "Kabak" vb. — büyük kalın
+        // bölüm ayıracı yazılar) bir kutu/kart içine al. Böylece etraflarındaki
+        // geniş boş/siyah alan yerine belirgin bir kutucuk görünür.
+        var SECTION_BOX_ATTR = 'data-afro-section-box';
+        function paintSectionBoxes() {
+          var root = document.body;
+          if (!root) return;
+          var nodes = root.querySelectorAll('*');
+          for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.getAttribute(SECTION_BOX_ATTR) === '1') continue;
+            if (el.children.length !== 0) continue; // yalnızca yaprak metin düğümü
+            var txt = (el.textContent || '').trim();
+            if (!txt || txt.length > 40) continue;
+            var cs = getComputedStyle(el);
+            // Bölüm başlıklarının belirgin imzası:
+            //   fontWeight>=850 (900), fontSize 17-21px, tek satır.
+            // Bu sayede fiyatlar (₺..) ve üst başlık "Fiyatlar" (fw=800, fs=23px)
+            // yakalanmaz; Domates/Kabak/Patlıcan... AYIRAÇLARI (tam genişlik) VE
+            // "Çok al az öde" gibi ikonlu kompakt bölüm başlıkları da alınır.
+            var fw = parseInt(cs.fontWeight, 10) || 400;
+            var fs = parseFloat(cs.fontSize) || 0;
+            if (fw < 850) continue;
+            if (fs < 17 || fs > 21) continue;
+            var r = el.getBoundingClientRect();
+            if (r.width < 90) continue; // çok küçük metin parçalarını ele
+            if (r.height < 18 || r.height > 40) continue;
+            // Kendi arka planı olmayan (şeffaf) başlıklar — kutuya alınacak
+            var bg = cs.backgroundColor || '';
+            var m = bg.match(/rgba?\(([^)]+)\)/);
+            if (m) {
+              var p = m[1].split(',').map(function (x) { return parseFloat(x.trim()); });
+              var a = p.length >= 4 ? p[3] : 1;
+              if (a > 0.05) continue; // zaten bir arka planı var, atla
+            }
+            // Başında etiket/ikon olan başlıklarda ("Çok al az öde") ikonu da
+            // kutuya dahil et: yaprak metnin ÜST satırında tek-karakterlik bir
+            // ikon kardeşi varsa, kutuyu o SATIR konteynerine uygula.
+            var target = el;
+            var par = el.parentElement;
+            if (par && par.children.length >= 2 && par.children.length <= 3) {
+              var hasIconSib = false;
+              for (var s = 0; s < par.children.length; s++) {
+                var sib = par.children[s];
+                if (sib === el) continue;
+                if (sib.children.length !== 0) continue;
+                var stx = (sib.textContent || '').trim();
+                if (stx.length >= 1 && stx.length <= 2 && /[\uE000-\uF8FF]/.test(stx)) { hasIconSib = true; break; }
+              }
+              if (hasIconSib) target = par;
+            }
+            if (target.getAttribute(SECTION_BOX_ATTR) === '1') continue;
+            target.setAttribute(SECTION_BOX_ATTR, '1');
+          }
+        }
+
+        function unpaintSectionBoxes() {
+          var marked = document.querySelectorAll('[' + SECTION_BOX_ATTR + ']');
+          for (var i = 0; i < marked.length; i++) marked[i].removeAttribute(SECTION_BOX_ATTR);
+        }
+
+        // ÜST GRUP KARTLARI (Option B + ayrım): Bilgilendirme kutucukları
+        // (Pazar saati / Gel-Al saati) ve kategori butonları (İNDİRİMLİ/Sebze...)
+        // AYRI AYRI kart yapılır. Eğer ikisini de içeren kapsayıcı bant varsa,
+        // o atlanır, çocuklar ayrı ayrı kartlanır. Header, alt menü ve bölüm
+        // başlığı bantları hariç. İç içe bantlar şeffaflaştırılır.
+        function paintGlassBands() {
+          var vw = window.innerWidth;
+          var glass = document.querySelectorAll('[' + GLASS_ATTR + '="1"]');
+          for (var i = 0; i < glass.length; i++) {
+            var el = glass[i];
+            if (el.getAttribute(GLASS_BAND_ATTR) === '1' || el.getAttribute(GLASS_BAND_INNER_ATTR) === '1') continue;
+            var r = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            var rad = parseFloat(cs.borderRadius) || 0;
+            if (!(r.width >= vw * 0.6 && rad < 8)) continue; // yalnız tam-genişlik köşesiz bantlar
+            
+            var txt = el.textContent || '';
+            // HARİÇ: alt menü (Pazarlar + Kuponlar birlikte)
+            if (txt.indexOf('Pazarlar') > -1 && txt.indexOf('Kuponlar') > -1) continue;
+            // HARİÇ: bölüm başlığı bandı (section-box içerir)
+            if (el.querySelector('[' + SECTION_BOX_ATTR + '="1"]')) continue;
+            // HARİÇ: header/sayfa başlığı bandı (büyük başlık 22px+/800)
+            var hasBigTitle = false;
+            var descs = el.querySelectorAll('*');
+            for (var d = 0; d < descs.length; d++) {
+              var dc = getComputedStyle(descs[d]);
+              if ((parseInt(dc.fontWeight, 10) || 400) >= 800 && (parseFloat(dc.fontSize) || 0) >= 22) { hasBigTitle = true; break; }
+            }
+            if (hasBigTitle) continue;
+            
+            // BİLGİLENDİRME + KATEGORİ AYIRIMI: Eğer bu bant HEM bilgilendirme
+            // (Pazar/Gel-Al) HEM kategori butonu (İNDİRİMLİ/Sebze) içeriyorsa,
+            // bu KAPSAYICI banttır → atla, çocuklarını ayrı kart yap.
+            var hasInfo = txt.indexOf('Pazar saati') > -1 || txt.indexOf('Gel-Al saati') > -1;
+            var hasCat = txt.indexOf('İNDİRİMLİ') > -1 || txt.indexOf('Sebze') > -1;
+            if (hasInfo && hasCat) continue; // kapsayıcı → atla
+            
+            // UZUN BOŞ SAAT KUTUSU (Ürünler sayfası): Pazar/Gel-Al saati
+            // içeren ama BOŞ banner yüzünden ÇOK UZUN (>150px) olan panel,
+            // dev bir boş kutu gibi görünüyor. Bunu KART YAPMA; şeffaflaştır
+            // (buzlu cam + turuncu çerçeve KALKSIN) ve yüksekliğini içeriğe
+            // göre TOPLA (boş dikey alan kaybolsun). Kısa saat bantları
+            // (Pazarlar sayfası, ~50px) ve gün kartları ETKİLENMEZ.
+            if (hasInfo && r.height > 150) {
+              el.setAttribute('data-afro-glass-band-tallinfo', '1');
+              continue;
+            }
+            
+            // İç içe bant tespiti (atasında kart/inner işareti var mı?)
+            var isInner = false, anc = el.parentElement;
+            while (anc) {
+              if (anc.getAttribute(GLASS_BAND_ATTR) === '1' || anc.getAttribute(GLASS_BAND_INNER_ATTR) === '1') { isInner = true; break; }
+              anc = anc.parentElement;
+            }
+            if (isInner) { el.setAttribute(GLASS_BAND_INNER_ATTR, '1'); continue; }
+            
+            el.setAttribute(GLASS_BAND_ATTR, '1');
+          }
+        }
+
+        function unpaintGlassBands() {
+          var a = document.querySelectorAll('[' + GLASS_BAND_ATTR + ']');
+          for (var i = 0; i < a.length; i++) a[i].removeAttribute(GLASS_BAND_ATTR);
+          var b = document.querySelectorAll('[' + GLASS_BAND_INNER_ATTR + ']');
+          for (var j = 0; j < b.length; j++) b[j].removeAttribute(GLASS_BAND_INNER_ATTR);
+          var c = document.querySelectorAll('[data-afro-glass-band-tallinfo]');
+          for (var k = 0; k < c.length; k++) c[k].removeAttribute('data-afro-glass-band-tallinfo');
+        }
+
+        // Harita seçici (map-picker.html) AYNI KÖKENLİ bir <iframe> içinde çalışır
+        // ve "Bu Konumu Onayla" butonu (#confirm-btn) yeşildir (#22C55E). Ana
+        // belgedeki stiller iframe'e uygulanmadığı için, aynı köken avantajıyla
+        // iframe'in kendi <head>'ine küçük bir stil enjekte edip AÇIK modda
+        // butonu turuncu yaparız. KOYU modda enjekte edilen stili kaldırırız.
+        function paintMapIframe(makeOrange) {
+          try {
+            var ifr = document.querySelectorAll('iframe');
+            for (var i = 0; i < ifr.length; i++) {
+              var f = ifr[i];
+              var src = f.getAttribute('src') || '';
+              if (src.indexOf('map-picker') === -1) continue;
+              var doc = null;
+              try { doc = f.contentDocument; } catch (e) { doc = null; }
+              if (!doc || !doc.head) continue;
+              var st = doc.getElementById('afro-iframe-style');
+              if (makeOrange) {
+                if (!st) {
+                  st = doc.createElement('style');
+                  st.id = 'afro-iframe-style';
+                  st.textContent = '#confirm-btn{background:rgb(251,140,60) !important;}';
+                  doc.head.appendChild(st);
+                }
+              } else {
+                if (st && st.parentNode) st.parentNode.removeChild(st);
+              }
+            }
+          } catch (e) { /* sessizce geç */ }
+        }
+
+        function tick() {
+          var isCustomer = isCustomerSection();
+          var isDark = isDarkActive();
+          var active = isCustomer; // her iki temada da duvar kağıdı göster (müşteri kısmında)
+
+          if (active) {
+            if (!htmlEl.classList.contains('afro-wp')) htmlEl.classList.add('afro-wp');
+            // tema sınıflarını ekle
+            if (isDark) {
+              htmlEl.classList.add('afro-dark');
+              htmlEl.classList.remove('afro-light');
+            } else {
+              htmlEl.classList.add('afro-light');
+              htmlEl.classList.remove('afro-dark');
+            }
+            paintPageLayers();
+            unpaintSectionBoxes(); // KULLANICI İSTEĞİ: kategori başlık kutuları kaldırıldı (her iki tema)
+            // buzlu cam + turuncu butonlar/yazılar sadece AÇIK modda uygulanır
+            if (isDark) {
+              unpaintGlassOnly();
+              unpaintGlassBands();
+              unpaintOrange();
+              unpaintGreenTexts();
+              paintMapIframe(false); // koyu modda harita butonu YEŞİL kalır
+            } else {
+              paintGlassLayers();
+              unpaintGlassBands(); // KULLANICI İSTEĞİ: üst İNDİRİMLİ grup kartı/kutuları kaldırıldı
+              paintOrangeButtons();
+              paintGreenTextsOrange();
+              paintMapIframe(true); // açık modda harita butonu TURUNCU
+            }
+          } else {
+            if (htmlEl.classList.contains('afro-wp')) htmlEl.classList.remove('afro-wp');
+            htmlEl.classList.remove('afro-dark', 'afro-light');
+            unpaint();
+          }
+        }
+
+        // rota değişiminde/DOM güncellemesinde ANINDA boya (600ms boşluğu kapat)
+        var rafPending = false;
+        function scheduleTick() {
+          if (rafPending) return;
+          rafPending = true;
+          requestAnimationFrame(function () { rafPending = false; tick(); });
+        }
+
+        tick();
+        setInterval(tick, 600);
+        window.addEventListener('resize', tick);
+
+        // DOM her değiştiğinde (sayfa geçişi = yeni katmanlar) hemen boya
+        try {
+          var mo = new MutationObserver(scheduleTick);
+          var startObserve = function () {
+            var root = document.getElementById('root');
+            if (root) mo.observe(root, { childList: true, subtree: true });
+            else setTimeout(startObserve, 100);
+          };
+          startObserve();
+        } catch (e) {}
+
+        // SPA rota değişimlerini de yakala
+        try {
+          var _ps = history.pushState;
+          history.pushState = function () { _ps.apply(this, arguments); scheduleTick(); };
+          var _rs = history.replaceState;
+          history.replaceState = function () { _rs.apply(this, arguments); scheduleTick(); };
+          window.addEventListener('popstate', scheduleTick);
+        } catch (e) {}
+      })();
+    </script>
+
+  <script src="/_expo/static/js/web/entry-ef19456146b2f1940ae80106b2a5dfe1.js" defer></script>
+</body>
+</html>

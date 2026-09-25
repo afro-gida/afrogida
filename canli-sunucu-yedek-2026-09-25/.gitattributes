@@ -1,0 +1,2 @@
+# Yedek dosyaları byte'ı byte'ına korunur (satır sonu dönüşümü / diff yok).
+* -text -diff
