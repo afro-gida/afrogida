@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { reportScroll, showChrome } from '@/lib/chrome-autohide';
+import { reportScroll, showChrome, tabBarHidden } from '@/lib/chrome-autohide';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -440,56 +440,16 @@ export default function MarketProductsScreen() {
           (yarı saydam + web'de blur). Altında, minimum sepet tutarına ve
           ücretsiz teslimata ne kadar kaldığını gösteren aşamalı bir satır
           var. */}
-      {totalQty > 0 && (() => {
-        const minAmount = settings.min_pickup_amount ?? 0;
-        const freeAmount = settings.free_delivery_min_amount;
-        let progressMsg: string | null = null;
-        let progressDone = false;
-        if (minAmount > 0 && totalPrice < minAmount) {
-          progressMsg = `Minimum sepet tutarı için ₺${formatMoney(minAmount - totalPrice)} daha ekleyin`;
-        } else if (freeAmount && totalPrice < freeAmount) {
-          progressMsg = `Ücretsiz teslimat için ₺${formatMoney(freeAmount - totalPrice)} daha ekleyin`;
-        } else if (freeAmount && totalPrice >= freeAmount) {
-          progressMsg = 'Ücretsiz teslimat';
-          progressDone = true;
-        }
-        return (
-          <Pressable
-            onPress={() => router.push(`/pazar/${id}/sepet`)}
-            style={[
-              styles.confirmBar,
-              {
-                bottom: Spacing.three + insets.bottom + 60 + Spacing.two,
-                backgroundColor: withAlpha(theme.tint, 0.75),
-                borderWidth: 1,
-                borderColor: withAlpha(theme.tint, 0.9),
-              },
-              Platform.OS === 'web' ? ({ backdropFilter: 'blur(14px) saturate(1.3)' } as any) : null,
-            ]}
-          >
-            <View style={styles.confirmIconWrap}>
-              <Ionicons name="basket" size={22} color="#fff" />
-              <View style={[styles.confirmBadge, { backgroundColor: theme.danger }]}>
-                <ThemedText style={styles.confirmBadgeText}>{lines.length}</ThemedText>
-              </View>
-            </View>
-            <View style={styles.confirmMiddle}>
-              <ThemedText style={styles.confirmText} numberOfLines={1}>
-                Siparişi Tamamla
-              </ThemedText>
-              {progressMsg && (
-                <View style={styles.confirmProgressRow}>
-                  {progressDone && <Ionicons name="checkmark-circle" size={12} color="#fff" />}
-                  <ThemedText style={styles.confirmProgress} numberOfLines={1}>
-                    {progressMsg}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-            <ThemedText style={styles.confirmPrice}>{formatMoney(totalPrice)} ₺</ThemedText>
-          </Pressable>
-        );
-      })()}
+      {totalQty > 0 && (
+        <CartBar
+          count={lines.length}
+          total={totalPrice}
+          minAmount={settings.min_pickup_amount ?? 0}
+          freeAmount={settings.free_delivery_min_amount}
+          bottomInset={insets.bottom}
+          onPress={() => router.push(`/pazar/${id}/sepet`)}
+        />
+      )}
 
       <ProductOptionsModal product={optionsProduct} onClose={() => setOptionsProduct(null)} />
     </Screen>
@@ -586,6 +546,84 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         />
       )}
     </View>
+  );
+}
+
+/**
+ * Alt menünün üstünde yüzen sepet çubuğu: solda sepet ikonu + ürün sayısı,
+ * sağda toplam; altta minimum sepet → ücretsiz teslimat için ince dolum
+ * çubuğu. Aşağı kaydırınca menü gizlenir, çubuk yumuşakça alt kenara iner.
+ */
+function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: {
+  count: number; total: number; minAmount: number; freeAmount?: number; bottomInset: number; onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  // Önce minimum sepet hedefi, o tamamlanınca ücretsiz teslimat hedefi.
+  let target = 0;
+  let label: string | null = null;
+  let done = false;
+  if (minAmount > 0 && total < minAmount) {
+    target = minAmount;
+    label = `Minimum sepete ₺${formatMoney(minAmount - total)} kaldı`;
+  } else if (freeAmount && total < freeAmount) {
+    target = freeAmount;
+    label = `Ücretsiz teslimata ₺${formatMoney(freeAmount - total)} kaldı`;
+  } else if (freeAmount) {
+    target = freeAmount;
+    label = 'Ücretsiz teslimat kazandınız';
+    done = true;
+  }
+  const ratio = target > 0 ? Math.min(1, total / target) : 1;
+
+  const fill = useRef(new Animated.Value(ratio)).current;
+  useEffect(() => {
+    Animated.timing(fill, { toValue: ratio, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [ratio, fill]);
+
+  // Menü (60) + aradaki boşluk kadar yukarıda; menü gizlenince o kadar aşağı iner.
+  const lift = 60 + Spacing.two;
+  const translateY = tabBarHidden.interpolate({ inputRange: [0, 1], outputRange: [0, lift] });
+
+  return (
+    <Animated.View
+      style={[
+        styles.cartBar,
+        styles.cartBarShadow,
+        { bottom: Spacing.three + bottomInset + lift, backgroundColor: withAlpha(theme.tint, 0.94), transform: [{ translateY }] },
+        Platform.OS === 'web' ? ({ backdropFilter: 'blur(14px) saturate(1.3)' } as any) : null,
+      ]}
+    >
+      <Pressable onPress={onPress} accessibilityLabel="Sepete git" style={({ pressed }) => [styles.cartBarInner, { opacity: pressed ? 0.85 : 1 }]}>
+        <View style={styles.cartBarRow}>
+          <View style={styles.cartBarIcon}>
+            <Ionicons name="basket" size={20} color="#fff" />
+            <View style={[styles.cartBarBadge, { borderColor: theme.tint }]}>
+              <ThemedText style={[styles.cartBarBadgeText, { color: theme.tint }]}>{count}</ThemedText>
+            </View>
+          </View>
+          <View style={styles.flex}>
+            <ThemedText style={styles.cartBarTitle} numberOfLines={1}>Sepete Git</ThemedText>
+            <ThemedText style={styles.cartBarSub} numberOfLines={1}>{count} ürün</ThemedText>
+          </View>
+          <ThemedText style={styles.cartBarTotal}>{formatMoney(total)} ₺</ThemedText>
+          <Ionicons name="chevron-forward" size={20} color="#fff" />
+        </View>
+        {label && (
+          <View style={styles.cartBarProgressRow}>
+            <View style={styles.cartBarTrack}>
+              <Animated.View
+                style={[styles.cartBarFill, { width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]}
+              />
+            </View>
+            <View style={styles.cartBarLabelRow}>
+              {done && <Ionicons name="checkmark-circle" size={13} color="#fff" />}
+              <ThemedText style={styles.cartBarLabel} numberOfLines={1}>{label}</ThemedText>
+            </View>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -759,45 +797,28 @@ const styles = StyleSheet.create({
   },
   soldOutText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   emptyBox: { borderRadius: 14, padding: Spacing.four, alignItems: 'center', marginTop: Spacing.two, marginHorizontal: Spacing.three },
-  // Sepette ürün varken alt menünün hemen üstünde yüzen onay çubuğu.
-  confirmBar: {
-    position: 'absolute',
-    left: Spacing.three,
-    right: Spacing.three,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 10,
+  // Sepet çubuğu (CartBar): alt menünün üstünde yüzen tek kart.
+  cartBar: { position: 'absolute', left: Spacing.three, right: Spacing.three, borderRadius: 20 },
+  cartBarShadow: {
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 18, elevation: 10,
   },
-  // İkon + sayı rozeti tek bir bütün gibi görünüyor (rozet ikonun köşesine
-  // biniyor) — alt menüdeki sepet ikonuyla aynı mantık. İkon/rozet boyutu
-  // sabit kalıyor, sadece çubuğun dikey boşluğu sıkıştırılıyor.
-  confirmIconWrap: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', marginLeft: -4 },
-  confirmBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -8,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cartBarInner: { paddingHorizontal: Spacing.three - 2, paddingTop: Spacing.two + 2, paddingBottom: Spacing.two + 2, gap: Spacing.two },
+  cartBarRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2 },
+  cartBarIcon: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  confirmBadgeText: { color: '#fff', fontWeight: '700', fontSize: 11 },
-  // Başlık + ilerleme satırı, ikon ile fiyat arasında ortalanmış sütun —
-  // ikisi arasındaki boşluk sıfıra indirildi (metin boyutları aynı kaldı).
-  confirmMiddle: { flex: 1, gap: 0 },
-  confirmText: { color: '#fff', fontWeight: '700' },
-  confirmPrice: { color: '#fff', fontWeight: '700', fontSize: 20 },
-  // Minimum sepet tutarı / ücretsiz teslimat için kalan tutar aşamalı satırı.
-  confirmProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  confirmProgress: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
+  cartBarBadge: {
+    position: 'absolute', top: -4, right: -6, minWidth: 19, height: 19, borderRadius: 10, paddingHorizontal: 4,
+    backgroundColor: '#fff', borderWidth: 1.5, alignItems: 'center', justifyContent: 'center',
+  },
+  cartBarBadgeText: { fontSize: 11, lineHeight: 13, fontWeight: '900' },
+  cartBarTitle: { color: '#fff', fontSize: 16, lineHeight: 20, fontWeight: '800' },
+  cartBarSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, lineHeight: 15, fontWeight: '600' },
+  cartBarTotal: { color: '#fff', fontSize: 19, lineHeight: 23, fontWeight: '900', letterSpacing: -0.3 },
+  cartBarProgressRow: { gap: 5 },
+  cartBarTrack: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' },
+  cartBarFill: { height: 5, borderRadius: 3, backgroundColor: '#fff' },
+  cartBarLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cartBarLabel: { color: 'rgba(255,255,255,0.95)', fontSize: 12, lineHeight: 15, fontWeight: '700' },
 });
