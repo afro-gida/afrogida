@@ -1,14 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Screen } from '@/components/screen';
+import { FormCardScreen, PrimaryButton } from '@/components/form-card';
+import { Notice, PasswordField } from '@/components/form-field';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
-import { Spacing } from '@/constants/theme';
 
 /**
  * Giriş yapmış kullanıcının şifre değiştirmesi: mevcut şifre + yeni şifre.
@@ -23,7 +22,6 @@ export default function ChangePasswordScreen() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [nextAgain, setNextAgain] = useState('');
-  const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -45,104 +43,40 @@ export default function ChangePasswordScreen() {
     }
   }
 
-  const inputStyle = [styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }];
-
   if (done) {
     return (
-      <Screen edges={['bottom']}>
-        <View style={[styles.body, { backgroundColor: theme.authCard }]}>
-          <Ionicons name="checkmark-circle" size={44} color={theme.tint} />
-          <ThemedText type="subtitle">Şifren değiştirildi</ThemedText>
-          <ThemedText themeColor="textSecondary">Bir sonraki girişinde yeni şifreni kullan.</ThemedText>
-          <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => router.back()}>
-            <ThemedText style={{ color: '#fff' }} type="smallBold">
-              Tamam
-            </ThemedText>
-          </Pressable>
-        </View>
-      </Screen>
+      <FormCardScreen icon="check-decagram" title="Şifren değiştirildi" subtitle="Bir sonraki girişinde yeni şifreni kullan.">
+        <PrimaryButton label="Tamam" arrow={false} onPress={() => router.back()} />
+      </FormCardScreen>
     );
   }
 
   return (
-    <Screen edges={['bottom']}>
-      <View style={[styles.body, { backgroundColor: theme.authCard }]}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-          Mevcut Şifre
-        </ThemedText>
-        <View style={styles.passwordWrap}>
-          <TextInput
-            value={current}
-            onChangeText={setCurrent}
-            placeholder="Şu anki şifren"
-            placeholderTextColor={theme.textSecondary}
-            secureTextEntry={!show}
-            autoComplete="current-password"
-            style={inputStyle}
-          />
-          <Pressable style={styles.eyeBtn} onPress={() => setShow((v) => !v)} hitSlop={8}>
-            <Ionicons name={show ? 'eye-off-outline' : 'eye-outline'} size={24} color={theme.tint} />
-          </Pressable>
-        </View>
+    <FormCardScreen icon="key-outline" title="Şifreni değiştir" subtitle="Güvenliğin için önce mevcut şifreni doğrula.">
+      <PasswordField label="Mevcut şifre" value={current} onChangeText={setCurrent} placeholder="Şu anki şifren" autoComplete="current-password" />
+      <PasswordField label="Yeni şifre" icon="lock-plus-outline" value={next} onChangeText={setNext} placeholder="En az 6 karakter" autoComplete="new-password" />
+      <PasswordField
+        label="Yeni şifre (tekrar)"
+        icon="lock-check-outline"
+        value={nextAgain}
+        onChangeText={setNextAgain}
+        placeholder="Yeni şifreyi tekrar yaz"
+        autoComplete="new-password"
+        onSubmitEditing={handleSubmit}
+      />
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-          Yeni Şifre
-        </ThemedText>
-        <TextInput
-          value={next}
-          onChangeText={setNext}
-          placeholder="En az 6 karakter"
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry={!show}
-          autoComplete="new-password"
-          style={inputStyle}
-        />
+      {!!error && <Notice text={error} />}
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-          Yeni Şifre (Tekrar)
-        </ThemedText>
-        <TextInput
-          value={nextAgain}
-          onChangeText={setNextAgain}
-          placeholder="Yeni şifreyi tekrar yaz"
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry={!show}
-          autoComplete="new-password"
-          onSubmitEditing={handleSubmit}
-          style={inputStyle}
-        />
+      <PrimaryButton label="Şifreyi Değiştir" onPress={handleSubmit} loading={submitting} />
 
-        {!!error && (
-          <ThemedText themeColor="danger" type="small">
-            {error}
-          </ThemedText>
-        )}
-
-        <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleSubmit} disabled={submitting}>
-          {submitting ? <ActivityIndicator color="#fff" /> : (
-            <ThemedText style={{ color: '#fff' }} type="smallBold">
-              Şifreyi Değiştir
-            </ThemedText>
-          )}
-        </Pressable>
-
-        <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgotLink} hitSlop={6}>
-          <ThemedText themeColor="tint" type="small" style={styles.underline}>
-            Mevcut şifremi hatırlamıyorum
-          </ThemedText>
-        </Pressable>
-      </View>
-    </Screen>
+      <Pressable onPress={() => router.push('/sifremi-unuttum')} style={styles.forgot} hitSlop={6}>
+        <ThemedText style={[styles.forgotText, { color: theme.tint }]}>Mevcut şifremi hatırlamıyorum</ThemedText>
+      </Pressable>
+    </FormCardScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { margin: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  label: { marginTop: Spacing.one, marginBottom: -2 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
-  passwordWrap: { justifyContent: 'center' },
-  eyeBtn: { position: 'absolute', right: Spacing.three },
-  button: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.two },
-  forgotLink: { alignItems: 'center', paddingVertical: Spacing.two },
-  underline: { textDecorationLine: 'underline', fontWeight: '600' },
+  forgot: { alignItems: 'center', paddingVertical: 4 },
+  forgotText: { fontSize: 13.5, lineHeight: 18, fontWeight: '800' },
 });

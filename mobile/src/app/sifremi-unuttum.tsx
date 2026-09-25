@@ -1,16 +1,12 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Screen } from '@/components/screen';
-import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
+import { FormCardScreen, PrimaryButton, Steps } from '@/components/form-card';
+import { FormField, Notice, PasswordField } from '@/components/form-field';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
-import { Spacing } from '@/constants/theme';
 
 export default function ForgotPasswordScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { sendOtp, resetPassword } = useAuth();
 
@@ -21,18 +17,22 @@ export default function ForgotPasswordScreen() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
   async function handleSendOtp() {
     setError(null);
+    setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
     setSendingOtp(true);
     try {
       const res = await sendOtp(phone.trim(), 'password_reset');
       setOtpSent(true);
-      if (!res.sms_sent) {
-        setError('Not: SMS gönderilemedi (geliştirme ortamı) — kodu backend/run_dev_server.py terminalindeki logdan oku.');
-      }
+      setInfo(
+        res.sms_sent
+          ? 'Doğrulama kodu SMS ile gönderildi.'
+          : 'Not: SMS gönderilemedi (geliştirme ortamı) — kodu backend/run_dev_server.py terminalindeki logdan oku.',
+      );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
@@ -57,93 +57,49 @@ export default function ForgotPasswordScreen() {
 
   if (done) {
     return (
-      <Screen edges={['bottom']}>
-        <View style={[styles.body, { backgroundColor: theme.authCard }]}>
-          <ThemedText type="subtitle">Şifren güncellendi</ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.hint}>
-            Yeni şifrenle giriş yapabilirsin.
-          </ThemedText>
-          <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={() => router.replace('/giris')}>
-            <ThemedText style={{ color: '#fff' }} type="smallBold">
-              Giriş Yap
-            </ThemedText>
-          </Pressable>
-        </View>
-      </Screen>
+      <FormCardScreen icon="check-decagram" title="Şifren güncellendi" subtitle="Yeni şifrenle giriş yapabilirsin.">
+        <PrimaryButton label="Giriş Yap" onPress={() => router.replace('/giris')} />
+      </FormCardScreen>
     );
   }
 
   return (
-    <Screen edges={['bottom']}>
-      <View style={[styles.body, { backgroundColor: theme.authCard }]}>
-        <ThemedText type="subtitle">Şifremi Unuttum</ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.hint}>
-          Telefon numarana SMS ile doğrulama kodu göndereceğiz.
-        </ThemedText>
+    <FormCardScreen icon="lock-reset" title="Şifreni yenile" subtitle="Telefon numarana SMS ile doğrulama kodu göndereceğiz.">
+      <Steps labels={['Telefon', 'Yeni şifre']} current={otpSent ? 1 : 0} />
 
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          editable={!otpSent}
-          placeholder="05XX XXX XX XX"
-          placeholderTextColor={theme.textSecondary}
-          keyboardType="phone-pad"
-          autoComplete="off"
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
-        />
+      <FormField
+        label="Telefon numarası"
+        icon="phone-outline"
+        value={phone}
+        onChangeText={setPhone}
+        editable={!otpSent}
+        placeholder="05XX XXX XX XX"
+        keyboardType="phone-pad"
+        autoComplete="off"
+        maxLength={14}
+      />
 
-        {!otpSent ? (
-          <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleSendOtp} disabled={sendingOtp}>
-            {sendingOtp ? <ActivityIndicator color="#fff" /> : (
-              <ThemedText style={{ color: '#fff' }} type="smallBold">
-                Kod Gönder
-              </ThemedText>
-            )}
-          </Pressable>
-        ) : (
-          <>
-            <TextInput
-              value={otpCode}
-              onChangeText={setOtpCode}
-              placeholder="SMS Kodu (6 hane)"
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="number-pad"
-              maxLength={6}
-              autoComplete="off"
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
-            />
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Yeni şifre (en az 6 karakter)"
-              placeholderTextColor={theme.textSecondary}
-              secureTextEntry
-              autoComplete="off"
-              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
-            />
-            <Pressable style={[styles.button, { backgroundColor: theme.tint }]} onPress={handleReset} disabled={submitting}>
-              {submitting ? <ActivityIndicator color="#fff" /> : (
-                <ThemedText style={{ color: '#fff' }} type="smallBold">
-                  Şifreyi Güncelle
-                </ThemedText>
-              )}
-            </Pressable>
-          </>
-        )}
+      {!otpSent ? (
+        <PrimaryButton label="Kod Gönder" onPress={handleSendOtp} loading={sendingOtp} />
+      ) : (
+        <>
+          <FormField
+            label="Doğrulama kodu"
+            icon="message-lock-outline"
+            value={otpCode}
+            onChangeText={setOtpCode}
+            placeholder="SMS ile gelen 6 haneli kod"
+            keyboardType="number-pad"
+            maxLength={6}
+            autoComplete="off"
+          />
+          <PasswordField label="Yeni şifre" value={newPassword} onChangeText={setNewPassword} placeholder="En az 6 karakter" autoComplete="off" />
+          <PrimaryButton label="Şifreyi Güncelle" onPress={handleReset} loading={submitting} />
+        </>
+      )}
 
-        {error && (
-          <ThemedText themeColor="danger" type="small">
-            {error}
-          </ThemedText>
-        )}
-      </View>
-    </Screen>
+      {info && !error && <Notice text={info} tone="info" />}
+      {error && <Notice text={error} />}
+    </FormCardScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  body: { margin: Spacing.three, borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  hint: { marginBottom: Spacing.two },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, fontSize: 16 },
-  button: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
-});
