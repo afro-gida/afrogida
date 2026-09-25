@@ -69,3 +69,26 @@ def test_callback_missing_fields(client):
     h = _valid_hash("x", "success", "100")
     r = _callback(client, "", "success", "100", h)
     assert r.text == "PAYTR_MISSING_FIELDS"
+
+
+# --- Ödeme sonrası dönüş adresi (services/payments.py::payment_return_urls) ---
+
+def test_return_urls_go_to_tracking_screen_for_allowed_app():
+    from services.payments import payment_return_urls
+    ok, fail = payment_return_urls("https://afrogida.com.tr", "tx_abc123")
+    assert ok == "https://afrogida.com.tr/siparis/tx_abc123?odeme=tamam"
+    assert fail == "https://afrogida.com.tr/siparis/tx_abc123?odeme=hata"
+    # geliştirme adresi (CORS listesinde) + fazladan yol yok sayılır
+    ok, _ = payment_return_urls("http://localhost:8081/pazar/x/sepet", "tx_1")
+    assert ok == "http://localhost:8081/siparis/tx_1?odeme=tamam"
+
+
+def test_return_urls_reject_foreign_or_bad_app_url(monkeypatch):
+    """İzinli olmayan adres -> açık yönlendirme yok, eski (env) adresler."""
+    from services.payments import payment_return_urls
+    monkeypatch.setenv("PAYTR_OK_URL", "https://afrogida.com.tr/my-orders")
+    monkeypatch.setenv("PAYTR_FAIL_URL", "https://afrogida.com.tr/cart")
+    legacy = ("https://afrogida.com.tr/my-orders", "https://afrogida.com.tr/cart")
+    for bad in (None, "", "https://evil.example.com", "https://afrogida.com.tr.evil.com",
+                "javascript:alert(1)", "afrogida://siparis", "http://afrogida.com.tr"):
+        assert payment_return_urls(bad, "tx_1") == legacy, bad

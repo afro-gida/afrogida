@@ -31,6 +31,14 @@ WELCOME_MIN_AMOUNT = 500.0       # TL
 # catalog_config bellek içi önbellek TTL'i (saniye)
 CATALOG_CACHE_TTL = 60
 
+# ---------------- İzinli uygulama adresleri ----------------
+# CORS (server.py) ve ödeme sonrası dönüş adresi doğrulaması
+# (services/payments.py) AYNI listeyi kullanır: sadece bu adreslerden açılan
+# uygulamaya geri yönlendirilir (açık yönlendirme / phishing riski yok).
+ALLOWED_ORIGINS = [o.strip() for o in (os.environ.get("AFRO_ALLOWED_ORIGINS") or
+                   "https://afrogida.com.tr,https://www.afrogida.com.tr,http://localhost:3000,http://localhost:8081,http://localhost:19006,capacitor://localhost,http://localhost").split(",") if o.strip()]
+ALLOWED_ORIGIN_REGEX = r"^https://([a-z0-9-]+\.)?afrogida\.com\.tr$"
+
 # ---------------- Güvenlik anahtarları / telefonları ----------------
 def _afro_key_material(env_name: str, purpose: str) -> str:
     """Anahtar .env'den okunur. Yoksa (acil durum) PayTR anahtarlarından

@@ -39,7 +39,9 @@ async def compat_payments_init(data: dict, request: Request, current_user: dict 
         # Nakit/tezgah: sipariş kesinleşti -> kuponu şimdi tüket.
         await _consume_coupon_for_order(order, request)
         return {"success": True, "tx_id": order["tx_id"], "order": _compat_json_clean(_customer_order_view(order))}
-    paytr = await _init_paytr_token(order, request, current_user.get("email"))
+    # app_url: yeni uygulamanın adresi -> ödeme sonrası o siparişin takip
+    # ekranına dönülür (services/payments.py::payment_return_urls).
+    paytr = await _init_paytr_token(order, request, current_user.get("email"), app_url=data.get("app_url"))
     await db.transactions.update_one({"tx_id": order["tx_id"]}, {"$set": {"merchant_oid": paytr.get("merchant_oid"), "paytr_init": paytr, "updated_at": now_utc()}})
     if not paytr.get("success"):
         raise HTTPException(status_code=503 if not paytr.get("configured") else 400, detail=paytr.get("message") or "PayTR ödeme başlatılamadı")

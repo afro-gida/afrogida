@@ -32,6 +32,36 @@ def _paytr_keys_status() -> dict:
     }
 
 
+def payment_return_urls(app_url: str | None, tx_id: str) -> tuple[str, str]:
+    """Ödeme bitince PayTR'ın müşteriyi göndereceği (başarılı, başarısız) adresler.
+
+    Yeni uygulama ödeme başlatırken kendi adresini (`app_url`, ör.
+    https://afrogida.com.tr veya geliştirmede http://localhost:8081) gönderir;
+    adres İZİNLİ listedeyse (CORS ile aynı: core.config) müşteri o siparişin
+    takip ekranına döner: {app}/siparis/{tx_id}?odeme=tamam|hata.
+    `app_url` yoksa ya da izinli değilse eski davranış: PAYTR_OK_URL /
+    PAYTR_FAIL_URL (canlıdaki eski site bunu kullanıyor, bozulmasın).
+    """
+    import re
+    from urllib.parse import quote, urlsplit
+
+    from core.config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
+
+    legacy = (os.getenv("PAYTR_OK_URL", "https://afrogida.com.tr/my-orders"),
+              os.getenv("PAYTR_FAIL_URL", "https://afrogida.com.tr/cart"))
+    try:
+        parts = urlsplit(str(app_url or "").strip())
+    except ValueError:
+        return legacy
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return legacy
+    origin = f"{parts.scheme}://{parts.netloc}".lower()
+    if origin not in [o.lower() for o in ALLOWED_ORIGINS] and not re.match(ALLOWED_ORIGIN_REGEX, origin):
+        return legacy
+    base = f"{origin}/siparis/{quote(str(tx_id), safe='')}"
+    return f"{base}?odeme=tamam", f"{base}?odeme=hata"
+
+
 def _clean_paytr_oid(value: str) -> str:
     cleaned = "".join(ch for ch in str(value or "") if ch.isalnum())
     return (cleaned[:64] if cleaned else uuid.uuid4().hex[:16])
@@ -50,7 +80,7 @@ def paytr_callback_expected_hash(merchant_oid: str, status: str, total_amount: s
     ).decode()
 
 
-async def _init_paytr_token(order: dict, request, user_email: str | None = None) -> dict:
+async def _init_paytr_token(order: dict, request, user_email: str | None = None, app_url: str | None = None) -> dict:
     merchant_id = _env("PAYTR_MERCHANT_ID", "merchant_id")
     merchant_key = _env("PAYTR_MERCHANT_KEY", "merchant_key")
     merchant_salt = _env("PAYTR_MERCHANT_SALT", "merchant_salt")
@@ -79,6 +109,7 @@ async def _init_paytr_token(order: dict, request, user_email: str | None = None)
     paytr_token = base64.b64encode(
         hmac.new(merchant_key.encode(), hash_str.encode(), hashlib.sha256).digest()
     ).decode()
+    ok_url, fail_url = payment_return_urls(app_url, order.get("tx_id") or merchant_oid)
     payload = {
         "merchant_id": merchant_id,
         "user_ip": user_ip,
@@ -93,8 +124,8 @@ async def _init_paytr_token(order: dict, request, user_email: str | None = None)
         "user_name": order.get("user_name") or "Afro Gıda Müşteri",
         "user_address": (dec_str(order.get("address")) or "Bursa")[:300],
         "user_phone": str(order.get("user_phone") or ""),
-        "merchant_ok_url": os.getenv("PAYTR_OK_URL", "https://afrogida.com.tr/my-orders"),
-        "merchant_fail_url": os.getenv("PAYTR_FAIL_URL", "https://afrogida.com.tr/cart"),
+        "merchant_ok_url": ok_url,
+        "merchant_fail_url": fail_url,
         "timeout_limit": os.getenv("PAYTR_TIMEOUT_LIMIT", "30"),
         "currency": currency,
         "test_mode": test_mode,

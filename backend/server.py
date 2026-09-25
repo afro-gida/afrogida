@@ -1,12 +1,11 @@
 import asyncio
 import logging
-import os
 
 from fastapi import FastAPI, APIRouter
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-from core.config import ROOT_DIR, PRODUCT_SEED_VERSION
+from core.config import ROOT_DIR, PRODUCT_SEED_VERSION, ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from core.crypto import _AFRO_FERNET, hash_token
 from core.db import client, db  # .env core.config import'unda yüklendi
 from core.security import _admin_watchdog_loop
@@ -85,13 +84,11 @@ app.include_router(_pazar_sorumlusu_router)
 
 
 
-_AFRO_ORIGINS = [o.strip() for o in (os.environ.get("AFRO_ALLOWED_ORIGINS") or
-                 "https://afrogida.com.tr,https://www.afrogida.com.tr,http://localhost:3000,http://localhost:8081,http://localhost:19006,capacitor://localhost,http://localhost").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=_AFRO_ORIGINS,
-    allow_origin_regex=r"^https://([a-z0-9-]+\.)?afrogida\.com\.tr$",
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
 )
