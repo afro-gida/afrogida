@@ -66,7 +66,7 @@ export default function AccountScreen() {
     { label: 'Siparişlerim', icon: 'receipt-text-outline', onPress: () => router.push(`/pazar/${id}/siparislerim`) },
     { label: 'Adreslerim', icon: 'map-marker-outline', onPress: () => router.push('/adreslerim') },
     { label: 'Kuponlarım', icon: 'ticket-percent-outline', onPress: () => router.push('/kuponlarim') },
-    { label: 'Kampanyalar', icon: 'bullhorn-outline', onPress: () => router.push(`/pazar/${id}/kampanyalar`) },
+    { label: 'Şikayet ve Öneri', icon: 'message-text-outline', onPress: () => router.push('/sikayet') },
   ];
 
   return (
@@ -121,11 +121,6 @@ export default function AccountScreen() {
                 <ThemedText style={styles.tileText}>{t.label}</ThemedText>
               </Pressable>
             ))}
-          </View>
-
-          <ThemedText themeColor="textSecondary" style={styles.sectionLabel}>DESTEK</ThemedText>
-          <View style={[styles.card, styles.shadow, styles.listCard, { backgroundColor: cardBg }]}>
-            <Row icon="message-text-outline" label="Şikayet ve Öneri" onPress={() => router.push('/sikayet')} last />
           </View>
 
           <ThemedText themeColor="textSecondary" style={styles.sectionLabel}>GÖRÜNÜM</ThemedText>
