@@ -24,6 +24,8 @@ const COLLAPSE_MIN_SCROLL = 280;
 const CHIP_H = 30;
 const SUB_CHIP_H = 26;
 const CAT_GAP = 6;
+// Bilgi kutuları (Pazar saati / Gel-Al saati) ile kategori paneli arası.
+const INFO_GAP = 6;
 const COLLAPSE_BOTTOM_ZONE = 180;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -337,7 +339,7 @@ export default function MarketProductsScreen() {
 
       <Animated.View
         style={{
-          height: pillsAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 38] }),
+          height: pillsAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 38 + INFO_GAP] }),
           opacity: pillsAnim,
           overflow: 'hidden',
         }}
@@ -782,8 +784,8 @@ const styles = StyleSheet.create({
   // Ağırlıklar ThemedText'te bir kademe yükseltiliyor (700 -> 800).
   headerTitle: { fontSize: 21, lineHeight: 26, fontWeight: '700', letterSpacing: -0.3 },
   logoBadge: { width: 60, height: 60 },
-  // Etiket satırı (30) + üstte 8 = 38; sarmalayıcı da 38 -> altta kategori
-  // paneline kadar boşluk kalmıyor.
+  // Etiket satırı (30) + üstte 8 = 38; sarmalayıcı 38 + INFO_GAP -> bilgi
+  // kutuları ile kategori paneli arasında küçük bir ayrım kalır.
   infoList: { flexGrow: 0, flexShrink: 0, height: 30, marginTop: Spacing.two },
   infoRow: { paddingHorizontal: Spacing.three, gap: Spacing.two },
   infoPill: {
