@@ -39,6 +39,23 @@ export async function loadPendingPayment(txId: string): Promise<PendingPayment |
   }
 }
 
+/**
+ * Sipariş no bilinmeden son yedek (1 saatten eskiyse yok sayılır). Sunucu
+ * dönüş adresini eski biçimde (/my-orders, /cart) verdiğinde hangi ödemenin
+ * beklendiğini bulmak için (bkz. app/my-orders.tsx, app/cart.tsx).
+ */
+export async function loadLatestPendingPayment(): Promise<PendingPayment | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as PendingPayment;
+    if (!p?.txId || Date.now() - (p.savedAt ?? 0) > 60 * 60 * 1000) return null;
+    return p;
+  } catch {
+    return null;
+  }
+}
+
 export async function clearPendingPayment() {
   try {
     await AsyncStorage.removeItem(KEY);
