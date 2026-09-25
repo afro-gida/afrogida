@@ -9,7 +9,20 @@ type RawOrder = {
   subtotal?: number;
   total?: number;
   created_at: string;
-  items?: { name?: string; product_name_snapshot?: string; qty?: number; quantity?: number; unit?: string; unit_snapshot?: string }[];
+  items?: {
+    name?: string; product_name_snapshot?: string; qty?: number; quantity?: number; unit?: string; unit_snapshot?: string;
+    line_total?: number; total_price?: number; selected_options?: { title?: string; label?: string }[];
+  }[];
+  delivery_fee?: number;
+  discount?: number;
+  payment_method?: string;
+  market_name?: string;
+  pickup_time?: string | null;
+  delivery_slot_start?: string | null;
+  delivery_slot_end?: string | null;
+  address?: string | null;
+  delivered_at?: string | null;
+  cancel_reason?: string | null;
 };
 
 function normalizeOrder(raw: RawOrder): Order {
@@ -24,8 +37,31 @@ function normalizeOrder(raw: RawOrder): Order {
       name: it.name ?? it.product_name_snapshot ?? 'Ürün',
       qty: it.qty ?? it.quantity ?? 1,
       unit: it.unit ?? it.unit_snapshot ?? '',
+      line_total: it.line_total ?? it.total_price,
+      selected_options: (it.selected_options ?? [])
+        .filter((o) => o.title || o.label)
+        .map((o) => ({ title: o.title ?? '', label: o.label ?? '' })),
     })),
+    subtotal: raw.subtotal,
+    delivery_fee: raw.delivery_fee,
+    discount: raw.discount,
+    payment_method: raw.payment_method,
+    market_name: raw.market_name,
+    pickup_time: raw.pickup_time,
+    delivery_slot_start: raw.delivery_slot_start,
+    delivery_slot_end: raw.delivery_slot_end,
+    address: raw.address,
+    delivered_at: raw.delivered_at,
+    cancel_reason: raw.cancel_reason,
   };
+}
+
+/** Tek sipariş (takip ekranı). Ayrı bir uç yok; müşterinin sipariş listesinden bulunur. */
+export async function fetchOrder(txId: string): Promise<{ order: Order | null; error: string | null }> {
+  const res = await fetchOrders();
+  if (res.error) return { order: null, error: res.error };
+  const order = res.orders.find((o) => o.tx_id === txId) ?? null;
+  return { order, error: order ? null : 'Sipariş bulunamadı.' };
 }
 
 /** Giriş yapmış kullanıcının gerçek siparişlerini çeker. Giriş yoksa/hata olursa boş liste döner. */

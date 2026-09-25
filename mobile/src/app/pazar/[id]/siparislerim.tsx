@@ -1,8 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
+import { orderStatusIcon } from '@/components/order-status-art';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -84,24 +85,37 @@ export default function OrdersScreen() {
           keyExtractor={(o) => o.tx_id}
           contentContainerStyle={styles.list}
           renderItem={({ item }: { item: Order }) => (
-            <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+            // Karta basınca sipariş takip ekranı (app/siparis/[tx].tsx) açılır.
+            <Pressable
+              onPress={() => router.push({ pathname: '/siparis/[tx]', params: { tx: item.tx_id } })}
+              accessibilityLabel={`${item.tx_id} siparişini takip et`}
+              style={({ pressed }) => [
+                styles.card,
+                { borderColor: theme.border, backgroundColor: theme.backgroundElement, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
               <View style={styles.cardHeader}>
-                <ThemedText type="smallBold">{item.tx_id}</ThemedText>
-                <View style={[styles.statusPill, { backgroundColor: theme.tintSoft }]}>
-                  <ThemedText type="small" themeColor="tint">
-                    {STATUS_LABEL[item.order_status] ?? item.order_status}
+                <View style={[styles.statusIcon, { backgroundColor: item.order_status === 'iptal_edildi' ? theme.backgroundSelected : theme.tintSoft }]}>
+                  <MaterialCommunityIcons
+                    name={orderStatusIcon(item.order_status, item.delivery_type)}
+                    size={20}
+                    color={item.order_status === 'iptal_edildi' ? theme.danger : theme.tint}
+                  />
+                </View>
+                <View style={styles.flex}>
+                  <ThemedText type="smallBold">{STATUS_LABEL[item.order_status] ?? item.order_status}</ThemedText>
+                  <ThemedText themeColor="textSecondary" type="small">
+                    {item.delivery_type === 'gel_al' ? 'Gel-Al' : 'Eve Servis'} ·{' '}
+                    {new Date(item.created_at).toLocaleDateString('tr-TR')}
                   </ThemedText>
                 </View>
+                <ThemedText type="smallBold">{formatMoney(item.amount)} ₺</ThemedText>
+                <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
               </View>
-              <ThemedText themeColor="textSecondary" type="small">
-                {item.delivery_type === 'gel_al' ? 'Gel-Al' : 'Eve Servis'} ·{' '}
-                {new Date(item.created_at).toLocaleDateString('tr-TR')}
-              </ThemedText>
-              <ThemedText type="small">
+              <ThemedText type="small" numberOfLines={2}>
                 {item.items.map((i) => `${i.name} (${formatQty(i.qty, i.unit)} ${formatUnit(i.unit)})`).join(', ')}
               </ThemedText>
-              <ThemedText type="smallBold">{formatMoney(item.amount)} ₺</ThemedText>
-            </View>
+            </Pressable>
           )}
           ListEmptyComponent={
             <View style={[styles.emptyBox, { backgroundColor: theme.backgroundElement }]}>
@@ -122,8 +136,8 @@ const styles = StyleSheet.create({
   logoBadge: { width: 60, height: 60 },
   list: { paddingHorizontal: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.six + Spacing.four },
   card: { borderWidth: 1, borderRadius: 14, padding: Spacing.three, gap: 4 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusPill: { borderRadius: 999, paddingHorizontal: Spacing.two, paddingVertical: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  statusIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   loadingSpinner: { marginTop: Spacing.five },
   emptyBox: { borderRadius: 16, padding: Spacing.four, marginHorizontal: Spacing.three, alignItems: 'center', gap: Spacing.two },
   emptyText: { textAlign: 'center' },

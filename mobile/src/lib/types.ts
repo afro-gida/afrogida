@@ -87,11 +87,33 @@ export type OrderStatus =
   | 'teslim_edildi'
   | 'iptal_edildi';
 
+export type OrderItem = {
+  name: string;
+  qty: number;
+  unit: string;
+  /** Satır tutarı (seçenek farkları dahil) — sunucunun hesapladığı. */
+  line_total?: number;
+  selected_options?: { title: string; label: string }[];
+};
+
 export type Order = {
   tx_id: string;
   order_status: OrderStatus;
   delivery_type: 'gel_al' | 'eve_servis';
   amount: number;
   created_at: string;
-  items: { name: string; qty: number; unit: string }[];
+  items: OrderItem[];
+  // Takip ekranı (app/siparis/[tx].tsx) için ek alanlar — eski siparişlerde
+  // bazıları boş olabilir.
+  subtotal?: number;
+  delivery_fee?: number;
+  discount?: number;
+  payment_method?: string;
+  market_name?: string;
+  pickup_time?: string | null;
+  delivery_slot_start?: string | null;
+  delivery_slot_end?: string | null;
+  address?: string | null;
+  delivered_at?: string | null;
+  cancel_reason?: string | null;
 };

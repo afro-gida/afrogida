@@ -311,7 +311,8 @@ export default function CartScreen() {
       return;
     }
     clear();
-    router.push(`/pazar/${id}/siparislerim`);
+    // Sipariş verilince doğrudan takip ekranına geç.
+    router.push({ pathname: '/siparis/[tx]', params: { tx: result.tx_id } });
   }
 
   return (
