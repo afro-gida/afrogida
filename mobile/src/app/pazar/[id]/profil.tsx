@@ -150,21 +150,28 @@ export default function AccountScreen() {
                 <Row icon="trash-can-outline" label="Hesabımı Sil" onPress={() => setDeleteConfirmOpen(true)} danger last />
               </View>
 
-              {/* Çıkış Yap: en altta, ayrı ve belirgin düğme. */}
-              <Pressable
-                onPress={() => logout()}
-                accessibilityLabel="Çıkış Yap"
-                style={({ pressed }) => [
-                  styles.logoutBtn,
-                  styles.shadow,
-                  { backgroundColor: pressed ? withAlpha(theme.danger, 0.16) : cardBg, borderColor: withAlpha(theme.danger, 0.45) },
-                ]}
-              >
-                <View style={[styles.logoutIcon, { backgroundColor: theme.danger }]}>
-                  <MaterialCommunityIcons name="logout" size={18} color="#fff" />
+              {/* Çıkış: en altta oturum kartı — kimin hesabından çıkıldığı görünür,
+                  sağda dolu kırmızı "Çıkış" düğmesi. */}
+              <View style={[styles.card, styles.shadow, styles.sessionCard, { backgroundColor: cardBg }]}>
+                <View style={[styles.sessionAvatar, { backgroundColor: withAlpha(theme.tint, 0.16) }]}>
+                  <ThemedText style={[styles.sessionAvatarText, { color: theme.tint }]}>
+                    {(user.name || '?').trim().charAt(0).toLocaleUpperCase('tr-TR')}
+                  </ThemedText>
+                  <View style={[styles.sessionDot, { borderColor: cardBg }]} />
                 </View>
-                <ThemedText style={[styles.logoutText, { color: theme.danger }]}>Çıkış Yap</ThemedText>
-              </Pressable>
+                <View style={styles.flex}>
+                  <ThemedText themeColor="textSecondary" style={styles.sessionLabel}>Oturum açık</ThemedText>
+                  <ThemedText style={styles.sessionName} numberOfLines={1}>{user.name}</ThemedText>
+                </View>
+                <Pressable
+                  onPress={() => logout()}
+                  accessibilityLabel="Çıkış Yap"
+                  style={({ pressed }) => [styles.sessionBtn, { backgroundColor: theme.danger, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  <MaterialCommunityIcons name="logout" size={16} color="#fff" />
+                  <ThemedText style={styles.sessionBtnText}>Çıkış</ThemedText>
+                </Pressable>
+              </View>
             </>
           )}
 
@@ -269,12 +276,14 @@ const styles = StyleSheet.create({
   segmentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 42, borderRadius: 12, paddingHorizontal: 4 },
   segmentActive: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 2 },
   segmentText: { fontSize: 13, lineHeight: 16, fontWeight: '800', flexShrink: 1 },
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two + 2,
-    marginTop: Spacing.four, height: 56, borderRadius: 999, borderWidth: 1.5,
-  },
-  logoutIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  logoutText: { fontSize: 16, lineHeight: 20, fontWeight: '900' },
+  sessionCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 4, marginTop: Spacing.four, paddingVertical: Spacing.two + 4 },
+  sessionAvatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  sessionAvatarText: { fontSize: 18, lineHeight: 22, fontWeight: '900' },
+  sessionDot: { position: 'absolute', right: 0, bottom: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2, backgroundColor: '#22c55e' },
+  sessionLabel: { fontSize: 11.5, lineHeight: 14, fontWeight: '800', letterSpacing: 0.4 },
+  sessionName: { fontSize: 15.5, lineHeight: 20, fontWeight: '900' },
+  sessionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, height: 40, paddingHorizontal: Spacing.three },
+  sessionBtnText: { color: '#fff', fontSize: 14, lineHeight: 18, fontWeight: '900' },
   version: { textAlign: 'center', marginTop: Spacing.four, fontSize: 12, lineHeight: 15 },
   // Hesap silme onayı
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
