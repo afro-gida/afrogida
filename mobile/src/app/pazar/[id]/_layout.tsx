@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Animated, Platform, Pressable } from 'react-native';
 
 import { useAuth } from '@/lib/auth-context';
+import { showChrome, tabBarHidden } from '@/lib/chrome-autohide';
 import { useCart } from '@/lib/cart-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -48,10 +49,14 @@ function CustomTabBar({ state, navigation, insets }: any) {
   const glassStyle: any =
     Platform.OS === 'web' ? { backdropFilter: 'blur(14px) saturate(1.3)' } : null;
 
+  // Aşağı kaydırınca menü ekranın altından dışarı kayar (bkz. lib/chrome-autohide).
+  const translateY = tabBarHidden.interpolate({ inputRange: [0, 1], outputRange: [0, 60 + Spacing.three + insets.bottom + 24] });
+
   return (
-    <View
+    <Animated.View
       style={[
         {
+          transform: [{ translateY }],
           position: 'absolute',
           left: Spacing.three,
           right: Spacing.three,
@@ -87,6 +92,7 @@ function CustomTabBar({ state, navigation, insets }: any) {
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
           if (!focused && !event.defaultPrevented) {
+            showChrome();
             navigation.navigate(route.name);
           }
         };
@@ -102,7 +108,7 @@ function CustomTabBar({ state, navigation, insets }: any) {
           </Pressable>
         );
       })}
-    </View>
+    </Animated.View>
   );
 }
 

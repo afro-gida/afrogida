@@ -22,6 +22,17 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        {/* "Ana Ekrana Ekle" ile açılınca Safari çubukları olmadan, tam ekran
+            uygulama gibi açılır. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        {/* "black": içerik saat/pil satırının ALTINDAN başlar ("black-translucent"
+            ekranların çoğu üst güvenli alanı kullanmadığı için başlıkları
+            durum çubuğunun altına sokardı). */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="Afro Gıda" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
         <title>Afro Gıda</title>
         <style
           id="expo-reset"

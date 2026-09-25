@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, FlatList, Image, Platform, Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { reportScroll, showChrome } from '@/lib/chrome-autohide';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -135,7 +136,12 @@ export default function MarketProductsScreen() {
     else if (delta > 6) setPillsVisible(false);
     else if (delta < -6) setPillsVisible(true);
     lastScrollY.current = y;
+    reportScroll(y);
   }
+
+  useEffect(() => {
+    showChrome();
+  }, []);
 
   useEffect(() => {
     fetchSettings().then(setGlobalSettings);
@@ -248,6 +254,15 @@ export default function MarketProductsScreen() {
 
   return (
     <Screen edges={['bottom']}>
+      {/* Aşağı kaydırınca pazar başlığı da bilgi şeridiyle birlikte katlanır;
+          ekranda sadece kategori şeridi + ürünler kalır (tam ekran hissi). */}
+      <Animated.View
+        style={{
+          maxHeight: pillsAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 90] }),
+          opacity: pillsAnim,
+          overflow: 'hidden',
+        }}
+      >
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.replace('/')} hitSlop={12} style={styles.backBtn} accessibilityLabel="Pazarlara dön">
@@ -270,6 +285,7 @@ export default function MarketProductsScreen() {
           />
         </View>
       </View>
+      </Animated.View>
 
       <Animated.View
         style={{
