@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { FlatList, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Screen } from '@/components/screen';
@@ -129,6 +129,8 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
   const mapUrl = market.google_maps_url || market.location_url;
   const showRealImage = market.image_url && !imageFailed;
   const open = market.orders_enabled;
+  // Dar ekranda etiketler + bağlantı tek satıra sığsın diye bağlantı kısalır.
+  const narrow = useWindowDimensions().width < 360;
   // Görselin üstündeki haplar: açık temada krem, koyu temada siyah cam.
   const pillBg = isDark ? 'rgba(10, 14, 12, 0.72)' : withAlpha(theme.background, 0.94);
 
@@ -181,8 +183,10 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
           {market.active_gel_al && <Feature icon="bag-handle-outline" label="Gel-Al" bg={c.chip} color={c.text} tint={theme.tint} />}
           {hasDelivery && (
             <Pressable onPress={() => setNeighborhoodsOpen(true)} hitSlop={8} style={styles.linkBtn}>
-              <ThemedText style={[styles.linkText, { color: theme.tint }]}>Servis mahalleleri</ThemedText>
-              <Ionicons name="chevron-forward" size={14} color={theme.tint} />
+              <ThemedText numberOfLines={1} style={[styles.linkText, { color: theme.tint }]}>
+                {narrow ? 'Mahalleler' : 'Servis mahalleleri'}
+              </ThemedText>
+              <Ionicons name="chevron-forward" size={13} color={theme.tint} />
             </Pressable>
           )}
         </View>
@@ -278,7 +282,7 @@ function MarketCard({ market, supportPhone, isMember }: { market: Market; suppor
 function Feature({ icon, label, bg, color, tint }: { icon: keyof typeof Ionicons.glyphMap; label: string; bg: string; color: string; tint: string }) {
   return (
     <View style={[styles.feature, { backgroundColor: bg }]}>
-      <Ionicons name={icon} size={14} color={tint} />
+      <Ionicons name={icon} size={13} color={tint} />
       <ThemedText style={[styles.featureText, { color }]}>{label}</ThemedText>
     </View>
   );
@@ -338,11 +342,13 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   locationText: { color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 17, fontWeight: '600', flexShrink: 1 },
   cardBody: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three - 2, paddingBottom: Spacing.three, gap: Spacing.three - 2 },
-  featureRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
-  feature: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: Spacing.two + 2, paddingVertical: 5 },
-  featureText: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
-  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 1, marginLeft: 'auto' },
-  linkText: { fontSize: 13, lineHeight: 16, fontWeight: '700' },
+  // Tek satır: etiketler sıkışık, bağlantı sağa yaslı ve gerekirse kısalır
+  // (alt satıra kaymaz).
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  feature: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  featureText: { fontSize: 11.5, lineHeight: 14, fontWeight: '700' },
+  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 1, marginLeft: 'auto', flexShrink: 1, minWidth: 0 },
+  linkText: { fontSize: 12.5, lineHeight: 16, fontWeight: '700', flexShrink: 1 },
   actionRow: { flexDirection: 'row', gap: Spacing.two + 2 },
   actionBtn: {
     flex: 1, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two,
