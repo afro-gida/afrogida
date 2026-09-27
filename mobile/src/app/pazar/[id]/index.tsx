@@ -47,6 +47,27 @@ import type { IoniconName } from '@/components/icon-badge';
 import type { Product } from '@/lib/types';
 
 const DISCOUNT_SECTION_KEY = '__indirimli';
+const OTHER = 'Diğer';
+
+/**
+ * Ürünün katalogdaki (ana, alt) yeri. Kayıtlarda iki biçim var: eski panel
+ * `category`=alt / `subcategory`=ana yazıyordu, yenileri `category`=ana /
+ * `subcategory`=alt. İkisi de tanınır; alt kategori tanınmazsa ürün o ana
+ * kategorinin "Diğer"ine, hiçbiri tanınmazsa "Diğer Ürünler"e düşer —
+ * hiçbir ürün listeden kaybolmaz.
+ */
+function placeInCatalog(p: Product, mains: string[], subs: Record<string, string[]>) {
+  const c = p.category ?? '';
+  const s = p.subcategory ?? '';
+  const has = (main: string, sub: string) => (subs[main] ?? []).includes(sub);
+  if (mains.includes(s) && has(s, c)) return { main: s, sub: c };
+  if (mains.includes(c) && has(c, s)) return { main: c, sub: s };
+  if (mains.includes(c)) return { main: c, sub: OTHER };
+  if (mains.includes(s)) return { main: s, sub: OTHER };
+  const owner = mains.find((m) => has(m, c)) ?? mains.find((m) => has(m, s));
+  if (owner) return { main: owner, sub: has(owner, c) ? c : s };
+  return { main: OTHER, sub: OTHER };
+}
 
 // Pazar sepeti logosu: koyu temada yeşil çerçeveli, açık temada turuncu
 // çerçeveli sürüm — kullanıcının gönderdiği görseller.
@@ -236,15 +257,20 @@ export default function MarketProductsScreen() {
       result.push({ title: 'Çok al az öde', key: DISCOUNT_SECTION_KEY, parentMain: 'İndirimli', data: [discounted] });
     }
     if (hasCategoryTree) {
-      for (const main of catalog.categories!) {
-        for (const sub of catalog.subcategories?.[main] ?? []) {
-          // "Diğer" gibi alt kategori isimleri birden fazla ana kategoride
-          // tekrar edebiliyor — sadece alt kategoriye (category) değil, ana
-          // kategoriye (subcategory) göre de eşleştirmezsek aynı ürün her
-          // ana kategoride tekrar tekrar görünür (bkz. "Limon" iki kez
-          // çıkması ve React'in "duplicate key" uyarısı).
-          const items = allProducts.filter((p) => p.category === sub && p.subcategory === main);
-          if (items.length) result.push({ title: sub, key: `${main}::${sub}`, parentMain: main, data: [items] });
+      // Her ürün TEK bir (ana, alt) kategoriye yerleşir — "Diğer" gibi alt
+      // kategori isimleri birden fazla ana kategoride tekrar edebildiği için
+      // ana kategoriye göre de eşleşmeli (bkz. "Limon" iki kez çıkması).
+      const groups = new Map<string, Product[]>();
+      for (const p of allProducts) {
+        const { main, sub } = placeInCatalog(p, catalog.categories!, catalog.subcategories ?? {});
+        const k = `${main}::${sub}`;
+        groups.set(k, [...(groups.get(k) ?? []), p]);
+      }
+      for (const main of [...catalog.categories!, OTHER]) {
+        const subs = [...(catalog.subcategories?.[main] ?? []).filter((s) => s !== OTHER), OTHER];
+        for (const sub of subs) {
+          const items = groups.get(`${main}::${sub}`);
+          if (items?.length) result.push({ title: main === OTHER ? 'Diğer Ürünler' : sub, key: `${main}::${sub}`, parentMain: main, data: [items] });
         }
       }
     } else {
@@ -263,7 +289,7 @@ export default function MarketProductsScreen() {
   const hasDiscount = sections.some((s) => s.key === DISCOUNT_SECTION_KEY);
   const subOptions =
     hasCategoryTree && activeMain && activeMain !== 'İndirimli'
-      ? (catalog.subcategories![activeMain] ?? []).filter((sub) =>
+      ? [...(catalog.subcategories![activeMain] ?? []).filter((sub) => sub !== OTHER), OTHER].filter((sub) =>
           sections.some((s) => s.parentMain === activeMain && s.title === sub)
         )
       : [];
