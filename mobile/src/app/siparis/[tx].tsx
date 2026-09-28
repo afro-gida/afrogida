@@ -52,7 +52,7 @@ function headline(o: Order): { title: string; text: string } {
     case 'hazir':
       return eve
         ? { title: 'Hazır', text: 'Poşetlerin paketlendi, kuryemize teslim ediliyor.' }
-        : { title: 'Teslim Almaya Hazır', text: `Siparişin hazır! Pazardan teslim alabilirsin${o.pickup_time ? ` (${o.pickup_time})` : ''}.` };
+        : { title: 'Teslim Almaya Hazır', text: `Siparişin hazır! ${o.market_name ? `${o.market_name} pazarından` : 'Pazardan'} teslim alabilirsin${o.pickup_time ? ` (${o.pickup_time})` : ''}.` };
     case 'yolda':
       return { title: 'Yolda', text: 'Kuryemiz yola çıktı. Kapıda SMS ile gelen teslimat kodunu kuryeye söylemeyi unutma.' };
     case 'teslim_edildi':
@@ -376,7 +376,12 @@ function Summary({ order, cardBg }: { order: Order; cardBg: string }) {
 
       <View style={[styles.divider, { backgroundColor: withAlpha(theme.text, 0.1) }]} />
 
-      {!!order.market_name && <InfoRow icon="storefront-outline" text={order.market_name} />}
+      {!!order.market_name && (
+        <InfoRow
+          icon="storefront-outline"
+          text={`${order.delivery_type === 'eve_servis' ? 'Pazar' : 'Teslim alınacak pazar'}: ${order.market_name}`}
+        />
+      )}
       <InfoRow icon="time-outline" text={`${order.delivery_type === 'eve_servis' ? 'Teslimat' : 'Teslim alma'}: ${slot}`} />
       {!!addressLine && <InfoRow icon="location-outline" text={addressLine} />}
       {!!order.payment_method && <InfoRow icon="card-outline" text={paymentLabel(order)} />}

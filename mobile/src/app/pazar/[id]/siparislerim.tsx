@@ -14,7 +14,6 @@ import { formatMoney } from '@/lib/format';
 import { CARD_BG, SCRIM, surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
-import { formatQty, formatUnit } from '@/lib/units';
 
 const MARKET_LOGO_DARK = require('@/assets/brand/market-logo-dark.png');
 const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
@@ -170,7 +169,6 @@ function OrderCard({ order, cardBg, onPress }: { order: Order; cardBg: string; o
     : awaitingPayment
       ? 'Ödeme Bekleniyor'
       : STATUS_LABEL[order.order_status] ?? order.order_status;
-  const itemsText = order.items.map((i) => `${i.name} ${formatQty(i.qty, i.unit)} ${formatUnit(i.unit).toLowerCase()}`).join(' · ');
 
   return (
     <Pressable
@@ -210,7 +208,13 @@ function OrderCard({ order, cardBg, onPress }: { order: Order; cardBg: string; o
         </View>
       )}
 
-      <ThemedText themeColor="textSecondary" style={styles.items} numberOfLines={2}>{itemsText}</ThemedText>
+      {/* Ürün listesi yerine siparişin pazarı (ürünler sipariş detayında) */}
+      {!!order.market_name && (
+        <View style={styles.marketRow}>
+          <Ionicons name="storefront-outline" size={14} color={theme.textSecondary} />
+          <ThemedText themeColor="textSecondary" style={styles.items} numberOfLines={1}>{order.market_name}</ThemedText>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -263,7 +267,8 @@ const styles = StyleSheet.create({
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   progressSeg: { flex: 1, height: 5, borderRadius: 3 },
   progressText: { fontSize: 11.5, lineHeight: 14, fontWeight: '900', marginLeft: 4 },
-  items: { fontSize: 13, lineHeight: 18 },
+  items: { fontSize: 13, lineHeight: 18, flexShrink: 1 },
+  marketRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   emptyCard: { alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.five, marginTop: Spacing.three },
   emptyTitle: { fontSize: 19, lineHeight: 23, fontWeight: '900', marginTop: Spacing.two, textAlign: 'center' },
   emptyText: { fontSize: 14, lineHeight: 19, textAlign: 'center', paddingHorizontal: Spacing.two },
