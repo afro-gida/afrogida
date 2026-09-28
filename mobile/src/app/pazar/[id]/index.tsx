@@ -415,9 +415,11 @@ export default function MarketProductsScreen() {
                 <Ionicons name="pricetag" size={18} color={theme.tint} style={styles.sectionHeaderIcon} />
               )}
               <ThemedText style={[styles.flex, styles.sectionTitle]}>{section.title}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {section.data[0]?.length ?? 0} ürün
-              </ThemedText>
+              <View style={[styles.sectionCountPill, { backgroundColor: withAlpha(theme.tint, 0.14) }]}>
+                <ThemedText style={[styles.sectionCountText, { color: theme.tint }]}>
+                  {section.data[0]?.length ?? 0} ürün
+                </ThemedText>
+              </View>
             </View>
           )}
           renderItem={({ item: row }) =>
@@ -882,6 +884,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   sectionHeaderIcon: { marginRight: 6, alignSelf: 'center' },
+  // Sağdaki ürün sayısı: soluk yazı yerine hafif renkli hap (daha belirgin).
+  sectionCountPill: { alignSelf: 'center', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  sectionCountText: { fontSize: 12.5, lineHeight: 16, fontWeight: '800' },
   sectionTitle: { fontSize: 20, lineHeight: 24, fontWeight: '700', letterSpacing: -0.3 },
   // Liste kenardan kenara; yatay satırlar kendi iç boşluğunu veriyor ki
   // kartlar ekranın kenarına kadar kayabilsin.

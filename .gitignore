@@ -49,3 +49,6 @@ _archive/
 
 # Playwright MCP ekran goruntuleri / loglari
 .playwright-mcp/
+
+# Claude test hesabi olusturma betigi (sifre ozeti icerir)
+infra/test-hesabi-olustur.ps1
