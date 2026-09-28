@@ -516,7 +516,13 @@ async def _start_device_challenge(user: dict, request) -> dict:
     })
     msg = (f"AfroGida yeni cihaz girisi dogrulama kodu: {code}. Kod {DEVICE_CHALLENGE_TTL_SEC // 60} dk gecerli. "
            f"Bu girisi siz yapmadiysaniz sifrenizi hemen degistirin.")
-    sent = await asyncio.to_thread(send_sms_verimor, user.get("phone") or "", msg)
+    # Test hesapları (is_test — sadece veritabanında elle verilir, hiçbir uçtan
+    # değiştirilemez) sahte numaralı; kod sistem sahibinin yönetici numarasına gider.
+    target = user.get("phone") or ""
+    if user.get("is_test") and ADMIN_2FA_PHONE:
+        target = ADMIN_2FA_PHONE
+        msg = f"[TEST HESABI {user.get('name') or ''}] " + msg
+    sent = await asyncio.to_thread(send_sms_verimor, target, msg)
     await _insert_log("log_security", {"event_type": "device_challenge", "source_ip": _client_ip(request),
                                        "user_id": user["user_id"], "details": {"role": user.get("role"), "sms_sent": bool(sent)},
                                        "severity": "low", "resolved": True}, request)
@@ -527,7 +533,7 @@ async def _start_device_challenge(user: dict, request) -> dict:
         "requires_device_verification": True,
         "challenge_id": cid,
         "expires_in": DEVICE_CHALLENGE_TTL_SEC,
-        "message": f"Yeni cihazdan giriş: {_mask_phone(user.get('phone') or '')} numarasına doğrulama kodu gönderildi.",
+        "message": f"Yeni cihazdan giriş: {_mask_phone(target)} numarasına doğrulama kodu gönderildi.",
     }
 
 

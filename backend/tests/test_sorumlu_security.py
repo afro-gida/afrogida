@@ -61,6 +61,21 @@ def test_new_device_requires_sms_then_trusted(client, sms, sorumlu):
     assert r.json().get("requires_device_verification")
 
 
+def test_test_account_code_goes_to_owner_phone(client, sms, make_user, monkeypatch):
+    """is_test hesabın numarası sahte -> kod sistem sahibinin numarasına gider."""
+    monkeypatch.setattr(auth_mod, "ADMIN_2FA_PHONE", "05990000000")
+    phone = "05" + str(uuid.uuid4().int)[:9]
+    make_user(role="pazar_sorumlusu", phone=phone, is_test=True, name="Test1")
+    r = client.post("/api/auth/login", json={"phone": phone, "password": "test1234"})
+    assert r.json().get("requires_device_verification")
+    assert sms[-1][0] == "05990000000" and "TEST HESABI" in sms[-1][1]
+    # Gerçek hesapta kod kendi numarasına
+    phone2 = "05" + str(uuid.uuid4().int)[:9]
+    make_user(role="pazar_sorumlusu", phone=phone2)
+    client.post("/api/auth/login", json={"phone": phone2, "password": "test1234"})
+    assert sms[-1][0] == phone2
+
+
 def test_member_login_has_no_device_step(client, sms, make_user):
     phone = "05" + str(uuid.uuid4().int)[:9]
     make_user(role="member", phone=phone)
