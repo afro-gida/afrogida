@@ -1,6 +1,6 @@
 /** Hafif ortak arayüz parçaları — panel hızlı olsun diye gölge/animasyon yok. */
 import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps, ReactNode } from 'react';
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/lib/theme';
@@ -94,18 +94,32 @@ export function Field({ label, hint, style, ...rest }: TextInputProps & { label:
   );
 }
 
+const fmtNum = (v: number | null | undefined) => (v == null ? '' : String(v).replace('.', ','));
+const parseNum = (s: string) => {
+  const n = Number(s.replace(',', '.').replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/** Sayı kutusu: yazılan metni kendisi tutar ("12," yazarken virgül kaybolmasın),
+ *  dışarıdan değer değişirse (ör. kayıttan sonra) metni günceller. */
 export function NumField({ label, value, onChange, hint, suffix }: {
   label: string; value: number | null | undefined; onChange: (v: number) => void; hint?: string; suffix?: string;
 }) {
+  const [text, setText] = useState(fmtNum(value));
+  useEffect(() => {
+    if (parseNum(text) !== (value ?? 0)) setText(fmtNum(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
     <Field
       label={suffix ? `${label} (${suffix})` : label}
       hint={hint}
       keyboardType="decimal-pad"
-      value={value == null ? '' : String(value).replace('.', ',')}
+      value={text}
       onChangeText={(s) => {
-        const n = Number(s.replace(',', '.').replace(/[^\d.]/g, ''));
-        onChange(Number.isFinite(n) ? n : 0);
+        const clean = s.replace(/[^\d.,]/g, '');
+        setText(clean);
+        onChange(parseNum(clean));
       }}
     />
   );

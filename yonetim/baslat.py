@@ -67,7 +67,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def _is_proxied(self):
         return self.path.startswith("/api/") or self.path.startswith("/uploads/")
 
+    def _host_ok(self):
+        """DNS rebinding koruması: sadece bu makinenin adresiyle gelen istekler."""
+        if (self.headers.get("Host") or "") in (f"{HOST}:{PORT}", f"localhost:{PORT}"):
+            return True
+        self.send_error(403)
+        return False
+
     def do_GET(self):
+        if not self._host_ok():
+            return
         if self._is_proxied():
             return self._proxy()
         path = self.path.split("?")[0]
@@ -76,17 +85,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = "/index.html"  # tek sayfa uygulama: tüm yollar index.html
         return super().do_GET()
 
-    def do_POST(self):
+    def _write_method(self):
+        if not self._host_ok():
+            return
         return self._proxy() if self._is_proxied() else self.send_error(405)
 
-    def do_PUT(self):
-        return self._proxy() if self._is_proxied() else self.send_error(405)
-
-    def do_DELETE(self):
-        return self._proxy() if self._is_proxied() else self.send_error(405)
-
-    def do_PATCH(self):
-        return self._proxy() if self._is_proxied() else self.send_error(405)
+    do_POST = do_PUT = do_DELETE = do_PATCH = _write_method
 
 
 def main():
