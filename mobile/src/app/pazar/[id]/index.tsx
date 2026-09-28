@@ -614,7 +614,6 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: (line?
             accessibilityLabel={`${product.name} seçeneklerini seç`}
             style={({ pressed }) => [styles.selectPill, { backgroundColor: floatBg, opacity: pressed ? 0.8 : 1 }]}
           >
-            <Ionicons name="options-outline" size={13} color={theme.tint} />
             <ThemedText style={[styles.selectPillText, { color: theme.tint }]}>Seç</ThemedText>
           </Pressable>
         )}
