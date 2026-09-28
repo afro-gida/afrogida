@@ -118,16 +118,23 @@ Sıra: önce müşteri tarafındaki eksikler tamamlanır, ardından afrogida.com
 
 ### Satış fiyatı hesaplama — kademeli kâr tablosu
 - Satış fiyatı = tedarikçi fiyatı + **fiyat aralığına göre sabit kâr tutarı**. Tedarikçi fiyatı onaylandığında satış fiyatı otomatik hesaplanır ve yürürlüğe girer.
-- Başlangıç tablosu (admin panelinden düzenlenebilir):
+- **Güncel tablo (karar 2026-09-29, sistemde uygulandı — `backend/core/pricing.py`):**
+  satış fiyatı elle girilmez, alış fiyatı değişince (yönetici veya tedarikçi) otomatik hesaplanır.
 
-| Tedarikçi fiyatı | Platform kârı | Örnek |
-|---|---|---|
-| 10 – 25 TL | +15 TL | 20 → 35 TL |
-| 25 – 50 TL | +25 TL | 40 → 65 TL |
-| 50 – 80 TL | +35 TL | 60 → 95 TL |
+| Alış (tedarikçi) fiyatı | Platform kârı |
+|---|---|
+| 0 – 19,99 TL | +15 TL |
+| 20 – 39,99 TL | +25 TL |
+| 40 – 59,99 TL | +30 TL |
+| 60 – 89,99 TL | +40 TL |
+| 90 – 129,99 TL | +60 TL |
+| 130 – 179,99 TL | +80 TL |
+| 180 – 249,99 TL | +110 TL |
+| 250 – 349,99 TL | +150 TL |
+| 350 – 500,00 TL | +200 TL |
 
-- **Sınırdaki fiyat alt kademeye girer**: 10–25,00 → +15; 25,01–50,00 → +25; 50,01–80,00 → +35.
-- **Tabloda karşılığı olmayan fiyat** (örn. 10 TL altı, 80 TL üstü): sistem otomatik fiyat vermez, admine "kademe yok" uyarısı gider, ürün **yayına girmez**. Admin panelden yeni kademe ekler.
+- **Tabloda karşılığı olmayan fiyat** (500 TL üstü): kayıt reddedilir ("kademe yok"). Tablo şimdilik kodda; admin panelinden düzenleme sonraki adım.
+- Alış fiyatı olmayan eski ürünlerde satış fiyatı elle kalır (geçiş dönemi).
 
 ### IBAN değişikliği (Claude önerisi)
 - Tedarikçi/kurye IBAN değişikliği **admin onayına** gider; eski kayıtlı telefona bildirim gönderilir. Onaylanana kadar ödemeler eski IBAN'a yapılır.
