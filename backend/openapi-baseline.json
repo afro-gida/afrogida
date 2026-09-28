@@ -2233,6 +2233,150 @@
                 "summary": "Compat Set Default Address"
             }
         },
+        "/api/admin/2fa/status": {
+            "get": {
+                "operationId": "admin_2fa_status_api_admin_2fa_status_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin 2Fa Status"
+            }
+        },
+        "/api/admin/2fa/totp/confirm": {
+            "post": {
+                "operationId": "admin_totp_confirm_api_admin_2fa_totp_confirm_post",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Payload",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Totp Confirm"
+            }
+        },
+        "/api/admin/2fa/totp/setup": {
+            "post": {
+                "operationId": "admin_totp_setup_api_admin_2fa_totp_setup_post",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Totp Setup"
+            }
+        },
         "/api/admin/all-supplier-sales": {
             "get": {
                 "description": "TÜM tedarikçilerin satış logu (tek çağrı).\n\nHer satış girdisi tedarikçi adı + tarih ile etiketlenir; böylece frontend:\n  * tarihe göre filtreleyebilir,\n  * tedarikçiye göre gruplayabilir,\n  * genel (tüm tedarikçiler) toplamı hesaplayabilir.\nMantık `supplier-sales` ile aynıdır; fark: tek tedarikçiye kısıtlamak yerine\nher siparişteki HER tedarikçi grubu için ayrı bir log girdisi üretir.",
@@ -8039,6 +8183,45 @@
                     }
                 },
                 "summary": "Auth Admin"
+            }
+        },
+        "/api/auth/admin/2fa/sms": {
+            "post": {
+                "description": "Authenticator'a erişilemiyorsa: bekleyen meydan okumaya SMS kodu gönderir\n(kod yine yöneticinin kayıtlı numarasına gider).",
+                "operationId": "auth_admin_2fa_sms_api_auth_admin_2fa_sms_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Payload",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Auth Admin 2Fa Sms"
             }
         },
         "/api/auth/admin/heartbeat": {
