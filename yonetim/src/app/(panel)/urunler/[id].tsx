@@ -178,7 +178,6 @@ export default function ProductEdit() {
             <Chips options={subs.map((c) => ({ value: c, label: c }))} value={p.subcategory || ''} onChange={(v) => set('subcategory', v)} />
           </>
         )}
-        <Field label="Açıklama" value={p.description ?? ''} onChangeText={(v) => set('description', v)} multiline />
       </Section>
 
       <Section title="Görsel">
@@ -217,8 +216,7 @@ export default function ProductEdit() {
 
       <Section title="Durum">
         <Toggle label="Stokta" hint="Kapatınca müşteride 'Tükendi' görünür" value={p.in_stock} onChange={(v) => set('in_stock', v)} />
-        <Toggle label="Aktif" value={p.active} onChange={(v) => set('active', v)} />
-        <Toggle label="Gizli" hint="Müşteri listesinde hiç görünmez" value={p.hidden} onChange={(v) => set('hidden', v)} />
+        <Toggle label="Aktif" hint="Kapatınca ürün müşteri sitesinde görünmez" value={p.active} onChange={(v) => set('active', v)} />
       </Section>
 
       <Section title="Kampanya (çok al az öde)">
