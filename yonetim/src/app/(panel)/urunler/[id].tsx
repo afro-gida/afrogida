@@ -30,11 +30,16 @@ const EMPTY: Omit<Product, 'id'> = {
 };
 
 export default function ProductEdit() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, t: fromSupplier } = useLocalSearchParams<{ id: string; t?: string }>();
   const router = useRouter();
   const t = useTheme();
   const isNew = id === 'yeni';
-  const [p, setP] = useState<(Omit<Product, 'id'> & { id?: string }) | null>(isNew ? { ...EMPTY } : null);
+  const [p, setP] = useState<(Omit<Product, 'id'> & { id?: string }) | null>(
+    isNew ? { ...EMPTY, supplier_group: fromSupplier ?? '' } : null,
+  );
+  // Geri / silme sonrası: ürünün tedarikçisinin listesine dön.
+  const backToList = () =>
+    router.navigate(p?.supplier_group ? `/urunler?t=${encodeURIComponent(p.supplier_group)}` : '/urunler');
   const [sale, setSale] = useState<number>(0);
   const [cfg, setCfg] = useState<CatalogConfig>({});
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +125,7 @@ export default function ProductEdit() {
     if (!(await confirmAsync(`"${p?.name}" silinsin mi?`))) return;
     try {
       await api.del(`/admin/products/${id}`);
-      router.replace('/urunler');
+      backToList();
     } catch (e) {
       setError(errMsg(e));
     }
@@ -130,7 +135,7 @@ export default function ProductEdit() {
     <Page
       title={isNew ? 'Yeni ürün' : p.name}
       subtitle={isNew ? undefined : `${p.supplier_group} · ${money(salePrice(p as Product))} / ${p.unit}`}
-      right={<Button small kind="secondary" icon="arrow-back" label="Ürünler" onPress={() => router.navigate('/urunler')} />}
+      right={<Button small kind="secondary" icon="arrow-back" label={p.supplier_group || 'Ürünler'} onPress={backToList} />}
     >
       <Section title="Genel">
         <View style={styles.row}>
