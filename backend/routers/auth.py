@@ -21,6 +21,7 @@ from core.config import (
     ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS, ADMIN_2FA_ALLOW_UNSENT_SMS,
 )
 from core import totp
+from core.text import tr_title
 from core.crypto import _hmac_hex, enc_str, dec_str
 from core.db import db
 from core.logs import (
@@ -111,7 +112,7 @@ async def auth_phone(payload: PhoneLoginInput, request: Request = None):
 @router.post("/auth/register")
 async def auth_register(payload: RegisterInput, request: Request = None):
     phone = payload.phone.strip()
-    name = payload.name.strip()
+    name = tr_title(payload.name)
     if len(phone) < 7:
         raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası girin")
     if not name:
@@ -563,14 +564,16 @@ def _normalize_address_payload(data: dict, user_id: str, existing_id: Optional[s
         "id": address_id,
         "user_id": user_id,
         "title": title,
-        "city": _clean_text(data.get("city") or data.get("il") or "Bursa"),
-        "district": _clean_text(data.get("district") or data.get("ilce") or ""),
-        "neighborhood": _clean_text(data.get("neighborhood") or data.get("mahalle") or ""),
-        "street": _clean_text(data.get("street") or data.get("sokak") or data.get("cadde") or ""),
+        # Baş harfler büyük (görükle -> Görükle); pazarın servis mahalleleri
+        # de aynı biçimde kaydedildiği için görünüm tutarlı olur.
+        "city": tr_title(_clean_text(data.get("city") or data.get("il") or "Bursa")),
+        "district": tr_title(_clean_text(data.get("district") or data.get("ilce") or "")),
+        "neighborhood": tr_title(_clean_text(data.get("neighborhood") or data.get("mahalle") or "")),
+        "street": tr_title(_clean_text(data.get("street") or data.get("sokak") or data.get("cadde") or "")),
         "building_no": _clean_text(data.get("building_no") or data.get("bina_no") or data.get("building") or ""),
         "floor": _clean_text(data.get("floor") or data.get("kat") or ""),
         "apartment_no": _clean_text(data.get("apartment_no") or data.get("daire") or data.get("door") or ""),
-        "site_name": _clean_text(data.get("site_name") or data.get("site_adi") or ""),
+        "site_name": tr_title(_clean_text(data.get("site_name") or data.get("site_adi") or "")),
         "description": _clean_text(data.get("description") or data.get("adres_tarifi") or ""),
         "details": data.get("details"),
         "lat": lat,
@@ -626,7 +629,7 @@ def _public_user_doc(user: dict) -> dict:
 async def update_auth_profile(data: dict, current_user: dict = Depends(get_current_user), request: Request = None):
     updates = {}
     if "name" in data:
-        name = str(data.get("name") or "").strip()
+        name = tr_title(data.get("name"))
         if name:
             updates["name"] = name
     if "marketing_consent" in data:

@@ -22,9 +22,11 @@ def _clean_text(value) -> str:
 
 
 def _afro_norm(s) -> str:
-    """Boşlukları kırp + küçük harfe indir (pazar/tedarikçi adı eşleştirmek için)."""
+    """Boşlukları kırp + küçük harfe indir (pazar/tedarikçi adı eşleştirmek için).
+    Türkçe kuralla: İ->i, I->ı ("TOKİ" ile "Toki", "KIZIL" ile "Kızıl" eşleşir;
+    düz casefold "İ"yi "i̇" yapıp eşleşmeyi bozuyordu)."""
     try:
-        return (s or "").strip().casefold()
+        return (s or "").strip().replace("İ", "i").replace("I", "ı").casefold()
     except Exception:
         return ""
 

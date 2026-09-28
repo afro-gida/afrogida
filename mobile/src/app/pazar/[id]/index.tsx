@@ -232,6 +232,9 @@ export default function MarketProductsScreen() {
       { key: 'market_hours', icon: 'storefront-outline', label: `Pazar saati: ${settings.market_hours ?? '00:00-22:00'}` },
       { key: 'pickup_hours', icon: 'time-outline', label: `Gel-Al saati: ${settings.pickup_order_hours ?? '11:00-19:00'}` },
     ];
+    if (market?.active_eve_servis && settings.delivery_order_hours) {
+      items.push({ key: 'delivery_hours', icon: 'bicycle-outline', label: `Eve Servis saati: ${settings.delivery_order_hours}` });
+    }
     if (settings.free_delivery_min_amount) {
       items.push({
         key: 'free_delivery',
@@ -247,7 +250,7 @@ export default function MarketProductsScreen() {
       });
     }
     return items;
-  }, [settings]);
+  }, [settings, market?.active_eve_servis]);
 
   // Ürünler hiç filtrelenmiyor — kategori sırasına göre BÖLÜMLERE ayrılıyor.
   const sections = useMemo<ProductSection[]>(() => {

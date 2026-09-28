@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.db import db
 from core.logs import _insert_log
 from core.security import get_current_admin, get_current_staff
+from core.text import tr_title
 from core.util import _afro_norm
 from models import Market, MarketInput
 from services.catalog import _read_catalog_config
@@ -25,16 +26,32 @@ async def admin_list_markets(staff=Depends(get_current_staff)):
     return markets
 
 
+def _normalize_market(data: dict) -> dict:
+    """Pazar adı, konum ve servis mahalleleri baş harfleri büyük kaydedilir
+    ("görükle" -> "Görükle"); aynı mahalle iki kez yazılmışsa tekini tutar."""
+    data["name"] = tr_title(data.get("name")) or data.get("name")
+    if data.get("location"):
+        data["location"] = tr_title(data["location"])
+    hoods, seen = [], set()
+    for h in data.get("delivery_neighborhoods") or []:
+        t = tr_title(h)
+        if t and _afro_norm(t) not in seen:
+            seen.add(_afro_norm(t))
+            hoods.append(t)
+    data["delivery_neighborhoods"] = hoods
+    return data
+
+
 @router.post("/admin/markets", response_model=Market)
 async def create_market(payload: MarketInput, admin=Depends(get_current_admin)):
-    market = Market(**payload.dict())
+    market = Market(**_normalize_market(payload.dict()))
     await db.markets.insert_one(market.dict())
     return market
 
 
 @router.put("/admin/markets/{market_id}", response_model=Market)
 async def update_market(market_id: str, payload: MarketInput, admin=Depends(get_current_admin)):
-    result = await db.markets.update_one({"id": market_id}, {"$set": payload.dict()})
+    result = await db.markets.update_one({"id": market_id}, {"$set": _normalize_market(payload.dict())})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Pazar bulunamadı")
     market = await db.markets.find_one({"id": market_id}, {"_id": 0})

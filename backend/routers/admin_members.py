@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core.db import db
 from core.logs import _mask_phone, _insert_log, _log_payment_restriction
 from core.security import get_current_admin, hash_password
+from core.text import tr_title
 from core.util import now_utc, new_id, _clean_text, _norm_limit
 from models import MemberOut, MemberUpdateInput
 from services.admin_logs import _afro_status_tr, _afro_iso, _afro_dt_tr
@@ -30,7 +31,7 @@ async def admin_create_user(data: dict, current_admin: dict = Depends(get_curren
     kontrolünün atlanması. Sonrasında admin/staff/assign veya
     admin/courier/assign ile esnaf/kurye rolü verilir (bu uç sadece çıplak
     hesabı açar, rol atamaz)."""
-    name = _clean_text((data or {}).get("name") or "")
+    name = tr_title(_clean_text((data or {}).get("name") or ""))
     phone = str((data or {}).get("phone") or "").strip()
     password = (data or {}).get("password") or None
     if not name:
@@ -330,7 +331,7 @@ async def admin_update_member(
         raise HTTPException(status_code=404, detail="Üye bulunamadı")
     update: dict = {}
     if payload.name is not None:
-        update["name"] = payload.name.strip() or member.get("name") or "Üye"
+        update["name"] = tr_title(payload.name) or member.get("name") or "Üye"
     if payload.phone is not None:
         update["phone"] = payload.phone.strip()
     if payload.is_restricted is not None:
