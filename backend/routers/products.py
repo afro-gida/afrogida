@@ -19,7 +19,7 @@ from models import Product, ProductInput, Campaign, CampaignInput
 from services.catalog import _read_catalog_config
 from services.contracts import _afro_require_supplier_contract
 from services.push import send_push_to_all
-from core.pricing import NoProfitTier, auto_price_fields
+from core.pricing import auto_price_fields, validate_price_step
 
 logger = logging.getLogger("afro.routers.products")
 logging = logger  # eski logging.warning(...) çağrıları için
@@ -190,8 +190,9 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
     # (yönetici de satış fiyatını elle girmez).
     if (data.get("supplier_price") or 0) > 0:
         try:
+            validate_price_step(data["supplier_price"])
             data.update(auto_price_fields(data["supplier_price"]))
-        except NoProfitTier as e:
+        except ValueError as e:  # NoProfitTier da ValueError
             raise HTTPException(status_code=400, detail=str(e))
         data["price_updated_at"] = now_utc()
         data["price_updated_by"] = "supplier" if is_supplier_role(staff) else "admin"
@@ -295,8 +296,9 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             
             # Müşteri fiyatı = yeni alış + kâr kademesi (otomatik kâr modeli)
             try:
+                validate_price_step(updates.get("supplier_price") or 0)
                 updates.update(auto_price_fields(updates.get("supplier_price") or 0))
-            except NoProfitTier as e:
+            except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e))
             updates["price_updated_at"] = now_utc()
             updates["price_updated_by"] = "supplier"
@@ -328,8 +330,11 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         # (yöneticinin gönderdiği kâr / satış fiyatı yok sayılır).
         if price_sent and supp_now > 0:
             try:
+                # 5'in katı kuralı sadece fiyat DEĞİŞİYORSA (eski ürün kaydedilebilsin)
+                if round(float(supp_now), 2) != round(float(existing.get("supplier_price") or 0), 2):
+                    validate_price_step(supp_now)
                 updates.update(auto_price_fields(supp_now))
-            except NoProfitTier as e:
+            except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e))
             updates["price_updated_at"] = now_utc()
             updates["price_updated_by"] = "admin"

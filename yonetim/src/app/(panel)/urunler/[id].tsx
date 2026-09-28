@@ -42,6 +42,7 @@ export default function ProductEdit() {
   const backToList = () =>
     router.navigate(p?.supplier_group ? `/urunler?t=${encodeURIComponent(p.supplier_group)}` : '/urunler');
   const [cfg, setCfg] = useState<CatalogConfig>({});
+  const [origSupp, setOrigSupp] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +56,7 @@ export default function ProductEdit() {
         const found = rows.find((r) => r.id === id);
         if (!found) return setError('Ürün bulunamadı');
         setP({ ...found, customization_options: found.customization_options ?? [] });
+        setOrigSupp(Number(found.supplier_price || 0));
       })
       .catch((e) => setError(errMsg(e)));
   }, [id, isNew]);
@@ -80,6 +82,10 @@ export default function ProductEdit() {
     setError(null);
     if (!p.name.trim()) return setError('Ürün adı zorunlu.');
     if (!p.supplier_group) return setError('Tedarikçi seçin.');
+    // Alış fiyatı 5 TL'nin katı (sadece fiyat değiştiyse — eski ürün kaydedilebilsin)
+    if (supp !== origSupp && Math.round(supp * 100) % 500 !== 0) {
+      return setError('Alış fiyatı 5 TL\'nin katı olmalı (5, 10, 15, 20 …).');
+    }
     if (autoProfit == null) {
       return setError(supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış fiyatı için kâr kademesi yok.` : 'Alış fiyatını girin.');
     }
@@ -108,6 +114,7 @@ export default function ProductEdit() {
       } else {
         const updated = await api.put<Product>(`/admin/products/${id}`, body);
         setP({ ...updated, customization_options: updated.customization_options ?? [] });
+        setOrigSupp(Number(updated.supplier_price || 0));
       }
       setSaved(true);
     } catch (e) {
@@ -160,7 +167,7 @@ export default function ProductEdit() {
 
       <Section title="Fiyat">
         <View style={styles.row}>
-          <NumField label="Alış fiyatı (tedarikçi)" suffix="₺" value={supp} onChange={(v) => set('supplier_price', v)} hint="Müşteri bu fiyatı asla görmez" />
+          <NumField label="Alış fiyatı (tedarikçi)" suffix="₺" value={supp} onChange={(v) => set('supplier_price', v)} hint="5 TL'nin katı (5, 10, 15 …) · müşteri görmez" />
           <View style={[styles.saleBox, { borderColor: t.border, backgroundColor: t.cardAlt }]}>
             <T size={12.5} bold muted>Satış fiyatı (otomatik)</T>
             {autoProfit != null ? (

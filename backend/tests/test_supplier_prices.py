@@ -130,6 +130,24 @@ def test_profit_tiers(supp, profit):
     assert profit_for(supp) == profit
 
 
+def test_supplier_price_must_be_multiple_of_5(client, make_user, db):
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    _, sup = _supplier(make_user, sg)
+    base = {"name": "Biber", "category": "Biber", "unit": "Kg"}
+    for bad in (19, 29, 39.5, 12.25):
+        r = client.post("/api/admin/products", headers=sup, json={**base, "supplier_price": bad})
+        assert r.status_code == 400 and "5 TL" in r.json()["detail"], (bad, r.text)
+    r = client.post("/api/admin/products", headers=sup, json={**base, "supplier_price": 35})
+    assert r.status_code == 200, r.text
+    # eski (5'in katı olmayan) alış fiyatlı ürün, fiyatı değişmeden kaydedilebilir
+    pid = _seed_product(db, sg, supplier_price=23.0)
+    _, admin = make_user(role="yonetici")
+    r = client.put(f"/api/admin/products/{pid}", headers=admin, json={**base, "supplier_price": 23, "in_stock": False})
+    assert r.status_code == 200, r.text
+    r = client.put(f"/api/admin/products/{pid}", headers=admin, json={**base, "supplier_price": 27})
+    assert r.status_code == 400
+
+
 def test_admin_price_is_automatic_and_out_of_table_rejected(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     pid = _seed_product(db, sg)

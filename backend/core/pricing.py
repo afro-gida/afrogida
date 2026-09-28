@@ -42,6 +42,21 @@ class NoProfitTier(ValueError):
     pass
 
 
+# Alış fiyatı 5 TL'nin katı olmalı (5, 10, 15 ...): tedarikçiler 19 / 29 / 39
+# gibi kademe sınırının hemen altındaki fiyatlarla kâr tablosunu zorlamasın.
+PRICE_STEP = 5
+
+
+def validate_price_step(supplier_price) -> None:
+    """Geçersizse ValueError (mesaj kullanıcıya gösterilir)."""
+    try:
+        p = round(float(supplier_price or 0), 2)
+    except (TypeError, ValueError):
+        raise ValueError("Alış fiyatını rakamla girin.")
+    if p > 0 and round(p * 100) % (PRICE_STEP * 100) != 0:
+        raise ValueError(f"Alış fiyatı {PRICE_STEP} TL'nin katı olmalı (5, 10, 15, 20 ...). Girilen: {p:g} TL")
+
+
 def auto_price_fields(supplier_price) -> dict:
     """Alış fiyatından tüm müşteri fiyatı alanlarını üretir. Kademe yoksa
     NoProfitTier fırlatır (500 TL üstü)."""
