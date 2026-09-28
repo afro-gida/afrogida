@@ -122,12 +122,20 @@ def test_pazar_sorumlusu_cannot_touch_other_market(client, make_user, db):
     mkt_own = _mk_market(db, "Kendi Pazarım")
     mkt_other = _mk_market(db, "Başkasının Pazarı")
     original = _set_supplier_markets(db, {})
+    # Sorumlu sadece KAYITLI tedarikçileri atayabilir (yeni tedarikçiyi yönetici tanımlar)
+    db.catalog_config.update_one({}, {"$addToSet": {"suppliers": {"$each": ["Yeni Tedarikçi", "Sızma Tedarikçi"]}}})
+    _reset_catalog_cache()
     try:
         uid, sh = make_user(role="musteri")
         client.post("/api/admin/pazar-sorumlusu/assign",
                     json={"identifier": uid, "managed_markets": [mkt_own["id"]]}, headers=admin_h)
 
-        # kendi pazarına tedarikçi atayabilir
+        # listede olmayan uydurma bir tedarikçi adı reddedilir
+        r0 = client.post("/api/pazar-sorumlusu/suppliers/assign",
+                         json={"supplier_group": "Uydurma Tedarikçi", "market_id": mkt_own["id"]}, headers=sh)
+        assert r0.status_code == 400
+
+        # kendi pazarına kayıtlı tedarikçiyi atayabilir
         r = client.post("/api/pazar-sorumlusu/suppliers/assign",
                          json={"supplier_group": "Yeni Tedarikçi", "market_id": mkt_own["id"]}, headers=sh)
         assert r.status_code == 200, r.text
