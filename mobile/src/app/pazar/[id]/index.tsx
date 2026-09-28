@@ -909,9 +909,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12, lineHeight: 16 },
-  // "Seç", sağ alttaki "+"nın hemen üstünde (sağa hizalı).
+  // "Seç" görselin sağ üst köşesinde (indirim rozeti sol üstte).
   selectPill: {
-    position: 'absolute', right: Spacing.two, bottom: Spacing.two + 36 + 6,
+    position: 'absolute', right: Spacing.two, top: Spacing.two,
     height: 24, borderRadius: 12, paddingHorizontal: 9,
     flexDirection: 'row', alignItems: 'center', gap: 4,
     boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
