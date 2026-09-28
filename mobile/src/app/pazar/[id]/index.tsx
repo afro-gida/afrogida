@@ -673,7 +673,7 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
     label = `Ücretsiz teslimata ₺${formatMoney(freeAmount - total)} kaldı`;
   } else if (freeAmount) {
     target = freeAmount;
-    label = 'Ücretsiz teslimat kazandınız';
+    label = 'Ücretsiz teslimat';
     done = true;
   }
   // Hedef yoksa (pazarda minimum / ücretsiz teslimat tanımsız ya da ayarlar
@@ -740,7 +740,8 @@ function CartBar({ count, total, minAmount, freeAmount, bottomInset, onPress }: 
           <ThemedText style={[styles.cartBarTitle, { color: fg }]} numberOfLines={1}>Sepete Git</ThemedText>
           <View style={styles.cartBarLabelRow}>
             {done && <Ionicons name="checkmark-circle" size={13} color={theme.tint} />}
-            <ThemedText style={[styles.cartBarSub, { color: fgSoft }]} numberOfLines={1}>
+            {/* Sığmazsa alt satıra geçer (kesilmesin, tamamı okunsun). */}
+            <ThemedText style={[styles.cartBarSub, { color: fgSoft }]} numberOfLines={2}>
               {label ?? `${count} ürün`}
             </ThemedText>
           </View>
@@ -960,6 +961,6 @@ const styles = StyleSheet.create({
   cartBarBadgeText: { fontSize: 11, lineHeight: 13, fontWeight: '900' },
   cartBarTitle: { fontSize: 16, lineHeight: 20, fontWeight: '800' },
   cartBarSub: { fontSize: 12, lineHeight: 15, fontWeight: '700', flexShrink: 1 },
-  cartBarTotal: { fontSize: 19, lineHeight: 23, fontWeight: '900', letterSpacing: -0.3 },
-  cartBarLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cartBarTotal: { fontSize: 17, lineHeight: 21, fontWeight: '900', letterSpacing: -0.3 },
+  cartBarLabelRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
 });
