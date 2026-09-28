@@ -111,15 +111,11 @@ export default function ProductEdit() {
     delete body.updated_at;
     setBusy(true);
     try {
-      if (isNew) {
-        const created = await api.post<Product>('/admin/products', body);
-        router.replace(`/urunler/${created.id}`);
-      } else {
-        const updated = await api.put<Product>(`/admin/products/${id}`, body);
-        setP({ ...updated, customization_options: updated.customization_options ?? [] });
-        setOrigSupp(Number(updated.supplier_price || 0));
-      }
-      setSaved(true);
+      if (isNew) await api.post<Product>('/admin/products', body);
+      else await api.put<Product>(`/admin/products/${id}`, body);
+      // Kaydedince ürünün tedarikçisinin listesine dön
+      backToList();
+      return;
     } catch (e) {
       setError(errMsg(e));
     } finally {
