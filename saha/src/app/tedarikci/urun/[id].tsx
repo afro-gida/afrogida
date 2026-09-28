@@ -7,6 +7,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError, uploadImage } from '@/lib/api';
+import { pickImage, shrinkImage } from '@/lib/image';
 import { Spacing } from '@/constants/theme';
 
 const UNIT_OPTIONS = ['Kg', 'Adet', 'File', 'Demet'];
@@ -29,16 +30,6 @@ type Product = {
 
 type CatalogConfig = { categories: string[]; subcategories: Record<string, string[]> };
 
-/** Web'de dosya seçici (telefonda "Fotoğraf çek / Galeri" seçeneği çıkar). */
-function pickImageWeb(): Promise<File | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = () => resolve(input.files?.[0] ?? null);
-    input.click();
-  });
-}
 
 /**
  * Ürün ekle / düzenle — tam ekran. Resim, ad, kategori, birim, kendi fiyatım,
@@ -96,14 +87,16 @@ export default function UrunDuzenle() {
     setPrice(String(Math.max(0, base + delta)));
   }
 
-  async function changePhoto() {
-    if (Platform.OS !== 'web') return; // uygulamaya çevrilince kamera/galeri eklenecek
-    const file = await pickImageWeb();
+  // Galeri / kamera -> cihazda küçült (1200 px) -> yükle; sunucu ayrıca 600 px WebP yapar
+  async function changePhoto(camera = false) {
+    if (Platform.OS !== 'web') return; // uygulamaya çevrilince yerel kamera/galeri eklenecek
+    const file = await pickImage(camera);
     if (!file) return;
     setUploading(true);
     setError('');
     try {
-      setImageUrl(await uploadImage(file, file.name));
+      const small = await shrinkImage(file);
+      setImageUrl(await uploadImage(small, 'urun.jpg'));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Fotoğraf yüklenemedi');
     } finally {
@@ -166,7 +159,7 @@ export default function UrunDuzenle() {
       ) : (
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
           {/* Ürün resmi */}
-          <Pressable onPress={changePhoto} style={[styles.photo, { backgroundColor: theme.authCard, borderColor: theme.border }]}>
+          <Pressable onPress={() => changePhoto(false)} style={[styles.photo, { backgroundColor: theme.authCard, borderColor: theme.border }]}>
             {imageUrl ? (
               <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
@@ -181,10 +174,16 @@ export default function UrunDuzenle() {
               </View>
             )}
           </Pressable>
-          <Pressable style={[styles.outlineBtn, { borderColor: theme.tint }]} onPress={changePhoto} disabled={uploading}>
-            <Ionicons name="camera-outline" size={18} color={theme.tint} />
-            <ThemedText themeColor="tint" type="smallBold">{imageUrl ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}</ThemedText>
-          </Pressable>
+          <View style={styles.photoBtns}>
+            <Pressable style={[styles.outlineBtn, styles.flex, { borderColor: theme.tint }]} onPress={() => changePhoto(false)} disabled={uploading}>
+              <Ionicons name="images-outline" size={18} color={theme.tint} />
+              <ThemedText themeColor="tint" type="smallBold">Galeri</ThemedText>
+            </Pressable>
+            <Pressable style={[styles.outlineBtn, styles.flex, { borderColor: theme.tint }]} onPress={() => changePhoto(true)} disabled={uploading}>
+              <Ionicons name="camera-outline" size={18} color={theme.tint} />
+              <ThemedText themeColor="tint" type="smallBold">Kamera</ThemedText>
+            </Pressable>
+          </View>
 
           <ThemedText type="small" themeColor="textSecondary">Ürün Adı</ThemedText>
           <TextInput value={name} onChangeText={setName} placeholder="Örn: Kırmızı Köy Domatesi" placeholderTextColor={theme.textSecondary} style={inputStyle} />
@@ -268,6 +267,8 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.two, paddingVertical: Spacing.two, fontSize: 15 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { borderWidth: 1.5, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  flex: { flex: 1 },
+  photoBtns: { flexDirection: 'row', gap: 8 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepInput: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700' },

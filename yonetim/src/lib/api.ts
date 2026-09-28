@@ -54,6 +54,27 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
+/** Resim yükler (/admin/upload — sunucu ayrıca küçültüp WebP yapar);
+ *  müşteri sitesinde de görünsün diye kalıcı tam adres döner. */
+export async function uploadImage(file: Blob, filename = 'urun.jpg'): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, filename);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/admin/upload`, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError(0, 'Sunucuya ulaşılamadı.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, typeof data?.detail === 'string' ? data.detail : `Yükleme hatası (${res.status})`);
+  const url = String(data?.url || '');
+  return url.startsWith('http') ? url : `https://afrogida.com.tr${url}`;
+}
+
 export const api = {
   get: <T>(p: string) => request<T>('GET', p),
   post: <T>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),

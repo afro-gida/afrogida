@@ -102,8 +102,8 @@ const parseNum = (s: string) => {
 
 /** Sayı kutusu: yazılan metni kendisi tutar ("12," yazarken virgül kaybolmasın),
  *  dışarıdan değer değişirse (ör. kayıttan sonra) metni günceller. */
-export function NumField({ label, value, onChange, hint, suffix }: {
-  label: string; value: number | null | undefined; onChange: (v: number) => void; hint?: string; suffix?: string;
+export function NumField({ label, value, onChange, hint, suffix, style }: {
+  label: string; value: number | null | undefined; onChange: (v: number) => void; hint?: string; suffix?: string; style?: ViewStyle;
 }) {
   const [text, setText] = useState(fmtNum(value));
   useEffect(() => {
@@ -114,6 +114,7 @@ export function NumField({ label, value, onChange, hint, suffix }: {
     <Field
       label={suffix ? `${label} (${suffix})` : label}
       hint={hint}
+      style={style}
       keyboardType="decimal-pad"
       value={text}
       onChangeText={(s) => {
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 12, padding: 14 },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 42, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
   btnSmall: { height: 32, paddingHorizontal: 10, borderRadius: 8 },
-  field: { gap: 4, minWidth: 140 },
+  field: { gap: 4, minWidth: 0 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 14 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
