@@ -5,7 +5,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { Button, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Section, T, Toggle, confirmAsync, money } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { salePrice, type CatalogConfig, type OptionGroup, type Product } from '@/lib/types';
-import { LAST_TIER_MAX, PROFIT_TABLE_TEXT, profitFor } from '@/lib/pricing';
+import { LAST_TIER_MAX, profitFor } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
 
 const UNITS = ['Kg', 'Adet', 'Demet', 'Paket', 'Litre'];
@@ -164,10 +164,7 @@ export default function ProductEdit() {
           <View style={[styles.saleBox, { borderColor: t.border, backgroundColor: t.cardAlt }]}>
             <T size={12.5} bold muted>Satış fiyatı (otomatik)</T>
             {autoProfit != null ? (
-              <>
-                <T bold size={20} color={t.tint}>{money(supp + autoProfit)}</T>
-                <T muted size={12}>kâr +{money(autoProfit)} / {p.unit.toLowerCase()}</T>
-              </>
+              <T bold size={20} color={t.tint}>{money(supp + autoProfit)}</T>
             ) : (
               <T size={12.5} color={t.danger}>
                 {supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış için kâr kademesi yok` : 'Alış fiyatını girin'}
@@ -175,7 +172,6 @@ export default function ProductEdit() {
             )}
           </View>
         </View>
-        <T muted size={12}>Kâr tablosu: {PROFIT_TABLE_TEXT.join(' · ')}</T>
       </Section>
 
       <Section title="Durum">
