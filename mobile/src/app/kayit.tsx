@@ -143,10 +143,12 @@ export default function RegisterScreen() {
         placeholder="SMS ile gelen 6 haneli kod"
         keyboardType="number-pad"
         maxLength={6}
-        autoComplete="off"
+        // Tarayıcı kayıtlı telefon/şifreyi buraya doldurmasın; telefonda SMS kodu önerilsin.
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
       />
 
-      <PasswordField label="Şifre" value={password} onChangeText={setPassword} placeholder="En az 6 karakter" autoComplete="off" />
+      <PasswordField label="Şifre" value={password} onChangeText={setPassword} placeholder="En az 6 karakter" autoComplete="new-password" />
 
       <View style={[styles.consents, { backgroundColor: withAlpha(theme.text, 0.04) }]}>
         <ThemedText themeColor="textSecondary" style={styles.kvkk}>
