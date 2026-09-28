@@ -54,10 +54,10 @@ export default function LoginScreen() {
 
       <View style={[styles.card, { backgroundColor: theme.authCard }]}>
         <ThemedText type="title" style={styles.title}>
-          Saha Girişi
+          Sorumlu Girişi
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-          Tedarikçi veya kurye hesabınızla giriş yapın.
+          Pazar sorumlusu hesabınızla giriş yapın.
         </ThemedText>
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.label}>

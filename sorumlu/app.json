@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Afro Gıda Tedarikçi & Kurye",
-    "slug": "afro-gida-saha",
+    "name": "Afro Gıda Sorumlu",
+    "slug": "afro-gida-sorumlu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "afrogidasaha",
+    "scheme": "afrogidasorumlu",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"

@@ -18,12 +18,11 @@ export default function Index() {
   }
 
   if (!user) return <Redirect href="/giris" />;
-  if (user.role === 'esnaf' || user.role === 'supplier') return <Redirect href="/tedarikci" />;
-  if (user.role === 'kurye') return <Redirect href="/kurye" />;
+  if (user.role === 'pazar_sorumlusu') return <Redirect href="/sorumlu" />;
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: theme.background }}>
-      <ThemedText>Bu uygulama sadece tedarikçi ve kuryeler içindir.</ThemedText>
+      <ThemedText>Bu uygulama sadece pazar sorumluları içindir.</ThemedText>
     </View>
   );
 }

@@ -3,24 +3,18 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 import { api, ApiError, setAuthToken } from '@/lib/api';
 
-const TOKEN_KEY = 'afro_saha_token';
+const TOKEN_KEY = 'afro_sorumlu_token';
 
-/** Bu uygulama tedarikçi (esnaf) ve kuryeler içindir; pazar sorumlusunun
- *  ayrı uygulaması var (sorumlu/). Sunucu da her istekte rolü denetler. */
-const ALLOWED_ROLES = ['esnaf', 'supplier', 'kurye'];
+/** Bu uygulama SADECE pazar sorumluları içindir (tedarikçi + kurye ayrı
+ *  uygulamada: saha/). Sunucu da her istekte rolü ayrıca denetler. */
+const ALLOWED_ROLES = ['pazar_sorumlusu'];
 
 export type AuthUser = {
   user_id: string;
   name: string;
   phone: string;
-  role: string; // 'esnaf' | 'supplier' | 'kurye'
-  supplier_group?: string;
-};
-
-export type SupplierContract = {
-  contract: { url?: string; version?: string; title?: string };
-  current_version?: string;
-  accepted: boolean;
+  role: string;
+  managed_markets?: string[];
 };
 
 type AuthContextValue = {
@@ -28,9 +22,6 @@ type AuthContextValue = {
   loading: boolean;
   login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  supplierContract: SupplierContract | null;
-  refreshSupplierContract: () => Promise<void>;
-  acceptSupplierContract: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,7 +29,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [supplierContract, setSupplierContract] = useState<SupplierContract | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -47,12 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (stored) {
           setAuthToken(stored);
           const me = await api.get<AuthUser>('/auth/me');
-          // Rolü değişmişse (ör. sorumlu yapılmış) kayıtlı oturumla girmesin
+          // Rolü sorumluluktan alınmışsa kayıtlı oturumla içeri girmesin
           if (!ALLOWED_ROLES.includes(me.role)) throw new Error('role');
           setUser(me);
-          if (me.role === 'esnaf' || me.role === 'supplier') {
-            await loadSupplierContract();
-          }
         }
       } catch {
         await AsyncStorage.removeItem(TOKEN_KEY);
@@ -63,15 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  async function loadSupplierContract() {
-    try {
-      const c = await api.get<SupplierContract>('/supplier/contract-status');
-      setSupplierContract(c);
-    } catch {
-      // sözleşme durumu alınamazsa girişi engelleme, sadece kapı gösterilmez
-    }
-  }
-
   async function login(phone: string, password: string) {
     const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { phone, password });
     if (!ALLOWED_ROLES.includes(res.user.role)) {
@@ -79,19 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthToken(res.token);
       await api.post('/auth/logout').catch(() => {});
       setAuthToken(null);
-      throw new ApiError(
-        403,
-        res.user.role === 'pazar_sorumlusu'
-          ? 'Pazar sorumlusu hesabı bu uygulamada kullanılmaz. Lütfen Sorumlu uygulamasını açın.'
-          : 'Bu hesap tedarikçi veya kurye değil. Bu uygulama sadece bu hesaplar içindir.',
-      );
+      throw new ApiError(403, 'Bu hesap pazar sorumlusu değil. Bu uygulama sadece pazar sorumluları içindir.');
     }
     await AsyncStorage.setItem(TOKEN_KEY, res.token);
     setAuthToken(res.token);
     setUser(res.user);
-    if (res.user.role === 'esnaf' || res.user.role === 'supplier') {
-      await loadSupplierContract();
-    }
   }
 
   async function logout() {
@@ -103,29 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem(TOKEN_KEY);
     setAuthToken(null);
     setUser(null);
-    setSupplierContract(null);
   }
 
-  async function acceptSupplierContract() {
-    await api.post('/supplier/accept-contract');
-    await loadSupplierContract();
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        logout,
-        supplierContract,
-        refreshSupplierContract: loadSupplierContract,
-        acceptSupplierContract,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
