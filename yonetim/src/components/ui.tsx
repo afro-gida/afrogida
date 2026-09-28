@@ -1,0 +1,255 @@
+/** Hafif ortak arayüz parçaları — panel hızlı olsun diye gölge/animasyon yok. */
+import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps, ReactNode } from 'react';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+
+import { useTheme } from '@/lib/theme';
+
+export type IconName = ComponentProps<typeof Ionicons>['name'];
+
+export function T({ children, muted, bold, size = 14, color, style, numberOfLines }: {
+  children: ReactNode; muted?: boolean; bold?: boolean; size?: number; color?: string; style?: any; numberOfLines?: number;
+}) {
+  const t = useTheme();
+  return (
+    <Text
+      numberOfLines={numberOfLines}
+      style={[{ color: color ?? (muted ? t.muted : t.text), fontSize: size, lineHeight: Math.round(size * 1.35), fontWeight: bold ? '700' : '400' }, style]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+export function Page({ title, subtitle, right, children, scroll = true }: {
+  title: string; subtitle?: string; right?: ReactNode; children: ReactNode; scroll?: boolean;
+}) {
+  const t = useTheme();
+  const body = <View style={styles.pageBody}>{children}</View>;
+  return (
+    <View style={[styles.flex, { backgroundColor: t.bg }]}>
+      <View style={[styles.pageHeader, { borderBottomColor: t.border }]}>
+        <View style={styles.flex}>
+          <T size={22} bold>{title}</T>
+          {!!subtitle && <T muted size={13}>{subtitle}</T>}
+        </View>
+        {right}
+      </View>
+      {scroll ? <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">{body}</ScrollView> : body}
+    </View>
+  );
+}
+
+export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  const t = useTheme();
+  return <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border }, style]}>{children}</View>;
+}
+
+export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+  return (
+    <Card>
+      <View style={styles.row}>
+        <T bold size={16} style={styles.flex}>{title}</T>
+        {right}
+      </View>
+      <View style={{ gap: 10, marginTop: 10 }}>{children}</View>
+    </Card>
+  );
+}
+
+export function Button({ label, onPress, kind = 'primary', icon, loading, disabled, small }: {
+  label: string; onPress: () => void; kind?: 'primary' | 'secondary' | 'danger' | 'ghost'; icon?: IconName; loading?: boolean; disabled?: boolean; small?: boolean;
+}) {
+  const t = useTheme();
+  const bg = kind === 'primary' ? t.tint : kind === 'danger' ? t.danger : kind === 'secondary' ? t.cardAlt : 'transparent';
+  const fg = kind === 'primary' ? t.tintText : kind === 'danger' ? '#fff' : kind === 'ghost' ? t.tint : t.text;
+  const off = disabled || loading;
+  return (
+    <Pressable
+      onPress={off ? undefined : onPress}
+      style={({ pressed }) => [
+        styles.btn,
+        small && styles.btnSmall,
+        { backgroundColor: bg, borderColor: kind === 'secondary' ? t.border : 'transparent', opacity: off ? 0.5 : pressed ? 0.8 : 1 },
+      ]}
+    >
+      {loading ? <ActivityIndicator color={fg} size="small" /> : icon ? <Ionicons name={icon} size={small ? 15 : 17} color={fg} /> : null}
+      <Text style={{ color: fg, fontWeight: '700', fontSize: small ? 13 : 14 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function Field({ label, hint, style, ...rest }: TextInputProps & { label: string; hint?: string }) {
+  const t = useTheme();
+  return (
+    <View style={[styles.field, style as ViewStyle]}>
+      <T size={12.5} bold muted>{label}</T>
+      <TextInput
+        placeholderTextColor={t.muted}
+        {...rest}
+        style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.text }, rest.multiline && { minHeight: 80, textAlignVertical: 'top' }]}
+      />
+      {!!hint && <T size={12} muted>{hint}</T>}
+    </View>
+  );
+}
+
+export function NumField({ label, value, onChange, hint, suffix }: {
+  label: string; value: number | null | undefined; onChange: (v: number) => void; hint?: string; suffix?: string;
+}) {
+  return (
+    <Field
+      label={suffix ? `${label} (${suffix})` : label}
+      hint={hint}
+      keyboardType="decimal-pad"
+      value={value == null ? '' : String(value).replace('.', ',')}
+      onChangeText={(s) => {
+        const n = Number(s.replace(',', '.').replace(/[^\d.]/g, ''));
+        onChange(Number.isFinite(n) ? n : 0);
+      }}
+    />
+  );
+}
+
+export function Toggle({ label, value, onChange, hint }: { label: string; value: boolean; onChange: (v: boolean) => void; hint?: string }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
+      <View style={styles.flex}>
+        <T>{label}</T>
+        {!!hint && <T size={12} muted>{hint}</T>}
+      </View>
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: t.tint, false: t.border }} thumbColor="#fff" />
+    </Pressable>
+  );
+}
+
+export function Chips<V extends string>({ options, value, onChange }: { options: { value: V; label: string }[]; value: V; onChange: (v: V) => void }) {
+  const t = useTheme();
+  return (
+    <View style={styles.chips}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Pressable key={o.value} onPress={() => onChange(o.value)} style={[styles.chip, { borderColor: on ? t.tint : t.border, backgroundColor: on ? t.tint : 'transparent' }]}>
+            <Text style={{ color: on ? t.tintText : t.text, fontWeight: '600', fontSize: 13 }}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function MultiChips({ options, values, onChange }: { options: { value: string; label: string }[]; values: string[]; onChange: (v: string[]) => void }) {
+  const t = useTheme();
+  return (
+    <View style={styles.chips}>
+      {options.map((o) => {
+        const on = values.includes(o.value);
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(on ? values.filter((v) => v !== o.value) : [...values, o.value])}
+            style={[styles.chip, { borderColor: on ? t.tint : t.border, backgroundColor: on ? t.tint : 'transparent' }]}
+          >
+            <Text style={{ color: on ? t.tintText : t.text, fontWeight: '600', fontSize: 13 }}>{on ? '✓ ' : ''}{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function Badge({ label, tone = 'muted' }: { label: string; tone?: 'ok' | 'danger' | 'warn' | 'muted' | 'tint' }) {
+  const t = useTheme();
+  const c = tone === 'ok' ? t.ok : tone === 'danger' ? t.danger : tone === 'warn' ? t.warn : tone === 'tint' ? t.tint : t.muted;
+  return (
+    <View style={[styles.badge, { borderColor: c }]}>
+      <Text style={{ color: c, fontSize: 11.5, fontWeight: '700' }}>{label}</Text>
+    </View>
+  );
+}
+
+export function Loading() {
+  const t = useTheme();
+  return <ActivityIndicator style={{ marginTop: 40 }} color={t.tint} />;
+}
+
+export function ErrorBox({ text, onRetry }: { text: string; onRetry?: () => void }) {
+  const t = useTheme();
+  return (
+    <View style={[styles.errorBox, { borderColor: t.danger }]}>
+      <T color={t.danger} style={styles.flex}>{text}</T>
+      {onRetry && <Button small kind="secondary" label="Tekrar dene" onPress={onRetry} />}
+    </View>
+  );
+}
+
+export function Notice({ text, tone = 'ok' }: { text: string; tone?: 'ok' | 'warn' }) {
+  const t = useTheme();
+  const c = tone === 'ok' ? t.ok : t.warn;
+  return (
+    <View style={[styles.errorBox, { borderColor: c }]}>
+      <T color={c}>{text}</T>
+    </View>
+  );
+}
+
+export function ListRow({ title, subtitle, right, onPress }: { title: string; subtitle?: string; right?: ReactNode; onPress?: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.listRow, { borderBottomColor: t.border, backgroundColor: pressed && onPress ? t.cardAlt : 'transparent' }]}
+    >
+      <View style={styles.flex}>
+        <T bold numberOfLines={1}>{title}</T>
+        {!!subtitle && <T size={12.5} muted numberOfLines={2}>{subtitle}</T>}
+      </View>
+      {right}
+      {onPress && <Ionicons name="chevron-forward" size={16} color={t.muted} />}
+    </Pressable>
+  );
+}
+
+/** Onay: web'de tarayıcı penceresi, uygulamada Alert. */
+export function confirmAsync(message: string): Promise<boolean> {
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Alert } = require('react-native');
+  return new Promise((resolve) =>
+    Alert.alert('Onay', message, [
+      { text: 'Vazgeç', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Evet', style: 'destructive', onPress: () => resolve(true) },
+    ]),
+  );
+}
+
+export function money(n: number | null | undefined) {
+  return `${(n ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
+}
+
+export function dateTime(s?: string | null) {
+  if (!s) return '-';
+  const d = new Date(s.endsWith('Z') || s.includes('+') ? s : `${s}Z`);
+  return isNaN(d.getTime()) ? s : d.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pageHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  scroll: { paddingBottom: 60 },
+  pageBody: { padding: 16, gap: 14, width: '100%', maxWidth: 1100, alignSelf: 'center' },
+  card: { borderWidth: 1, borderRadius: 12, padding: 14 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 42, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1 },
+  btnSmall: { height: 32, paddingHorizontal: 10, borderRadius: 8 },
+  field: { gap: 4, minWidth: 140 },
+  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 14 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
+  badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 10, padding: 12 },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 4, borderBottomWidth: StyleSheet.hairlineWidth },
+});

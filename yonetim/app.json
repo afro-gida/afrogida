@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Afro Gıda Yönetim",
+    "slug": "afro-gida-yonetim",
+    "version": "1.0.0",
+    "orientation": "default",
+    "scheme": "afroyonetim",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tr.com.afrogida.yonetim"
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
