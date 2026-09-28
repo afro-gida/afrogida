@@ -41,7 +41,7 @@ const TABS: { name: string; title: string; icon: keyof typeof Ionicons.glyphMap 
  * kullanıyoruz — sadece `state`, `navigation` ve `insets` alanlarını
  * okuyoruz.
  */
-function CustomTabBar({ state, navigation, insets }: any) {
+function CustomTabBar({ state, navigation, insets, marketId }: any) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -97,7 +97,9 @@ function CustomTabBar({ state, navigation, insets }: any) {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
           if (!focused && !event.defaultPrevented) {
             showChrome();
-            navigation.navigate(route.name);
+            // Pazar kimliği sekmeye taşınmazsa adres /pazar/undefined/... oluyor ve
+            // sipariş pazarsız (market_id "undefined") kaydediliyordu.
+            navigation.navigate(route.name, { id: marketId });
           }
         };
 
@@ -142,7 +144,7 @@ export default function ShopTabsLayout() {
   return (
     <Tabs
       initialRouteName="index"
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <CustomTabBar {...props} marketId={id} />}
       screenOptions={{ headerShown: false }}
     >
       {TABS.map((tab) => (

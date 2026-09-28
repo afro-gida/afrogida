@@ -285,6 +285,10 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
     # reddedilmez; sadece pazarın KENDİ ayarladığı kısıtlamalar uygulanır.
     _market_id = data.get("market_id") or data.get("stall_id")
     _market = await db.markets.find_one({"id": _market_id}, {"_id": 0}) if _market_id else None
+    # Pazar kimliği GÖNDERİLDİ ama geçersizse ("undefined" gibi) sipariş reddedilir:
+    # yoksa o pazarın minimum tutar / teslimat ücreti / saat kuralları atlanıyordu.
+    if _market_id and not _market:
+        raise HTTPException(status_code=400, detail="Pazar bulunamadı. Lütfen pazar sayfasından tekrar deneyin.")
     _market = _market or {}
 
     def _msetting(key, default):

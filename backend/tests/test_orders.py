@@ -176,6 +176,16 @@ def test_order_market_name_filled_from_market(client, make_user, db, product, ma
     assert db.transactions.find_one({"tx_id": tx})["market_name"] == "Test Pazarı"
 
 
+def test_order_with_unknown_market_id_rejected(client, make_user, product):
+    """Sekme geçişi hatasıyla market_id "undefined" gelen sipariş, pazar
+    kurallarını atlayamaz — reddedilir."""
+    _, h = make_user()
+    for bad in ("undefined", "market_yok"):
+        r = _order(client, h, [{"id": product["id"], "qty": 1}], market_id=bad)
+        assert r.status_code == 400, r.text
+        assert "Pazar bulunamadı" in r.json()["detail"]
+
+
 def test_market_min_amount_does_not_affect_other_markets(client, make_user, product, market_with_limits):
     """Aynı sepet, market_id verilmeden (veya farklı bir pazarla) hâlâ geçmeli —
     bir pazarın limiti başka pazarları/market_id'siz siparişleri etkilemiyor."""
