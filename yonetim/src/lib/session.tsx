@@ -3,8 +3,8 @@ import { Platform } from 'react-native';
 
 import { api, setToken, setUnauthorizedHandler } from '@/lib/api';
 
-/** Hareketsizlikte otomatik çıkış (güvenlik kararı: 15–30 dk). */
-export const IDLE_LOGOUT_MS = 15 * 60 * 1000;
+/** Hareketsizlikte otomatik çıkış (kullanıcı isteğiyle 60 dk). */
+export const IDLE_LOGOUT_MS = 60 * 60 * 1000;
 
 export type AdminUser = {
   user_id: string;
@@ -110,7 +110,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       for (const ev of ['mousedown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, onAct, { passive: true });
     }
     const iv = setInterval(() => {
-      if (Date.now() - lastActive.current > IDLE_LOGOUT_MS) signOut('15 dakika işlem yapılmadığı için güvenlik amacıyla çıkış yapıldı.');
+      if (Date.now() - lastActive.current > IDLE_LOGOUT_MS) signOut('60 dakika işlem yapılmadığı için güvenlik amacıyla çıkış yapıldı.');
     }, 20_000);
     return () => {
       clearInterval(iv);
