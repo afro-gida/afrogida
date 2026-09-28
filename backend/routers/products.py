@@ -18,6 +18,7 @@ from core.util import now_utc, _afro_norm
 from models import Product, ProductInput, Campaign, CampaignInput
 from services.catalog import _read_catalog_config
 from services.contracts import _afro_require_supplier_contract
+from services.push import send_push_to_all
 
 logger = logging.getLogger("afro.routers.products")
 logging = logger  # eski logging.warning(...) çağrıları için
@@ -224,6 +225,12 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     sent = payload.dict(exclude_unset=True)   # sadece client'ın gerçekten gönderdiği alanlar
     updates = payload.dict()
+    # Gönderilmeyen alan varsayılana SIFIRLANMAZ, mevcut değer korunur (kısmi
+    # güncelleme). Eskiden örn. tedarikçi uygulaması sadece ad/fiyat/stok
+    # gönderdiğinde ürünün resmi, açıklaması ve seçenekleri (Boyut vb.) siliniyordu.
+    for _k in list(updates):
+        if _k not in sent and _k in existing:
+            updates[_k] = existing[_k]
     is_supplier = is_supplier_role(staff)
     
     # Tedarikçi (esnaf/supplier) sadece kendi tedarikçisinin ürünlerini düzenleyebilir
@@ -247,7 +254,9 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         ]
         for f in protected_from_supplier:
             if f in updates:
-                updates[f] = existing.get(f)  # mevcut değeri koru
+                # mevcut değeri koru; kayıtta hiç yoksa varsayılan kalsın (eskiden
+                # None yazılıyordu -> hidden/active_* boş kalıp yanıt doğrulaması patlıyordu)
+                updates[f] = existing.get(f, updates[f])
 
         # supplier_price gerçekten değişiyorsa sale_price'ı yeniden hesapla.
         # Aynı değer tekrar gönderildiyse (form her kayıtta tüm alanları

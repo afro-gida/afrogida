@@ -72,6 +72,31 @@ def test_supplier_cannot_set_customer_price(client, make_user, db):
     assert r.status_code == 400
 
 
+def test_partial_update_keeps_image_and_options(client, make_user, db):
+    """Kısmi güncelleme (tedarikçi sadece ad/stok gönderir) resmi, açıklamayı ve
+    seçenekleri silmez; yönetici için de aynı."""
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    opts = [{"title": "Boyut", "choices": [{"label": "Büyük", "price_delta": 10}]}]
+    pid = _seed_product(db, sg, image_url="https://afrogida.com.tr/uploads/x.webp",
+                        description="Taze", customization_options=opts)
+    _, sup = _supplier(make_user, sg)
+    r = client.put(f"/api/admin/products/{pid}", headers=sup,
+                   json={"name": "Yeni Ad", "category": "Domates", "in_stock": False})
+    assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["name"] == "Yeni Ad" and doc["in_stock"] is False
+    assert doc["image_url"] == "https://afrogida.com.tr/uploads/x.webp"
+    assert doc["description"] == "Taze" and doc["customization_options"] == opts
+    assert doc["supplier_group"] == sg and doc["price"] == 80.0
+
+    _, admin = make_user(role="yonetici")
+    r = client.put(f"/api/admin/products/{pid}", headers=admin, json={"name": "Admin Adı", "category": "Domates"})
+    assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["image_url"] and doc["customization_options"] == opts and doc["supplier_group"] == sg
+    assert doc["unit"] == "Kg" and doc["price"] == 80.0
+
+
 def test_supplier_create_uses_supplier_price(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     _, sup = _supplier(make_user, sg)

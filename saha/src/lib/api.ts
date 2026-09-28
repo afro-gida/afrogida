@@ -38,6 +38,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** Ürün resmi yükler (sunucu küçültüp WebP yapar). Kalıcı tam adres döner —
+ *  müşteri sitesi ve diğer uygulamalar aynı adresi gösterebilsin. */
+export async function uploadImage(file: Blob, filename = 'urun.jpg'): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, filename);
+  const headers: Record<string, string> = {};
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  const res = await fetch(`${API_BASE_URL}/admin/upload`, { method: 'POST', body: form, headers });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      detail = (await res.json())?.detail ?? detail;
+    } catch {
+      // yok say
+    }
+    throw new ApiError(res.status, detail);
+  }
+  const { url } = (await res.json()) as { url: string };
+  return url.startsWith('http') ? url : `https://afrogida.com.tr${url}`;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
