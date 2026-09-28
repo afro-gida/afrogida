@@ -40,10 +40,11 @@ export default function Overview() {
     load();
   }, [load]);
 
-  const tile = (label: string, value: string, href: string) => (
+  const tile = (label: string, value: string, href: string, sub?: string) => (
     <Card style={styles.tile}>
       <T muted size={12.5}>{label}</T>
       <T bold size={24}>{value}</T>
+      {!!sub && <T muted size={12.5}>{sub}</T>}
       <Button small kind="ghost" label="Aç" onPress={() => router.navigate(href as any)} />
     </Card>
   );
@@ -56,9 +57,9 @@ export default function Overview() {
       )}
       {stats && (
         <View style={styles.grid}>
-          {tile('Bugünkü siparişler', `${stats.todayOrders} · ${money(stats.todayTotal)}`, '/siparisler')}
+          {tile('Bugünkü siparişler', String(stats.todayOrders), '/siparisler', money(stats.todayTotal))}
           {tile('Pazarlar', String(stats.markets), '/pazarlar')}
-          {tile('Ürünler', `${stats.products} (${stats.outOfStock} tükendi)`, '/urunler')}
+          {tile('Ürünler', String(stats.products), '/urunler', `${stats.outOfStock} tükendi`)}
           {tile('Üyeler', String(stats.members), '/uyeler')}
         </View>
       )}
@@ -68,5 +69,6 @@ export default function Overview() {
 
 const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tile: { flexGrow: 1, flexBasis: 220, gap: 4 },
+  // Her satırda iki kutu (dar ekranda da): %48 + 12 px boşluk.
+  tile: { flexGrow: 1, flexBasis: '46%', maxWidth: '50%', minWidth: 130, gap: 2 },
 });
