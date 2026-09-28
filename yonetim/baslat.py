@@ -9,9 +9,11 @@ gerekmez, uygulama internette hiçbir yerde yayınlanmaz).
 """
 import http.server
 import os
+import socket
 import ssl
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 import webbrowser
@@ -47,17 +49,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         if n:
             body = self.rfile.read(n)
-        req = urllib.request.Request(UPSTREAM + self.path, data=body, method=self.command)
-        for h in FORWARD_HEADERS:
-            if self.headers.get(h):
-                req.add_header(h, self.headers[h])
-        try:
-            r = urllib.request.urlopen(req, context=_ctx, timeout=40)
-            code, data, ctype = r.status, r.read(), r.headers.get("Content-Type", "application/json")
-        except urllib.error.HTTPError as e:
-            code, data, ctype = e.code, e.read(), e.headers.get("Content-Type", "application/json")
-        except Exception:
-            code, data, ctype = 502, b'{"detail":"Sunucuya ulasilamadi"}', "application/json"
+        code, data, ctype = 502, b'{"detail":"Sunucuya ulasilamadi. Internet baglantisini kontrol edip tekrar deneyin."}', "application/json"
+        for attempt in range(3):
+            req = urllib.request.Request(UPSTREAM + self.path, data=body, method=self.command)
+            for h in FORWARD_HEADERS:
+                if self.headers.get(h):
+                    req.add_header(h, self.headers[h])
+            try:
+                r = urllib.request.urlopen(req, context=_ctx, timeout=40)
+                code, data, ctype = r.status, r.read(), r.headers.get("Content-Type", "application/json")
+                break
+            except urllib.error.HTTPError as e:
+                code, data, ctype = e.code, e.read(), e.headers.get("Content-Type", "application/json")
+                break
+            except Exception as e:  # noqa: BLE001
+                reason = getattr(e, "reason", e)
+                print(f"[{time.strftime('%H:%M:%S')}] {self.command} {self.path.split('?')[0]} -> baglanti hatasi: {reason!r}", flush=True)
+                # Sadece istek sunucuya HIC ulasmadiysa tekrar dene (DNS / baglanti
+                # kurulamadi) — gonderilmis bir yazma istegi iki kez islenmesin.
+                if not isinstance(reason, (socket.gaierror, ConnectionRefusedError)) and self.command != "GET":
+                    break
+                time.sleep(1 + attempt)
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
