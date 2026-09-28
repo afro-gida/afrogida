@@ -14,16 +14,31 @@ export class ApiError extends Error {
 }
 
 let authToken: string | null = null;
+let deviceToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
+
+/** Oturum sunucuda düşerse (süre doldu / başka yerden kapatıldı) çağrılır. */
+export function setUnauthorizedHandler(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
 
 export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
+/** "Bu cihazı hatırla" anahtarı — girişte gönderilir; sunucu tanıdığı
+ *  cihazda SMS kodu istemez (bkz. backend routers/auth.py yeni cihaz doğrulaması). */
+export function setDeviceToken(token: string | null) {
+  deviceToken = token;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  if (deviceToken && path.startsWith('/auth/login')) headers['X-Device-Token'] = deviceToken;
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (res.status === 401 && authToken && onUnauthorized && !path.startsWith('/auth/')) onUnauthorized();
   if (!res.ok) {
     let detail = res.statusText;
     try {

@@ -1,8 +1,13 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
 
 export default function SorumluLayout() {
   const theme = useTheme();
+  const { user, loading } = useAuth();
+  // Oturum yoksa / düştüyse (çıkış, süre doldu, hareketsizlik) hiçbir sorumlu
+  // ekranı açılmaz.
+  if (!loading && (!user || user.role !== 'pazar_sorumlusu')) return <Redirect href="/giris" />;
   const headerOptions = {
     headerStyle: { backgroundColor: theme.authCard },
     headerTintColor: theme.text,

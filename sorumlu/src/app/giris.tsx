@@ -6,7 +6,7 @@ import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, type DeviceChallenge } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
 
@@ -18,12 +18,16 @@ export default function LoginScreen() {
   const theme = useTheme();
   const isDark = useColorScheme() === 'dark';
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, verifyDevice, logoutReason } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Yeni cihaz: SMS kodu adımı
+  const [challenge, setChallenge] = useState<DeviceChallenge | null>(null);
+  const [code, setCode] = useState('');
+  const [remember, setRemember] = useState(true);
 
   async function handleLogin() {
     setError(null);
@@ -37,10 +41,30 @@ export default function LoginScreen() {
     }
     setSubmitting(true);
     try {
-      await login(phone.trim(), password);
+      const res = await login(phone.trim(), password);
+      if (res.ok) router.replace('/');
+      else {
+        setChallenge(res.challenge);
+        setCode('');
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. İnternetini kontrol et.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerify() {
+    if (!challenge) return;
+    setError(null);
+    if (code.trim().length !== 6) return setError('SMS ile gelen 6 haneli kodu gir.');
+    setSubmitting(true);
+    try {
+      await verifyDevice(challenge.challenge_id, code.trim(), remember);
       router.replace('/');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
+      setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. İnternetini kontrol et.');
+      if (e instanceof ApiError && (e.status === 410 || e.status === 429 || e.status === 403)) setChallenge(null);
     } finally {
       setSubmitting(false);
     }
@@ -60,6 +84,50 @@ export default function LoginScreen() {
           Pazar sorumlusu hesabınızla giriş yapın.
         </ThemedText>
 
+        {!!logoutReason && !challenge && (
+          <ThemedText themeColor="danger" type="small" style={styles.error}>{logoutReason}</ThemedText>
+        )}
+
+        {challenge ? (
+          <>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
+              {challenge.message ?? 'Yeni cihazdan giriş: telefonuna doğrulama kodu gönderildi.'}
+            </ThemedText>
+            <TextInput
+              value={code}
+              onChangeText={setCode}
+              placeholder="6 haneli kod"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              onSubmitEditing={handleVerify}
+              style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
+            />
+            <Pressable onPress={() => setRemember((v) => !v)} style={styles.rememberRow}>
+              <View style={[styles.checkbox, { borderColor: theme.tint, backgroundColor: remember ? theme.tint : 'transparent' }]}>
+                {remember && <ThemedText style={{ color: '#fff', fontSize: 12, lineHeight: 14 }}>✓</ThemedText>}
+              </View>
+              <ThemedText type="small">Bu cihazı 30 gün hatırla (sadece kendi cihazında işaretle)</ThemedText>
+            </Pressable>
+            {!!error && (
+              <ThemedText themeColor="danger" type="small" style={styles.error}>
+                {error}
+              </ThemedText>
+            )}
+            <Pressable style={[styles.submitBtn, { backgroundColor: theme.tint }]} onPress={handleVerify} disabled={submitting}>
+              {submitting ? <ActivityIndicator color="#fff" /> : (
+                <ThemedText style={{ color: '#fff' }} type="smallBold">Doğrula ve Gir</ThemedText>
+              )}
+            </Pressable>
+            <Pressable onPress={() => { setChallenge(null); setError(null); }} style={styles.backLink}>
+              <ThemedText themeColor="tint" type="small">Geri</ThemedText>
+            </Pressable>
+          </>
+        ) : (
+        <>
         <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
           Telefon Numarası
         </ThemedText>
@@ -106,9 +174,11 @@ export default function LoginScreen() {
         </Pressable>
 
         <ThemedText themeColor="textSecondary" type="small" style={styles.hint}>
-          Şifreni unuttuysan Afro Gıda müşteri uygulamasından "Şifremi Unuttum" ile sıfırlayabilirsin
+          Şifreni unuttuysan Afro Gıda müşteri sitesinden "Şifremi Unuttum" ile sıfırlayabilirsin
           (aynı telefon numarasıyla).
         </ThemedText>
+        </>
+        )}
       </View>
     </Screen>
   );
@@ -126,4 +196,7 @@ const styles = StyleSheet.create({
   error: { marginTop: Spacing.one },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.two },
   hint: { marginTop: Spacing.three, textAlign: 'center' },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: Spacing.two },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  backLink: { alignItems: 'center', paddingVertical: Spacing.two },
 });

@@ -22,7 +22,7 @@ from core.config import (
 )
 from core import totp
 from core.text import normalize_email, tr_title
-from core.crypto import _hmac_hex, enc_str, dec_str
+from core.crypto import _hmac_hex, enc_str, dec_str, hash_token
 from core.db import db
 from core.logs import (
     _client_ip, _extract_request_meta, _insert_log, _log_sms_send, _mask_phone,
@@ -465,10 +465,119 @@ async def auth_login(payload: LoginInput, request: Request = None):
     await clear_failures(f"login:{phone}")
     if _is_admin_role(existing):
         return await _start_admin_2fa(existing, request, via="phone")
+    if existing.get("role") in DEVICE_VERIFY_ROLES and not await _device_trusted(existing, request):
+        return await _start_device_challenge(existing, request)
     token = await create_session(existing["user_id"], request=request)
     await _insert_log("log_auth", {"user_id": existing["user_id"], "phone_masked": _mask_phone(phone), "action": "login_success", "change_details": None}, request)
     user = await db.users.find_one({"user_id": existing["user_id"]}, {"_id": 0})
     return {"token": token, "user": _public_user_doc(user)}
+
+
+# ---------------- Yeni cihaz doğrulaması (pazar sorumlusu) ----------------
+# Sorumlu tanımadığı bir cihazdan/tarayıcıdan girerse şifreye ek olarak kendi
+# telefonuna SMS kodu gelir; "bu cihazı hatırla" ile cihaz 30 gün güvenilir
+# olur (sonraki girişlerde sadece şifre). Şifre çalınsa bile başka cihazdan
+# girilemez. Cihaz anahtarı istemcide, sunucuda yalnızca özeti durur.
+DEVICE_VERIFY_ROLES = ("pazar_sorumlusu",)
+TRUSTED_DEVICE_DAYS = 30
+DEVICE_CHALLENGE_TTL_SEC = 300
+DEVICE_CHALLENGE_MAX_ATTEMPTS = 5
+
+
+def _ua_hash(request) -> str:
+    return hashlib.sha256((_extract_request_meta(request)["user_agent"] or "").encode("utf-8")).hexdigest()[:16]
+
+
+async def _device_trusted(user: dict, request) -> bool:
+    raw = (request.headers.get("X-Device-Token") or "").strip() if request else ""
+    if not raw or len(raw) > 200:
+        return False
+    now = now_utc()
+    res = await db.trusted_devices.update_one(
+        {"user_id": user["user_id"], "token_hash": hash_token(raw), "expires_at": {"$gt": now}},
+        {"$set": {"last_used_at": now, "last_ip": _client_ip(request)}},
+    )
+    return res.matched_count == 1
+
+
+async def _start_device_challenge(user: dict, request) -> dict:
+    code = _generate_sms_code()
+    cid = secrets.token_urlsafe(24)
+    now = now_utc()
+    await db.device_challenges.insert_one({
+        "challenge_id": cid,
+        "user_id": user["user_id"],
+        "code_hash": _hmac_hex("device|" + cid + "|" + code),
+        "ua_hash": _ua_hash(request),
+        "ip_address": _client_ip(request),
+        "attempts": 0,
+        "created_at": now,
+        "expires_at": now + timedelta(seconds=DEVICE_CHALLENGE_TTL_SEC),
+    })
+    msg = (f"AfroGida yeni cihaz girisi dogrulama kodu: {code}. Kod {DEVICE_CHALLENGE_TTL_SEC // 60} dk gecerli. "
+           f"Bu girisi siz yapmadiysaniz sifrenizi hemen degistirin.")
+    sent = await asyncio.to_thread(send_sms_verimor, user.get("phone") or "", msg)
+    await _insert_log("log_security", {"event_type": "device_challenge", "source_ip": _client_ip(request),
+                                       "user_id": user["user_id"], "details": {"role": user.get("role"), "sms_sent": bool(sent)},
+                                       "severity": "low", "resolved": True}, request)
+    if not sent and not ADMIN_2FA_ALLOW_UNSENT_SMS:
+        await db.device_challenges.delete_one({"challenge_id": cid})
+        raise HTTPException(status_code=503, detail="Doğrulama SMS'i gönderilemedi. Lütfen tekrar deneyin.")
+    return {
+        "requires_device_verification": True,
+        "challenge_id": cid,
+        "expires_in": DEVICE_CHALLENGE_TTL_SEC,
+        "message": f"Yeni cihazdan giriş: {_mask_phone(user.get('phone') or '')} numarasına doğrulama kodu gönderildi.",
+    }
+
+
+@router.post("/auth/device/verify")
+async def auth_device_verify(payload: dict, request: Request = None):
+    await rate_limit(f"device_verify_ip:{_client_ip(request)}", 20, 300, "Çok fazla deneme. 5 dakika bekleyin.")
+    cid = str((payload or {}).get("challenge_id") or "").strip()[:64]
+    code = re.sub(r"\D", "", str((payload or {}).get("code") or ""))[:6]
+    remember = bool((payload or {}).get("remember", True))
+    if not cid or len(code) != 6:
+        raise HTTPException(status_code=400, detail="6 haneli doğrulama kodunu girin")
+    ch = await db.device_challenges.find_one({"challenge_id": cid})
+    if not ch or to_aware(ch.get("expires_at")) < now_utc():
+        if ch:
+            await db.device_challenges.delete_one({"_id": ch["_id"]})
+        raise HTTPException(status_code=410, detail="Kodun süresi doldu. Lütfen tekrar giriş yapın.")
+    if ch.get("ua_hash") and ch["ua_hash"] != _ua_hash(request):
+        await db.device_challenges.delete_one({"_id": ch["_id"]})
+        raise HTTPException(status_code=403, detail="Doğrulama, giriş yapılan cihazdan tamamlanmalı. Lütfen tekrar giriş yapın.")
+    if ch.get("code_hash") != _hmac_hex("device|" + cid + "|" + code):
+        attempts = int(ch.get("attempts") or 0) + 1
+        if attempts >= DEVICE_CHALLENGE_MAX_ATTEMPTS:
+            await db.device_challenges.delete_one({"_id": ch["_id"]})
+            _u = await db.users.find_one({"user_id": ch.get("user_id")}, {"_id": 0})
+            await security_alarm("device_code_bruteforce", {"attempts": attempts}, request, _u, severity="high", notify=True)
+            raise HTTPException(status_code=429, detail="Çok fazla hatalı kod. Lütfen tekrar giriş yapın.")
+        await db.device_challenges.update_one({"_id": ch["_id"]}, {"$set": {"attempts": attempts}})
+        raise HTTPException(status_code=401, detail=f"Kod hatalı ({DEVICE_CHALLENGE_MAX_ATTEMPTS - attempts} deneme kaldı)")
+    await db.device_challenges.delete_one({"_id": ch["_id"]})
+    user = await db.users.find_one({"user_id": ch["user_id"]}, {"_id": 0})
+    if not user or user.get("login_disabled") or user.get("role") not in DEVICE_VERIFY_ROLES:
+        raise HTTPException(status_code=403, detail="Hesap devre dışı")
+    token = await create_session(user["user_id"], request=request)
+    device_token = None
+    if remember:
+        device_token = secrets.token_urlsafe(32)
+        meta = _extract_request_meta(request)
+        await db.trusted_devices.insert_one({
+            "user_id": user["user_id"],
+            "token_hash": hash_token(device_token),
+            "label": (meta["user_agent"] or "")[:120],
+            "created_ip": meta["ip_address"],
+            "created_at": now_utc(),
+            "last_used_at": now_utc(),
+            "expires_at": now_utc() + timedelta(days=TRUSTED_DEVICE_DAYS),
+        })
+    await _insert_log("log_auth", {"user_id": user["user_id"], "phone_masked": _mask_phone(user.get("phone") or ""),
+                                   "action": "login_success", "change_details": {"new_device": True, "remembered": remember}}, request)
+    safe = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0}) or {}
+    return {"token": token, "user": _public_user_doc(safe), "device_token": device_token}
 
 
 @router.post("/auth/admin")

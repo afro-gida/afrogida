@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -24,7 +24,6 @@ interface Courier {
 
 interface OrderDetail extends SorumluOrder {
   delivery_neighborhood?: string;
-  address?: string | null;
 }
 
 const STATUS_FLOW = ['talep_alindi', 'hazirlik_bekliyor', 'hazirlaniyor', 'hazir', 'yolda', 'teslim_edildi'];
@@ -193,20 +192,6 @@ export default function SorumluSiparisDetay() {
     }
   }
 
-  function openMap() {
-    if (!order?.address) return;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`;
-    // Web'de Linking.openURL yerine window.open kullanılmalı — tıklama olayı
-    // içinde senkron çağrılmazsa tarayıcı pop-up engelleyicisine takılıp
-    // sessizce hiçbir şey açmıyordu (kullanıcı talimatıyla bulunan hata:
-    // butonlar görünüyor ama tepkisizdi). bkz. tedarikci/index.tsx openPdf().
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      Linking.openURL(url);
-    }
-  }
-
   return (
     <Screen edges={['bottom']}>
       <Stack.Screen
@@ -242,7 +227,6 @@ export default function SorumluSiparisDetay() {
             <View>
               <ThemedText type="title" style={{ fontSize: 20 }}>{order.user_name || 'Müşteri'}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">{order.tx_id}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">{order.customer_phone_masked}</ThemedText>
             </View>
 
             <View style={styles.grid}>
@@ -266,14 +250,11 @@ export default function SorumluSiparisDetay() {
               </View>
             </View>
 
-            {order.delivery_type === 'eve_servis' && !!order.address && (
+            {/* Gizlilik: sorumlu müşterinin adresini/telefonunu görmez — sadece
+                teslimat mahallesi (adres yalnızca kuryede). */}
+            {order.delivery_type === 'eve_servis' && !!order.delivery_neighborhood && (
               <View style={[styles.card, { backgroundColor: theme.authCard }]}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {order.delivery_neighborhood ? `${order.delivery_neighborhood} · ` : ''}{order.address}
-                </ThemedText>
-                <Pressable style={[styles.smallBtn, { backgroundColor: theme.tint }]} onPress={openMap}>
-                  <ThemedText style={{ color: '#fff' }} type="smallBold">📍 Konumu Aç</ThemedText>
-                </Pressable>
+                <ThemedText type="small" themeColor="textSecondary">Teslimat mahallesi: {order.delivery_neighborhood}</ThemedText>
               </View>
             )}
 

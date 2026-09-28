@@ -92,7 +92,7 @@ export default function SorumluHome() {
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki kuryeleri gör</ThemedText>
         </Pressable>
 
-        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={logout}>
+        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={() => logout()}>
           <ThemedText themeColor="danger" type="smallBold">Çıkış Yap</ThemedText>
         </Pressable>
       </ScrollView>

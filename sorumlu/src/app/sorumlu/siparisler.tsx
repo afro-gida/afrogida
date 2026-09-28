@@ -29,7 +29,6 @@ export interface SorumluOrder {
   amount?: number | null;
   delivery_fee?: number | null;
   user_name: string;
-  customer_phone_masked: string;
   items: OrderItem[];
   created_at: string;
   delivery_slot_start?: string | null;

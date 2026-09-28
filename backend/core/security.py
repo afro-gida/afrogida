@@ -175,7 +175,9 @@ async def create_session(user_id: str, token: Optional[str] = None, request=None
     if is_admin and not twofa:
         logger.error("[GÜVENLİK] 2FA'sız yönetici oturumu denemesi engellendi user_id=%s", user_id)
         raise HTTPException(status_code=403, detail="Yönetici girişi SMS doğrulaması gerektirir")
-    ttl = timedelta(hours=ADMIN_SESSION_HOURS) if is_admin else timedelta(days=SESSION_DURATION_DAYS)
+    # Yönetici ve pazar sorumlusu oturumları kısa (bir iş günü); müşteri uzun.
+    short = is_admin or role == "pazar_sorumlusu"
+    ttl = timedelta(hours=ADMIN_SESSION_HOURS) if short else timedelta(days=SESSION_DURATION_DAYS)
     meta = _extract_request_meta(request)
     await db.user_sessions.insert_one({
         "token_hash": hash_token(session_token),

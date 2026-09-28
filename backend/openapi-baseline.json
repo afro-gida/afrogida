@@ -8316,6 +8316,44 @@
                 "summary": "Auth Admin Verify 2Fa"
             }
         },
+        "/api/auth/device/verify": {
+            "post": {
+                "operationId": "auth_device_verify_api_auth_device_verify_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Payload",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Auth Device Verify"
+            }
+        },
         "/api/auth/google": {
             "post": {
                 "operationId": "auth_google_api_auth_google_post",

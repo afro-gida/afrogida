@@ -64,13 +64,6 @@ async def pazar_sorumlusu_suppliers(user: dict = Depends(get_current_pazar_sorum
     return result
 
 
-def _mask_phone(phone: str) -> str:
-    digits = "".join(c for c in (phone or "") if c.isdigit())
-    if len(digits) < 6:
-        return phone or ""
-    return f"{digits[:4]} *** **{digits[-2:]}"
-
-
 def _sorumlu_order_view(o: dict, detailed: bool = False) -> dict:
     items = []
     for it in (o.get("items") or []):
@@ -91,8 +84,10 @@ def _sorumlu_order_view(o: dict, detailed: bool = False) -> dict:
         "market_name": o.get("market_name") or "",
         "amount": o.get("amount"),
         "delivery_fee": o.get("delivery_fee"),
+        # Gizlilik kararı: sorumlu müşterinin telefonunu ve adresini GÖRMEZ —
+        # sadece sipariş no, müşteri adı ve ürünler (+ teslimat mahallesi).
+        # Telefon/adres yalnızca kuryede, teslimat sırasında.
         "user_name": o.get("user_name") or "",
-        "customer_phone_masked": _mask_phone(o.get("user_phone") or o.get("customer_phone") or ""),
         "items": items,
         "created_at": o.get("created_at"),
         "delivery_slot_start": o.get("delivery_slot_start"),
@@ -107,7 +102,6 @@ def _sorumlu_order_view(o: dict, detailed: bool = False) -> dict:
     }
     if detailed:
         out["delivery_neighborhood"] = o.get("delivery_neighborhood") or ""
-        out["address"] = dec_str(o.get("address")) if o.get("delivery_type") == "eve_servis" else None
     return out
 
 
