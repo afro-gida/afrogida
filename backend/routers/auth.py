@@ -20,14 +20,15 @@ from core.config import (
     EMERGENT_SESSION_API,
     ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS, ADMIN_2FA_ALLOW_UNSENT_SMS,
 )
-from core.crypto import _hmac_hex
+from core import totp
+from core.crypto import _hmac_hex, enc_str, dec_str
 from core.db import db
 from core.logs import (
     _client_ip, _extract_request_meta, _insert_log, _log_sms_send, _mask_phone,
     _check_brute_force, _check_otp_abuse,
 )
 from core.security import (
-    get_current_user, rate_limit, check_lockout, register_failure, clear_failures,
+    get_current_user, get_current_admin, rate_limit, check_lockout, register_failure, clear_failures,
     create_session, _session_query, hash_password, verify_password, security_alarm,
 )
 from core.serializers import _public_user_doc
@@ -236,15 +237,89 @@ async def _start_admin_2fa(user: dict, request, via: str) -> dict:
     }
 
 
+async def _start_admin_totp(user: dict, request) -> dict:
+    """Parola doğrulandı; authenticator kodu (veya yedek kod) bekleyen meydan
+    okuma başlatır. SMS gönderilmez; kullanıcı isterse /auth/admin/2fa/sms."""
+    cid = secrets.token_urlsafe(24)
+    meta = _extract_request_meta(request)
+    now = now_utc()
+    await db.admin_2fa.insert_one({
+        "challenge_id": cid,
+        "user_id": user["user_id"],
+        "method": "totp",
+        "via": "username",
+        "ip_address": meta["ip_address"],
+        "ua_hash": hashlib.sha256((meta["user_agent"] or "").encode("utf-8")).hexdigest()[:16],
+        "attempts": 0,
+        "created_at": now,
+        "expires_at": now + timedelta(seconds=ADMIN_2FA_TTL_SEC),
+    })
+    await _insert_log("log_security", {"event_type": "admin_2fa_challenge", "source_ip": meta["ip_address"],
+                                       "user_id": user["user_id"], "details": {"method": "totp"},
+                                       "severity": "low", "resolved": True}, request)
+    return {
+        "requires_2fa": True,
+        "method": "totp",
+        "challenge_id": cid,
+        "expires_in": ADMIN_2FA_TTL_SEC,
+        "message": "Authenticator uygulamasındaki 6 haneli kodu girin.",
+    }
+
+
+@router.post("/auth/admin/2fa/sms")
+async def auth_admin_2fa_sms(payload: dict, request: Request = None):
+    """Authenticator'a erişilemiyorsa: bekleyen meydan okumaya SMS kodu gönderir
+    (kod yine yöneticinin kayıtlı numarasına gider)."""
+    _ip = _client_ip(request)
+    await rate_limit(f"admin_2fa_sms_ip:{_ip}", 3, 600, "Çok fazla SMS isteği. 10 dakika bekleyin.")
+    cid = str((payload or {}).get("challenge_id") or "").strip()[:64]
+    ch = await db.admin_2fa.find_one({"challenge_id": cid}) if cid else None
+    if not ch or to_aware(ch.get("expires_at")) < now_utc():
+        raise HTTPException(status_code=410, detail="Doğrulama süresi doldu. Lütfen tekrar giriş yapın.")
+    _ua_now = hashlib.sha256((_extract_request_meta(request)["user_agent"] or "").encode("utf-8")).hexdigest()[:16]
+    if ch.get("ua_hash") and ch.get("ua_hash") != _ua_now:
+        raise HTTPException(status_code=403, detail="Doğrulama, giriş yapılan cihazdan tamamlanmalı.")
+    user = await db.users.find_one({"user_id": ch["user_id"]}, {"_id": 0})
+    if not user or not _is_admin_role(user):
+        raise HTTPException(status_code=403, detail="Hesap devre dışı")
+    await db.admin_2fa.delete_one({"_id": ch["_id"]})
+    return await _start_admin_2fa(user, request, via="sms_fallback")
+
+
+async def _verify_totp_challenge(ch: dict, raw_code: str) -> Optional[str]:
+    """Authenticator kodu veya yedek kodu doğrular. Başarılıysa kullanılan
+    yöntemi ("totp" | "backup_code") döndürür; aynı kod ikinci kez geçmez."""
+    sec = await db.admin_totp.find_one({"user_id": ch["user_id"], "enabled": True})
+    if not sec or not sec.get("secret_enc"):
+        return None
+    digits = re.sub(r"\D", "", raw_code)
+    if len(digits) == 6 and len(re.sub(r"[\s-]", "", raw_code)) == 6:
+        secret = dec_str(sec["secret_enc"]) or ""
+        counter = totp.verify(secret, digits, last_counter=sec.get("last_counter"))
+        if counter is None:
+            return None
+        # Atomik: aynı zaman adımı iki kez kullanılamasın (eşzamanlı istekler dahil)
+        res = await db.admin_totp.update_one(
+            {"_id": sec["_id"], "$or": [{"last_counter": {"$lt": counter}}, {"last_counter": None}]},
+            {"$set": {"last_counter": counter}},
+        )
+        return "totp" if res.modified_count == 1 else None
+    h = totp.hash_backup(raw_code)
+    res = await db.admin_totp.update_one({"_id": sec["_id"], "backup_hashes": h}, {"$pull": {"backup_hashes": h}})
+    return "backup_code" if res.modified_count == 1 else None
+
+
 @router.post("/auth/admin/verify-2fa")
 async def auth_admin_verify_2fa(payload: Admin2FAVerifyInput, request: Request = None):
     _ip = _client_ip(request)
     await rate_limit(f"admin_2fa_ip:{_ip}", 20, 300, "Çok fazla doğrulama denemesi. 5 dakika bekleyin.")
     cid = str(payload.challenge_id or "").strip()[:64]
-    code = re.sub(r"\D", "", str(payload.code or ""))[:6]
-    if not cid or len(code) != 6:
+    raw_code = str(payload.code or "").strip()[:32]
+    code = re.sub(r"\D", "", raw_code)[:6]
+    ch = await db.admin_2fa.find_one({"challenge_id": cid}) if cid else None
+    is_totp = bool(ch) and ch.get("method") == "totp"
+    if not cid or (not is_totp and len(code) != 6) or (is_totp and not raw_code):
         raise HTTPException(status_code=400, detail="Geçersiz doğrulama kodu")
-    ch = await db.admin_2fa.find_one({"challenge_id": cid})
     if not ch or to_aware(ch.get("expires_at")) < now_utc():
         if ch:
             await db.admin_2fa.delete_one({"challenge_id": cid})
@@ -256,7 +331,13 @@ async def auth_admin_verify_2fa(payload: Admin2FAVerifyInput, request: Request =
         _u = await db.users.find_one({"user_id": ch.get("user_id")}, {"_id": 0})
         await security_alarm("admin_2fa_device_mismatch", {"via": ch.get("via")}, request, _u, severity="high", notify=True)
         raise HTTPException(status_code=403, detail="Doğrulama, giriş yapılan cihazdan tamamlanmalı. Lütfen tekrar giriş yapın.")
-    if ch.get("code_hash") != _hmac_hex("admin2fa|" + cid + "|" + code):
+    if is_totp:
+        used_method = await _verify_totp_challenge(ch, raw_code)
+        code_ok = used_method is not None
+    else:
+        used_method = "sms"
+        code_ok = ch.get("code_hash") == _hmac_hex("admin2fa|" + cid + "|" + code)
+    if not code_ok:
         attempts = int(ch.get("attempts") or 0) + 1
         await _insert_log("log_auth", {"user_id": ch.get("user_id"), "phone_masked": "", "action": "admin_2fa_failed",
                                        "change_details": {"attempts": attempts}}, request)
@@ -274,11 +355,78 @@ async def auth_admin_verify_2fa(payload: Admin2FAVerifyInput, request: Request =
         raise HTTPException(status_code=403, detail="Hesap devre dışı")
     token = await create_session(admin["user_id"], request=request, twofa=True)
     await _insert_log("log_auth", {"user_id": admin["user_id"], "phone_masked": _mask_phone(admin.get("phone") or ""),
-                                   "action": "admin_login", "change_details": {"via": ch.get("via"), "2fa": True}}, request)
+                                   "action": "admin_login", "change_details": {"via": ch.get("via"), "method": used_method, "2fa": True}}, request)
     await _insert_log("log_security", {"event_type": "admin_login", "source_ip": _ip, "user_id": admin["user_id"],
-                                       "details": {"via": ch.get("via"), "2fa": True}, "severity": "low", "resolved": True}, request)
-    user = await db.users.find_one({"user_id": admin["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0})
-    return {"token": token, "user": _public_user_doc(user)}
+                                       "details": {"via": ch.get("via"), "method": used_method, "2fa": True}, "severity": "low", "resolved": True}, request)
+    status = await _totp_status(admin["user_id"])
+    if used_method == "backup_code":
+        # Yedek kod ancak telefon kaybında kullanılmalı -> sahibine haber ver
+        await security_alarm("admin_backup_code_used",
+                             {"summary": f"Yönetici girişi YEDEK KOD ile yapıldı. Kalan yedek kod: {status['backup_codes_left']}."},
+                             request, admin, severity="high", notify=True)
+    user = await db.users.find_one({"user_id": admin["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0}) or {}
+    return {"token": token, "user": {**_public_user_doc(user), **status}}
+
+
+async def _totp_status(user_id: str) -> dict:
+    """Sadece durum bilgisi — gizli anahtar / kod özetleri asla dönmez.
+    (Sırlar kullanıcı kaydında değil ayrı `admin_totp` koleksiyonunda durur;
+    böylece hiçbir kullanıcı/üye listesi ucu onları yanlışlıkla döndüremez.)"""
+    sec = await db.admin_totp.find_one({"user_id": user_id, "enabled": True}, {"_id": 0, "backup_hashes": 1})
+    return {"totp_enabled": bool(sec), "backup_codes_left": len((sec or {}).get("backup_hashes") or [])}
+
+
+# ---------------- Yönetici: authenticator kurulumu ----------------
+# Kurulum ancak 2FA'lı (SMS ile girilmiş) yönetici oturumunda yapılır. Bir kez
+# etkinleştirildikten sonra uygulamadan kapatılamaz / değiştirilemez — sıfırlama
+# yalnızca sunucuda elle (hesap ele geçirilse bile saldırgan 2FA'yı kendi
+# telefonuna taşıyamasın).
+
+@router.get("/admin/2fa/status")
+async def admin_2fa_status(current_user: dict = Depends(get_current_admin)):
+    return await _totp_status(current_user["user_id"])
+
+
+@router.post("/admin/2fa/totp/setup")
+async def admin_totp_setup(current_user: dict = Depends(get_current_admin), request: Request = None):
+    if (await _totp_status(current_user["user_id"]))["totp_enabled"]:
+        raise HTTPException(status_code=409, detail="Authenticator zaten etkin. Değiştirmek için sunucuda sıfırlanmalı.")
+    secret = totp.new_secret()
+    await db.admin_totp.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"pending_enc": enc_str(secret), "pending_at": now_utc(), "enabled": False}},
+        upsert=True,
+    )
+    account = current_user.get("username") or current_user.get("name") or "yonetici"
+    await _insert_log("log_security", {"event_type": "admin_totp_setup_started", "source_ip": _client_ip(request),
+                                       "user_id": current_user["user_id"], "details": {}, "severity": "low", "resolved": True}, request)
+    return {"secret": secret, "otpauth_uri": totp.provisioning_uri(secret, account)}
+
+
+@router.post("/admin/2fa/totp/confirm")
+async def admin_totp_confirm(payload: dict, current_user: dict = Depends(get_current_admin), request: Request = None):
+    await rate_limit(f"admin_totp_confirm:{current_user['user_id']}", 10, 600, "Çok fazla deneme. 10 dakika bekleyin.")
+    sec = await db.admin_totp.find_one({"user_id": current_user["user_id"]}) or {}
+    if sec.get("enabled"):
+        raise HTTPException(status_code=409, detail="Authenticator zaten etkin.")
+    pending = sec.get("pending_enc")
+    started = to_aware(sec["pending_at"]) if sec.get("pending_at") else None
+    if not pending or not started or now_utc() - started > timedelta(minutes=15):
+        raise HTTPException(status_code=410, detail="Kurulum süresi doldu. Lütfen yeniden başlatın.")
+    secret = dec_str(pending) or ""
+    counter = totp.verify(secret, str((payload or {}).get("code") or ""))
+    if counter is None:
+        raise HTTPException(status_code=400, detail="Kod hatalı. Uygulamadaki güncel 6 haneli kodu girin.")
+    codes = totp.new_backup_codes()
+    await db.admin_totp.update_one(
+        {"user_id": current_user["user_id"]},
+        {"$set": {"secret_enc": enc_str(secret), "enabled": True, "last_counter": counter,
+                  "enabled_at": now_utc(), "backup_hashes": [totp.hash_backup(c) for c in codes]},
+         "$unset": {"pending_enc": "", "pending_at": ""}},
+    )
+    await security_alarm("admin_totp_enabled", {"summary": "Yönetici hesabında authenticator doğrulaması etkinleştirildi."},
+                         request, current_user, severity="medium", notify=True)
+    return {"success": True, "backup_codes": codes}
 
 
 @router.post("/auth/login")
@@ -337,12 +485,9 @@ async def auth_admin(payload: AdminLoginInput, request: Request = None):
             raise HTTPException(status_code=429, detail="Çok fazla hatalı deneme. Yönetici girişi 15 dakika kilitlendi.")
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
     await clear_failures(f"admin:{_uname}")
+    if await db.admin_totp.find_one({"user_id": admin["user_id"], "enabled": True}, {"_id": 1}):
+        return await _start_admin_totp(admin, request)
     return await _start_admin_2fa(admin, request, via="username")
-    token = await create_session(admin["user_id"], request=request)
-    await _insert_log("log_auth", {"user_id": admin["user_id"], "phone_masked": _mask_phone(admin.get("phone","")), "action": "admin_login", "change_details": None}, request)
-    await _insert_log("log_security", {"event_type": "admin_login", "source_ip": _extract_request_meta(request)["ip_address"], "user_id": admin["user_id"], "details": {}, "severity": "low", "resolved": True}, request)
-    user = await db.users.find_one({"user_id": admin["user_id"]}, {"_id": 0, "password_hash": 0, "username": 0})
-    return {"token": token, "user": _public_user_doc(user)}
 
 
 @router.get("/auth/me")
