@@ -343,10 +343,20 @@ async def pazar_sorumlusu_supplier_products(supplier_group: str, user: dict = De
     return await db.products.find({"supplier_group": supplier_group}, {"_id": 0}).sort("name", 1).to_list(2000)
 
 
+@router.get("/all-suppliers")
+async def pazar_sorumlusu_all_suppliers(user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Sistemdeki TÜM tedarikçilerin adları (sorumlu kendi pazarına atayacağı
+    tedarikçiyi listeden seçsin). Sadece ad — iletişim/fiyat bilgisi yok."""
+    cfg = await _read_catalog_config()
+    return list(dict.fromkeys(g for g in ((cfg or {}).get("suppliers") or []) if g))
+
+
 @router.post("/suppliers/assign")
 async def pazar_sorumlusu_assign_supplier(data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
-    """Bir tedarikçiyi KENDİ pazarına ekler (catalog_config.supplier_markets'e
-    bu pazarın adını ekler) — başka bir pazar sorumlusunun pazarına dokunamaz."""
+    """Kayıtlı bir tedarikçiyi KENDİ pazarına ekler (catalog_config.supplier_markets'e
+    bu pazarın adını ekler) — başka bir pazar sorumlusunun pazarına dokunamaz.
+    Yeni tedarikçi TANIMLAYAMAZ (o yönetici işi): sadece listedekiler atanır —
+    eskiden serbest metin yazılan her ad yeni bir tedarikçi oluşturuyordu."""
     supplier_group = str((data or {}).get("supplier_group") or "").strip()
     market_id = str((data or {}).get("market_id") or "").strip()
     if not supplier_group or not market_id:
@@ -356,16 +366,14 @@ async def pazar_sorumlusu_assign_supplier(data: dict, user: dict = Depends(get_c
     market_name = market.get("name") or ""
 
     cfg = dict(await _read_catalog_config())
+    if supplier_group not in (cfg.get("suppliers") or []):
+        raise HTTPException(status_code=400, detail="Bu tedarikçi sistemde kayıtlı değil. Yeni tedarikçiyi yönetici ekler.")
     supplier_markets = dict(cfg.get("supplier_markets") or {})
     current = list(supplier_markets.get(supplier_group) or [])
     if not any(_afro_norm(m) == _afro_norm(market_name) for m in current):
         current.append(market_name)
     supplier_markets[supplier_group] = current
     cfg["supplier_markets"] = supplier_markets
-    suppliers_list = list(cfg.get("suppliers") or [])
-    if supplier_group not in suppliers_list:
-        suppliers_list.append(supplier_group)
-    cfg["suppliers"] = suppliers_list
     await _write_catalog_config(cfg)
 
     await _insert_log("log_admin", {

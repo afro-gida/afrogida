@@ -76,6 +76,32 @@ def test_test_account_code_goes_to_owner_phone(client, sms, make_user, monkeypat
     assert sms[-1][0] == phone2
 
 
+def test_sorumlu_sees_all_suppliers_and_assigns_only_known(client, db, sorumlu):
+    import services.catalog as cat
+    cfg_before = db.catalog_config.find_one({}, {"_id": 0})
+    db.catalog_config.update_one({}, {"$set": {"suppliers": ["Ali Sebze", "Veli Meyve"], "supplier_markets": {}}}, upsert=True)
+    cat._CACHE = None
+    cat._CACHE_TS = 0
+    try:
+        h = sorumlu["headers"]
+        assert client.get("/api/pazar-sorumlusu/all-suppliers", headers=h).json() == ["Ali Sebze", "Veli Meyve"]
+        r = client.post("/api/pazar-sorumlusu/suppliers/assign", headers=h, json={"supplier_group": "Uydurma", "market_id": sorumlu["market_id"]})
+        assert r.status_code == 400
+        r = client.post("/api/pazar-sorumlusu/suppliers/assign", headers=h, json={"supplier_group": "Ali Sebze", "market_id": sorumlu["market_id"]})
+        assert r.status_code == 200, r.text
+        mine = client.get("/api/pazar-sorumlusu/suppliers", headers=h).json()
+        assert mine == [{"supplier_group": "Ali Sebze", "markets": ["Güvenlik Pazarı"]}]
+        # Başkasının pazarına atayamaz
+        r = client.post("/api/pazar-sorumlusu/suppliers/assign", headers=h, json={"supplier_group": "Ali Sebze", "market_id": "market_baskasi"})
+        assert r.status_code == 403
+    finally:
+        db.catalog_config.delete_many({})
+        if cfg_before:
+            db.catalog_config.insert_one(cfg_before)
+        cat._CACHE = None
+        cat._CACHE_TS = 0
+
+
 def test_member_login_has_no_device_step(client, sms, make_user):
     phone = "05" + str(uuid.uuid4().int)[:9]
     make_user(role="member", phone=phone)

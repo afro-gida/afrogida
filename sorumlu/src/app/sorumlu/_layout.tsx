@@ -21,7 +21,7 @@ export default function SorumluLayout() {
       <Stack.Screen name="siparisler" options={{ title: 'Sipariş Takip', ...headerOptions }} />
       <Stack.Screen name="siparis/[txId]" options={{ title: 'Sipariş Detayı', ...headerOptions }} />
       <Stack.Screen name="tedarikciler" options={{ title: 'Tedarikçiler', ...headerOptions }} />
-      <Stack.Screen name="tedarikci-ekle" options={{ title: 'Pazara Tedarikçi Ata', ...headerOptions }} />
+      <Stack.Screen name="tedarikci-ekle" options={{ title: 'Pazarlara Tedarikçi Ata', ...headerOptions }} />
       <Stack.Screen name="kuryeler" options={{ title: 'Kuryeler', ...headerOptions }} />
     </Stack>
   );

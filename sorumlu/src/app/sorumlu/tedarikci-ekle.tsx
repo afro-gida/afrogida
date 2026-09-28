@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -10,36 +10,41 @@ import { Spacing } from '@/constants/theme';
 interface Market {
   id: string;
   name: string;
+  day?: string;
 }
 
 interface SupplierEntry {
   supplier_group: string;
-  markets: string[]; // pazar ID'leri değil, ADLARI (bkz. backend pazar_sorumlusu.py)
+  markets: string[]; // pazar ADLARI (bkz. backend pazar_sorumlusu.py)
 }
 
+const norm = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+
+/**
+ * Pazarlarıma tedarikçi ata: her pazarın altında sistemdeki TÜM tedarikçiler
+ * listelenir; atanmış olanlar işaretli. Dokununca atanır / kaldırılır.
+ * Yeni tedarikçiyi yönetici tanımlar (sorumlu sadece listeden seçer).
+ */
 export default function SorumluTedarikciEkle() {
   const theme = useTheme();
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierEntry[]>([]);
+  const [all, setAll] = useState<string[]>([]);
+  const [assigned, setAssigned] = useState<SupplierEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const [supplierGroup, setSupplierGroup] = useState('');
-  const [selectedMarketId, setSelectedMarketId] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   function load() {
-    setLoading(true);
     setError('');
     Promise.all([
       api.get<Market[]>('/pazar-sorumlusu/markets'),
+      api.get<string[]>('/pazar-sorumlusu/all-suppliers'),
       api.get<SupplierEntry[]>('/pazar-sorumlusu/suppliers'),
     ])
-      .then(([m, s]) => {
+      .then(([m, a, s]) => {
         setMarkets(m);
-        setSuppliers(s);
-        if (m.length === 1) setSelectedMarketId(m[0].id);
+        setAll(a);
+        setAssigned(s);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Yüklenemedi'))
       .finally(() => setLoading(false));
@@ -47,100 +52,74 @@ export default function SorumluTedarikciEkle() {
 
   useEffect(load, []);
 
-  function marketName(id: string) {
-    return markets.find((m) => m.id === id)?.name ?? id;
-  }
+  const isAssigned = (group: string, market: Market) =>
+    assigned.some((s) => s.supplier_group === group && s.markets.some((n) => norm(n) === norm(market.name)));
 
-  async function assign() {
-    if (!supplierGroup.trim() || !selectedMarketId) {
-      setFormError('Tedarikçi adı ve pazar seçin');
-      return;
-    }
-    setSaving(true);
-    setFormError('');
+  async function toggle(group: string, market: Market) {
+    const on = isAssigned(group, market);
+    const key = `${market.id}::${group}`;
+    setBusyKey(key);
+    setError('');
     try {
-      await api.post('/pazar-sorumlusu/suppliers/assign', {
-        supplier_group: supplierGroup.trim(),
-        market_id: selectedMarketId,
+      await api.post(on ? '/pazar-sorumlusu/suppliers/unassign' : '/pazar-sorumlusu/suppliers/assign', {
+        supplier_group: group,
+        market_id: market.id,
       });
-      setSupplierGroup('');
-      load();
+      const s = await api.get<SupplierEntry[]>('/pazar-sorumlusu/suppliers');
+      setAssigned(s);
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Atanamadı');
+      setError(err instanceof ApiError ? err.message : 'Kaydedilemedi');
     } finally {
-      setSaving(false);
-    }
-  }
-
-  async function unassign(group: string, marketId: string) {
-    try {
-      await api.post('/pazar-sorumlusu/suppliers/unassign', { supplier_group: group, market_id: marketId });
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Kaldırılamadı');
+      setBusyKey(null);
     }
   }
 
   return (
     <Screen edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.body}>
-        {loading && <ThemedText themeColor="textSecondary">Yükleniyor…</ThemedText>}
+        <ThemedText type="small" themeColor="textSecondary">
+          Pazarında satış yapacak tedarikçilere dokun. İşaretli olanların ürünleri o pazarda müşterilere görünür.
+          Listede olmayan yeni bir tedarikçiyi yönetici ekler.
+        </ThemedText>
+        {loading && <ActivityIndicator color={theme.tint} style={{ marginTop: Spacing.three }} />}
         {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
-        <View style={[styles.card, { backgroundColor: theme.authCard }]}>
-          <ThemedText type="smallBold">Pazara Tedarikçi Ata</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">Tedarikçi Adı</ThemedText>
-          <TextInput
-            value={supplierGroup}
-            onChangeText={setSupplierGroup}
-            placeholder="Örn: Afro Sebze"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.inputBg }]}
-          />
-          {markets.length > 1 && (
-            <>
-              <ThemedText type="small" themeColor="textSecondary">Pazar</ThemedText>
-              <View style={styles.chipRow}>
-                {markets.map((m) => (
-                  <Pressable
-                    key={m.id}
-                    style={[styles.chip, { borderColor: theme.tint, backgroundColor: selectedMarketId === m.id ? theme.tint : 'transparent' }]}
-                    onPress={() => setSelectedMarketId(m.id)}
-                  >
-                    <ThemedText type="small" style={{ color: selectedMarketId === m.id ? '#fff' : theme.text }}>{m.name}</ThemedText>
-                  </Pressable>
-                ))}
+        {markets.map((m) => {
+          const count = all.filter((g) => isAssigned(g, m)).length;
+          return (
+            <View key={m.id} style={[styles.card, { backgroundColor: theme.authCard }]}>
+              <View style={styles.titleRow}>
+                <ThemedText type="smallBold" style={{ flex: 1 }}>
+                  {m.name}{m.day ? ` · ${m.day}` : ''}
+                </ThemedText>
+                <ThemedText type="small" themeColor={count ? 'tint' : 'danger'}>{count} tedarikçi</ThemedText>
               </View>
-            </>
-          )}
-          {!!formError && <ThemedText themeColor="danger" type="small">{formError}</ThemedText>}
-          <Pressable style={[styles.smallBtn, { backgroundColor: theme.tint }]} onPress={assign} disabled={saving}>
-            <ThemedText style={{ color: '#fff' }} type="smallBold">{saving ? 'Kaydediliyor…' : 'Ata'}</ThemedText>
-          </Pressable>
-        </View>
-
-        {suppliers.map((s) => (
-          <View key={s.supplier_group} style={[styles.card, { backgroundColor: theme.authCard }]}>
-            <ThemedText type="smallBold">{s.supplier_group}</ThemedText>
-            <View style={styles.chipRow}>
-              {s.markets.map((mid) => (
-                <View key={mid} style={[styles.badge, { backgroundColor: theme.backgroundSelected }]}>
-                  <ThemedText type="small" themeColor="textSecondary">{marketName(mid)}</ThemedText>
-                </View>
-              ))}
+              <View style={styles.chipRow}>
+                {all.map((g) => {
+                  const on = isAssigned(g, m);
+                  const busy = busyKey === `${m.id}::${g}`;
+                  return (
+                    <Pressable
+                      key={g}
+                      disabled={!!busyKey}
+                      onPress={() => toggle(g, m)}
+                      style={[styles.chip, { borderColor: theme.tint, backgroundColor: on ? theme.tint : 'transparent', opacity: busyKey && !busy ? 0.6 : 1 }]}
+                    >
+                      {busy ? (
+                        <ActivityIndicator size="small" color={on ? '#fff' : theme.tint} />
+                      ) : (
+                        <ThemedText type="small" style={{ color: on ? '#fff' : theme.text, fontWeight: '700' }}>
+                          {on ? '✓ ' : ''}{g}
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-            <View style={styles.chipRow}>
-              {s.markets.map((mid) => (
-                <Pressable key={mid} onPress={() => unassign(s.supplier_group, mid)}>
-                  <ThemedText type="small" themeColor="danger">{marketName(mid)}'dan kaldır</ThemedText>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ))}
-        {!loading && suppliers.length === 0 && (
-          <ThemedText themeColor="textSecondary">Pazarında bağlı tedarikçi yok.</ThemedText>
-        )}
+          );
+        })}
+        {!loading && all.length === 0 && <ThemedText themeColor="textSecondary">Sistemde henüz tedarikçi yok.</ThemedText>}
       </ScrollView>
     </Screen>
   );
@@ -148,10 +127,8 @@ export default function SorumluTedarikciEkle() {
 
 const styles = StyleSheet.create({
   body: { padding: Spacing.three, gap: Spacing.two },
-  card: { borderRadius: 16, padding: Spacing.three, gap: 8 },
+  card: { borderRadius: 16, padding: Spacing.three, gap: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { borderWidth: 1.5, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
-  badge: { borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: Spacing.two, paddingVertical: 10, fontSize: 15 },
-  smallBtn: { borderRadius: 999, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
+  chip: { borderWidth: 1.5, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 12, minHeight: 34, justifyContent: 'center' },
 });

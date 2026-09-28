@@ -9902,6 +9902,51 @@
                 "summary": "Paytr Callback"
             }
         },
+        "/api/pazar-sorumlusu/all-suppliers": {
+            "get": {
+                "description": "Sistemdeki TÜM tedarikçilerin adları (sorumlu kendi pazarına atayacağı\ntedarikçiyi listeden seçsin). Sadece ad — iletişim/fiyat bilgisi yok.",
+                "operationId": "pazar_sorumlusu_all_suppliers_api_pazar_sorumlusu_all_suppliers_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu All Suppliers"
+            }
+        },
         "/api/pazar-sorumlusu/couriers": {
             "get": {
                 "description": "Sorumlunun pazar(lar)ında çalışan kuryeler (salt okunur - atama/kaldırma admin işidir).",
@@ -10346,7 +10391,7 @@
         },
         "/api/pazar-sorumlusu/suppliers/assign": {
             "post": {
-                "description": "Bir tedarikçiyi KENDİ pazarına ekler (catalog_config.supplier_markets'e\nbu pazarın adını ekler) — başka bir pazar sorumlusunun pazarına dokunamaz.",
+                "description": "Kayıtlı bir tedarikçiyi KENDİ pazarına ekler (catalog_config.supplier_markets'e\nbu pazarın adını ekler) — başka bir pazar sorumlusunun pazarına dokunamaz.\nYeni tedarikçi TANIMLAYAMAZ (o yönetici işi): sadece listedekiler atanır —\neskiden serbest metin yazılan her ad yeni bir tedarikçi oluşturuyordu.",
                 "operationId": "pazar_sorumlusu_assign_supplier_api_pazar_sorumlusu_suppliers_assign_post",
                 "parameters": [
                     {

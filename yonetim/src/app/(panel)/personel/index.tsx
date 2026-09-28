@@ -71,7 +71,7 @@ export default function StaffScreen() {
       {done && <Notice text={done} />}
 
       <ManagerSection managers={managers} marketName={marketName} marketOptions={marketOptionsById} onOk={ok} onFail={fail} />
-      <SupplierChainSection cfg={cfg} marketOptions={marketOptionsByName} onOk={ok} onFail={fail} />
+      <SupplierChainSection cfg={cfg} markets={markets} onOk={ok} onFail={fail} />
       <SupplierUsersSection users={suppliersUsers} groups={supplierGroups} onOk={ok} onFail={fail} />
       <CourierSection couriers={couriers} marketOptions={marketOptionsByName} onOk={ok} onFail={fail} />
     </Page>
@@ -126,12 +126,27 @@ function ManagerSection({ managers, marketName, marketOptions, onOk, onFail }: C
   );
 }
 
-function SupplierChainSection({ cfg, marketOptions, onOk, onFail }: Cb & { cfg: CatalogConfig | null; marketOptions: { value: string; label: string }[] }) {
+const normName = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+
+/**
+ * Pazar pazar tedarikçi seçimi: her pazarın altında tüm tedarikçiler; seçilenler
+ * o pazarda satış yapar. Veride eşleşme tedarikçi -> pazar adları
+ * (catalog_config.supplier_markets) olarak durur; burada tersine çevrilip
+ * gösterilir. Mevcut pazarlarda olmayan eski pazar adları korunur.
+ */
+function SupplierChainSection({ cfg, markets, onOk, onFail }: Cb & { cfg: CatalogConfig | null; markets: Market[] }) {
   const [map, setMap] = useState<Record<string, string[]>>(cfg?.supplier_markets ?? {});
   const [list, setList] = useState<string[]>(cfg?.suppliers ?? []);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
+
+  const sells = (sg: string, m: Market) => (map[sg] ?? []).some((n) => normName(n) === normName(m.name));
+  const toggle = (sg: string, m: Market) => {
+    const cur = map[sg] ?? [];
+    setMap({ ...map, [sg]: sells(sg, m) ? cur.filter((n) => normName(n) !== normName(m.name)) : [...cur, m.name] });
+    setDirty(true);
+  };
 
   useEffect(() => {
     setMap(cfg?.supplier_markets ?? {});
@@ -155,17 +170,32 @@ function SupplierChainSection({ cfg, marketOptions, onOk, onFail }: Cb & { cfg: 
   }
 
   return (
-    <Section title="2. Tedarikçiler ve satış yaptıkları pazarlar">
-      <T muted size={12.5}>Müşteri bir pazarda sadece o pazara eşlenmiş tedarikçilerin ürünlerini görür. Hiç pazar seçilmezse tedarikçinin ürünleri hiçbir pazarda görünmez.</T>
-      {list.map((sg) => (
-        <View key={sg} style={styles.chain}>
-          <View style={styles.rowBtns}>
-            <T bold style={{ flex: 1 }}>{sg}</T>
-            <Badge label={`${(map[sg] ?? []).length} pazar`} tone={(map[sg] ?? []).length ? 'ok' : 'danger'} />
+    <Section title="2. Pazarlar ve tedarikçileri">
+      <T muted size={12.5}>Her pazarda satış yapacak tedarikçilere dokun. Müşteri bir pazarda sadece o pazarın tedarikçilerinin ürünlerini görür.</T>
+      {markets.map((m) => {
+        const count = list.filter((sg) => sells(sg, m)).length;
+        return (
+          <View key={m.id} style={styles.chain}>
+            <View style={styles.rowBtns}>
+              <T bold style={{ flex: 1 }}>{m.name} · {m.day}</T>
+              <Badge label={`${count} tedarikçi`} tone={count ? 'ok' : 'danger'} />
+            </View>
+            <MultiChips
+              options={list.map((sg) => ({ value: sg, label: sg }))}
+              values={list.filter((sg) => sells(sg, m))}
+              onChange={(v) => {
+                const changed = list.find((sg) => v.includes(sg) !== sells(sg, m));
+                if (changed) toggle(changed, m);
+              }}
+            />
           </View>
-          <MultiChips options={marketOptions} values={map[sg] ?? []} onChange={(v) => { setMap({ ...map, [sg]: v }); setDirty(true); }} />
-        </View>
-      ))}
+        );
+      })}
+      {list.some((sg) => !markets.some((m) => sells(sg, m))) && (
+        <T muted size={12.5}>
+          Hiçbir pazarda olmayan: {list.filter((sg) => !markets.some((m) => sells(sg, m))).join(', ')}
+        </T>
+      )}
       <View style={styles.rowBtns}>
         <Field style={{ flex: 1 }} label="Yeni tedarikçi adı" placeholder="Ör: Ali Sebze" value={newName} onChangeText={setNewName} />
         <Button
