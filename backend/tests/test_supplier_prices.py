@@ -57,11 +57,12 @@ def test_supplier_cannot_set_customer_price(client, make_user, db):
     # aynı supplier_price tekrar gönderildi -> fiyat değişikliği sayılmaz, kilit yok
     assert not doc.get("supplier_price_locked_until")
 
-    # alış fiyatı değişince satış = alış + marj
+    # alış fiyatı değişince satış = alış + kâr kademesi (60–89,99 -> +40)
     r = client.put(f"/api/admin/products/{pid}", headers=sup, json={**base, "supplier_price": 60})
     assert r.status_code == 200, r.text
     doc = db.products.find_one({"id": pid})
-    assert doc["supplier_price"] == 60 and doc["sale_price"] == 90 and doc["price"] == 90
+    assert doc["supplier_price"] == 60 and doc["sale_price"] == 100 and doc["price"] == 100
+    assert doc["profit_margin_amount"] == 40
 
     # stok değişikliği gibi fiyatsız kayıtlar kilide takılmaz
     r = client.put(f"/api/admin/products/{pid}", headers=sup,
@@ -110,5 +111,37 @@ def test_supplier_create_uses_supplier_price(client, make_user, db):
     assert not (HIDDEN & set(body))
     doc = db.products.find_one({"id": body["id"]})
     assert doc["supplier_group"] == sg
-    assert doc["profit_margin_amount"] == 0
-    assert doc["sale_price"] == 40 and doc["price"] == 40
+    # gönderdiği satış fiyatı / kâr yok sayılır; 40–59,99 -> +30
+    assert doc["profit_margin_amount"] == 30
+    assert doc["sale_price"] == 70 and doc["price"] == 70
+
+
+import pytest  # noqa: E402
+
+from core.pricing import profit_for  # noqa: E402
+
+
+@pytest.mark.parametrize("supp,profit", [
+    (0.01, 15), (19.99, 15), (20, 25), (39.99, 25), (40, 30), (59.99, 30), (60, 40), (89.99, 40),
+    (90, 60), (129.99, 60), (130, 80), (179.99, 80), (180, 110), (249.99, 110), (250, 150),
+    (349.99, 150), (350, 200), (500, 200), (500.01, None), (0, None),
+])
+def test_profit_tiers(supp, profit):
+    assert profit_for(supp) == profit
+
+
+def test_admin_price_is_automatic_and_out_of_table_rejected(client, make_user, db):
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    _, admin = make_user(role="yonetici")
+    base = {"name": "Test Domates", "category": "Domates", "unit": "Kg"}
+    # yönetici satış fiyatı / kâr gönderse de kademe uygulanır (135 -> +80 = 215)
+    r = client.put(f"/api/admin/products/{pid}", headers=admin,
+                   json={**base, "supplier_price": 135, "sale_price": 999, "profit_margin_amount": 1})
+    assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert (doc["sale_price"], doc["price"], doc["profit_margin_amount"]) == (215, 215, 80)
+    # tablo dışı (500 TL üstü) reddedilir, fiyat değişmez
+    r = client.put(f"/api/admin/products/{pid}", headers=admin, json={**base, "supplier_price": 650})
+    assert r.status_code == 400 and "kademesi yok" in r.json()["detail"]
+    assert db.products.find_one({"id": pid})["price"] == 215

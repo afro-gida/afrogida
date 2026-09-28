@@ -5,6 +5,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import { Button, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Section, T, Toggle, confirmAsync, money } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { salePrice, type CatalogConfig, type OptionGroup, type Product } from '@/lib/types';
+import { LAST_TIER_MAX, PROFIT_TABLE_TEXT, profitFor } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
 
 const UNITS = ['Kg', 'Adet', 'Demet', 'Paket', 'Litre'];
@@ -40,7 +41,6 @@ export default function ProductEdit() {
   // Geri / silme sonrası: ürünün tedarikçisinin listesine dön.
   const backToList = () =>
     router.navigate(p?.supplier_group ? `/urunler?t=${encodeURIComponent(p.supplier_group)}` : '/urunler');
-  const [sale, setSale] = useState<number>(0);
   const [cfg, setCfg] = useState<CatalogConfig>({});
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -55,7 +55,6 @@ export default function ProductEdit() {
         const found = rows.find((r) => r.id === id);
         if (!found) return setError('Ürün bulunamadı');
         setP({ ...found, customization_options: found.customization_options ?? [] });
-        setSale(salePrice(found));
       })
       .catch((e) => setError(errMsg(e)));
   }, [id, isNew]);
@@ -71,7 +70,8 @@ export default function ProductEdit() {
   const subs = cfg.subcategories?.[p.category] ?? [];
   const suppliers = cfg.suppliers?.length ? cfg.suppliers : [...new Set([p.supplier_group || ''].filter(Boolean))];
   const supp = Number(p.supplier_price || 0);
-  const margin = sale - supp;
+  // Kâr modeli otomatik: satış = alış + kademe kârı (asıl hesap sunucuda)
+  const autoProfit = profitFor(supp);
   const groups: OptionGroup[] = (p.customization_options as OptionGroup[]) ?? [];
   const setGroups = (g: OptionGroup[]) => set('customization_options', g);
 
@@ -80,26 +80,23 @@ export default function ProductEdit() {
     setError(null);
     if (!p.name.trim()) return setError('Ürün adı zorunlu.');
     if (!p.supplier_group) return setError('Tedarikçi seçin.');
-    if (sale <= 0) return setError('Satış fiyatı girin.');
-    if (supp > 0 && sale < supp) return setError('Satış fiyatı tedarikçi fiyatının altında olamaz.');
+    if (autoProfit == null) {
+      return setError(supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış fiyatı için kâr kademesi yok.` : 'Alış fiyatını girin.');
+    }
     for (const g of groups) {
       if (!g.title.trim() || g.choices.length === 0 || g.choices.some((c) => !c.label.trim())) {
         return setError('Seçenek gruplarında boş başlık veya seçenek var.');
       }
     }
-    // Sunucu PUT'ta kaydın tamamını yazar (gönderilmeyen alan varsayılana döner)
-    // -> ürünün tamamı gönderilir. Fiyat: satış = tedarikçi fiyatı + kâr.
+    // Ürünün tamamı + alış fiyatı gönderilir; satış fiyatını ve kârı sunucu
+    // kâr tablosundan hesaplar (gönderilen satış fiyatı yok sayılır).
     const body: any = {
       ...p,
       name: p.name.trim(),
       supplier_price: supp,
-      profit_margin_amount: Math.max(0, margin),
-      sale_price: sale,
-      price: sale,
-      gel_al_price: sale,
-      eve_servis_price: sale,
       customization_options: groups.length ? groups : null,
     };
+    for (const f of ['sale_price', 'profit_margin_amount', 'price', 'gel_al_price', 'eve_servis_price']) delete body[f];
     delete body.id;
     delete body.created_at;
     delete body.updated_at;
@@ -111,7 +108,6 @@ export default function ProductEdit() {
       } else {
         const updated = await api.put<Product>(`/admin/products/${id}`, body);
         setP({ ...updated, customization_options: updated.customization_options ?? [] });
-        setSale(salePrice(updated));
       }
       setSaved(true);
     } catch (e) {
@@ -164,12 +160,22 @@ export default function ProductEdit() {
 
       <Section title="Fiyat">
         <View style={styles.row}>
-          <NumField label="Tedarikçi fiyatı (alış)" suffix="₺" value={supp} onChange={(v) => set('supplier_price', v)} hint="Müşteri bu fiyatı asla görmez" />
-          <NumField label="Satış fiyatı" suffix="₺" value={sale} onChange={(v) => { setSaved(false); setSale(v); }} hint="Müşterinin gördüğü fiyat" />
+          <NumField label="Alış fiyatı (tedarikçi)" suffix="₺" value={supp} onChange={(v) => set('supplier_price', v)} hint="Müşteri bu fiyatı asla görmez" />
+          <View style={[styles.saleBox, { borderColor: t.border, backgroundColor: t.cardAlt }]}>
+            <T size={12.5} bold muted>Satış fiyatı (otomatik)</T>
+            {autoProfit != null ? (
+              <>
+                <T bold size={20} color={t.tint}>{money(supp + autoProfit)}</T>
+                <T muted size={12}>kâr +{money(autoProfit)} / {p.unit.toLowerCase()}</T>
+              </>
+            ) : (
+              <T size={12.5} color={t.danger}>
+                {supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış için kâr kademesi yok` : 'Alış fiyatını girin'}
+              </T>
+            )}
+          </View>
         </View>
-        <T muted>
-          Platform kârı: <T bold color={margin < 0 ? t.danger : t.ok}>{money(margin)}</T> / {p.unit.toLowerCase()}
-        </T>
+        <T muted size={12}>Kâr tablosu: {PROFIT_TABLE_TEXT.join(' · ')}</T>
       </Section>
 
       <Section title="Durum">
@@ -231,6 +237,7 @@ export default function ProductEdit() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' },
   grow: { flexGrow: 1, flexBasis: 200 },
+  saleBox: { flexGrow: 1, flexBasis: 180, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
   thumb: { width: 72, height: 72, borderRadius: 8, borderWidth: 1 },
   group: { borderWidth: 1, borderRadius: 10, padding: 10, gap: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },

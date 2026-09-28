@@ -19,6 +19,7 @@ from models import Product, ProductInput, Campaign, CampaignInput
 from services.catalog import _read_catalog_config
 from services.contracts import _afro_require_supplier_contract
 from services.push import send_push_to_all
+from core.pricing import NoProfitTier, auto_price_fields
 
 logger = logging.getLogger("afro.routers.products")
 logging = logger  # eski logging.warning(...) çağrıları için
@@ -176,16 +177,24 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
             raise HTTPException(status_code=403, detail="Hesabınıza tedarikçi atanmamış")
         await _afro_require_supplier_contract(staff)
         data["supplier_group"] = sg
-        # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatı
-        # supplier_price + kâr marjı. Yeni üründe marj henüz 0 — admin belirler.
-        supp_price = data.get("supplier_price") or 0
+        # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatını
+        # (satış = alış + kâr kademesi) sunucu hesaplar — gönderdiği fiyatlar yok sayılır.
         data["gel_al_price"] = 0
         data["eve_servis_price"] = None
         data["profit_margin_amount"] = 0
-        data["sale_price"] = supp_price
-        data["price"] = supp_price
+        data["sale_price"] = 0
+        data["price"] = 0
         data["price_updated_at"] = now_utc()
         data["price_updated_by"] = "supplier"
+    # Kâr modeli OTOMATİK: alış fiyatı varsa satış fiyatı kademeden hesaplanır
+    # (yönetici de satış fiyatını elle girmez).
+    if (data.get("supplier_price") or 0) > 0:
+        try:
+            data.update(auto_price_fields(data["supplier_price"]))
+        except NoProfitTier as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        data["price_updated_at"] = now_utc()
+        data["price_updated_by"] = "supplier" if is_supplier_role(staff) else "admin"
     if not data.get("price"):
         data["price"] = data.get("gel_al_price") or 0
     # sale_price gönderilmemişse müşteri fiyatı (price) ile başlat
@@ -284,10 +293,11 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
                         detail=f"Fiyat değişikliği bugün için kilitlenmiştir. Yeni fiyatınız yarın (00:00) itibarıyla güncellenebilir."
                     )
             
-            new_supp_price = updates.get("supplier_price") or 0
-            margin = existing.get("profit_margin_amount") or 0
-            updates["sale_price"] = new_supp_price + margin
-            updates["price"] = updates["sale_price"]  # müşteri fiyatı = sale_price
+            # Müşteri fiyatı = yeni alış + kâr kademesi (otomatik kâr modeli)
+            try:
+                updates.update(auto_price_fields(updates.get("supplier_price") or 0))
+            except NoProfitTier as e:
+                raise HTTPException(status_code=400, detail=str(e))
             updates["price_updated_at"] = now_utc()
             updates["price_updated_by"] = "supplier"
             
@@ -312,15 +322,18 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             if f not in sent:
                 updates[f] = existing.get(f)
         
-        # Admin profit_margin_amount değiştiriyorsa → sale_price yeniden hesapla
-        if "profit_margin_amount" in sent:
-            supp_price = updates.get("supplier_price") or existing.get("supplier_price") or 0
-            margin = updates.get("profit_margin_amount") or 0
-            updates["sale_price"] = supp_price + margin
-            updates["price"] = updates["sale_price"]
+        price_sent = any(f in sent for f in ("supplier_price", "profit_margin_amount", "sale_price"))
+        supp_now = updates.get("supplier_price") or 0
+        # Otomatik kâr modeli: alış fiyatı varsa satış fiyatı HER ZAMAN kademeden
+        # (yöneticinin gönderdiği kâr / satış fiyatı yok sayılır).
+        if price_sent and supp_now > 0:
+            try:
+                updates.update(auto_price_fields(supp_now))
+            except NoProfitTier as e:
+                raise HTTPException(status_code=400, detail=str(e))
             updates["price_updated_at"] = now_utc()
             updates["price_updated_by"] = "admin"
-        # Admin sale_price doğrudan değiştiriyorsa → profit_margin_amount yeniden hesapla
+        # Alış fiyatı olmayan eski ürün: satış fiyatı elle (geçiş dönemi)
         elif "sale_price" in sent:
             supp_price = updates.get("supplier_price") or existing.get("supplier_price") or 0
             sale = updates.get("sale_price") or 0
@@ -328,15 +341,6 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             updates["price"] = sale
             updates["price_updated_at"] = now_utc()
             updates["price_updated_by"] = "admin"
-        # Admin supplier_price değiştiriyorsa → sale_price yeniden hesapla (margin korunur)
-        elif "supplier_price" in sent:
-            new_supp_price = updates.get("supplier_price") or 0
-            margin = existing.get("profit_margin_amount") or 0
-            updates["sale_price"] = new_supp_price + margin
-            updates["price"] = updates["sale_price"]
-            updates["price_updated_at"] = now_utc()
-            updates["price_updated_by"] = "admin"
-    
     if not updates.get("price"):
         updates["price"] = updates.get("gel_al_price") or 0
     
