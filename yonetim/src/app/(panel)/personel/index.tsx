@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, ErrorBox, Field, ListRow, Loading, MultiChips, Notice, Page, Section, T, Chips, confirmAsync } from '@/components/ui';
+import { Badge, Button, ErrorBox, Field, ListRow, Loading, MultiChips, Notice, Page, Section, Select, T, Chips, confirmAsync } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
-import type { CatalogConfig, Market } from '@/lib/types';
+import { DAYS, todayName, type CatalogConfig, type Market } from '@/lib/types';
 
 type Staff = { user_id: string; name?: string; phone?: string; supplier_group?: string | null; managed_markets?: string[]; courier_markets?: string[] };
 
@@ -140,6 +140,9 @@ function SupplierChainSection({ cfg, markets, onOk, onFail }: Cb & { cfg: Catalo
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
+  // Gün kutusu: sadece seçilen günün pazarları listelenir (başta bugün).
+  const [day, setDay] = useState<string>(todayName());
+  const dayMarkets = markets.filter((m) => m.day === day);
 
   const sells = (sg: string, m: Market) => (map[sg] ?? []).some((n) => normName(n) === normName(m.name));
   const toggle = (sg: string, m: Market) => {
@@ -172,7 +175,14 @@ function SupplierChainSection({ cfg, markets, onOk, onFail }: Cb & { cfg: Catalo
   return (
     <Section title="2. Pazarlar ve tedarikçileri">
       <T muted size={12.5}>Her pazarda satış yapacak tedarikçilere dokun. Müşteri bir pazarda sadece o pazarın tedarikçilerinin ürünlerini görür.</T>
-      {markets.map((m) => {
+      <Select
+        label="Gün"
+        options={DAYS.map((d) => ({ value: d, label: `${d} (${markets.filter((m) => m.day === d).length} pazar)` }))}
+        value={day}
+        onChange={setDay}
+      />
+      {dayMarkets.length === 0 && <T muted>{day} günü kurulan pazar yok.</T>}
+      {dayMarkets.map((m) => {
         const count = list.filter((sg) => sells(sg, m)).length;
         return (
           <View key={m.id} style={styles.chain}>

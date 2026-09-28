@@ -57,6 +57,11 @@ export const EMPTY_MARKET: Omit<Market, 'id'> = {
 
 export const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
+/** Bugünün Türkçe gün adı (Pazartesi ... Pazar). */
+export function todayName() {
+  return DAYS[(new Date().getDay() + 6) % 7];
+}
+
 export type Choice = { label: string; price_delta?: number };
 export type OptionGroup = { title: string; choices: Choice[] };
 

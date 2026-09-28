@@ -154,6 +154,47 @@ export function Chips<V extends string>({ options, value, onChange }: { options:
   );
 }
 
+/** Açılır seçim kutusu: seçili değer + ok; basınca seçenekler altında açılır. */
+export function Select<V extends string>({ label, options, value, onChange, placeholder = 'Seçiniz' }: {
+  label?: string; options: { value: V; label: string }[]; value: V | null; onChange: (v: V) => void; placeholder?: string;
+}) {
+  const t = useTheme();
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.value === value);
+  return (
+    <View style={styles.field}>
+      {!!label && <T size={12.5} bold muted>{label}</T>}
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        style={[styles.select, { backgroundColor: t.input, borderColor: open ? t.tint : t.border }]}
+      >
+        <Text style={{ flex: 1, color: current ? t.text : t.muted, fontSize: 14 }}>{current?.label ?? placeholder}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={t.muted} />
+      </Pressable>
+      {open && (
+        <View style={[styles.selectList, { backgroundColor: t.card, borderColor: t.tint }]}>
+          {options.map((o, i) => {
+            const on = o.value === value;
+            return (
+              <Pressable
+                key={o.value}
+                onPress={() => { onChange(o.value); setOpen(false); }}
+                style={({ pressed }) => [
+                  styles.selectItem,
+                  i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },
+                  (on || pressed) && { backgroundColor: t.cardAlt },
+                ]}
+              >
+                <Text style={{ color: on ? t.tint : t.text, fontWeight: on ? '700' : '400', fontSize: 14 }}>{o.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export function MultiChips({ options, values, onChange }: { options: { value: string; label: string }[]; values: string[]; onChange: (v: string[]) => void }) {
   const t = useTheme();
   return (
@@ -262,6 +303,9 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 14 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  select: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 },
+  selectList: { borderWidth: 1, borderRadius: 8, overflow: 'hidden' },
+  selectItem: { paddingHorizontal: 12, paddingVertical: 11 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
   badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1 },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 10, padding: 12 },
