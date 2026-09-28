@@ -14,8 +14,30 @@ import type { Product, SelectedOption } from '@/lib/types';
 
 export const NONE_LABEL = 'İstemiyorum';
 
+// Veride "hiçbiri" seçeneği farklı yazılabiliyor ("İstemiyorum", "Seçmiyorum").
+const NONE_LABELS = ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'];
+
 export function isNoneLabel(label: string) {
-  return label.trim().toLocaleLowerCase('tr-TR') === NONE_LABEL.toLocaleLowerCase('tr-TR');
+  return NONE_LABELS.includes(label.trim().toLocaleLowerCase('tr-TR'));
+}
+
+/**
+ * Varsayılan seçim: ek ücretsiz "İstemiyorum"; yoksa en ucuz seçenek (ücretli
+ * bir seçim sessizce varsayılan olmasın). Kartın hızlı "+"sı da bunu kullanır.
+ */
+export function defaultChoiceLabel(choices: { label: string; price_delta?: number }[]) {
+  // Veride küçük harfle ("istemiyorum") gelebildiği için harf duyarsız.
+  const none = choices.find((c) => isNoneLabel(c.label));
+  const cheapest = [...choices].sort((a, b) => (a.price_delta || 0) - (b.price_delta || 0))[0];
+  return (none ?? cheapest)?.label ?? '';
+}
+
+export function defaultSelectedOptions(product: Product): SelectedOption[] {
+  return (product.customization_options ?? []).map((g) => {
+    const label = defaultChoiceLabel(g.choices);
+    const choice = g.choices.find((c) => c.label === label);
+    return { title: g.title, label, price_delta: choice?.price_delta ?? 0 };
+  });
 }
 
 type Props = {
@@ -67,13 +89,7 @@ export function ProductOptionsModal({
         defaults[g.title] = preset.label;
         continue;
       }
-      // Varsayılan: ek ücretsiz "İstemiyorum". Veride küçük harfle ("istemiyorum")
-      // gelebildiği için harf duyarsız karşılaştır — yoksa ilk (ücretli) seçenek
-      // varsayılan oluyor, müşteri fark etmeden +fark ödüyordu.
-      const none = g.choices.find((c) => isNoneLabel(c.label));
-      // "İstemiyorum" yoksa en ucuz seçenek (ücretli bir seçim sessizce varsayılan olmasın).
-      const cheapest = [...g.choices].sort((a, b) => (a.price_delta || 0) - (b.price_delta || 0))[0];
-      defaults[g.title] = (none ?? cheapest)?.label ?? '';
+      defaults[g.title] = defaultChoiceLabel(g.choices);
     }
     setSelected(defaults);
   }, [product?.id]);

@@ -37,7 +37,7 @@ import { CATEGORIES } from '@/data/sample';
 import { useMarkets } from '@/lib/markets-context';
 import { useCart } from '@/lib/cart-context';
 import { fetchProducts } from '@/lib/products';
-import { ProductOptionsModal } from '@/components/product-options-modal';
+import { ProductOptionsModal, defaultSelectedOptions } from '@/components/product-options-modal';
 import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/settings';
 import { fetchCatalogConfig, type CatalogConfig } from '@/lib/catalog';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
@@ -541,9 +541,13 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
   const isDark = scheme === 'dark';
   const { lines, addItem, setQty } = useCart();
   const hasOptions = !!product.customization_options?.length;
-  // Kartın hızlı "+"sı her zaman özelleştirmesiz (varsayılan) satırı
-  // hedefler — bu satırın id'si ürünün kendi id'sidir (bkz. cart-context).
-  const qty = lines.find((l) => l.lineId === product.id)?.qty ?? 0;
+  // Kartın "+ / −"si bu ürünün sepetteki SON satırını yönetir (seçenekli
+  // üründe "Seç" ile eklenen seçim dahil); hiç yoksa "+" varsayılan seçimle
+  // (İstemiyorum / en ucuz) ekler — seçim ekranı sadece "Seç"e basınca açılır.
+  const line = [...lines].reverse().find((l) => l.product.id === product.id);
+  const qty = line?.qty ?? 0;
+  const addFirst = () =>
+    addItem(product, qtyStep(product.unit), hasOptions ? defaultSelectedOptions(product) : undefined);
   const outOfStock = !product.in_stock;
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.image_url && !imageFailed;
@@ -576,18 +580,9 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
           <View style={styles.soldOutVeil}>
             <ThemedText style={styles.soldOutText}>Tükendi</ThemedText>
           </View>
-        ) : hasOptions ? (
-          <Pressable
-            onPress={onSelect}
-            hitSlop={8}
-            accessibilityLabel={`${product.name} seçeneklerini seç`}
-            style={[styles.floatBtn, { backgroundColor: floatBg }]}
-          >
-            <Ionicons name="options-outline" size={17} color={theme.tint} />
-          </Pressable>
         ) : qty === 0 ? (
           <Pressable
-            onPress={() => addItem(product, qtyStep(product.unit))}
+            onPress={addFirst}
             hitSlop={8}
             accessibilityLabel={`${product.name} sepete ekle`}
             style={[styles.floatBtn, { backgroundColor: floatBg }]}
@@ -596,6 +591,19 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
             <MaterialCommunityIcons name="plus" size={20} color={theme.tint} />
           </Pressable>
         ) : null}
+
+        {/* Seçenekli ürün: "Seç" ile özelleştirme ekranı açılır. */}
+        {hasOptions && !outOfStock && (
+          <Pressable
+            onPress={onSelect}
+            hitSlop={6}
+            accessibilityLabel={`${product.name} seçeneklerini seç`}
+            style={({ pressed }) => [styles.selectPill, { backgroundColor: floatBg, opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Ionicons name="options-outline" size={13} color={theme.tint} />
+            <ThemedText style={[styles.selectPillText, { color: theme.tint }]}>Seç</ThemedText>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.cardBody}>
@@ -615,14 +623,14 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         )}
       </View>
 
-      {!outOfStock && !hasOptions && qty > 0 && (
+      {!outOfStock && line && qty > 0 && (
         <VerticalStepper
           qty={qty}
           unit={product.unit}
           name={product.name}
           floatBg={floatBg}
           isDark={isDark}
-          onChange={(q) => setQty(product.id, q)}
+          onChange={(q) => setQty(line.lineId, q)}
         />
       )}
     </View>
@@ -887,6 +895,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   discountBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12, lineHeight: 16 },
+  // "+" sağ altta; "Seç" sol altta aynı hizada.
+  selectPill: {
+    position: 'absolute', left: Spacing.two, bottom: Spacing.two + 6,
+    height: 24, borderRadius: 12, paddingHorizontal: 9,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+  },
+  selectPillText: { fontSize: 12, lineHeight: 15, fontWeight: '800' },
   floatBtn: {
     position: 'absolute', right: Spacing.two, bottom: Spacing.two,
     width: 36, height: 36, borderRadius: 18,

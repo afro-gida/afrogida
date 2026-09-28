@@ -12,8 +12,7 @@ import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { SelectedOption } from '@/lib/types';
-
-const NONE_LABEL = 'İstemiyorum';
+import { defaultChoiceLabel } from '@/components/product-options-modal';
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,8 +31,7 @@ export default function ProductDetailScreen() {
     setLocalQty(qtyStep(product.unit));
     const defaults: Record<string, string> = {};
     for (const g of product.customization_options ?? []) {
-      const none = g.choices.find((c) => c.label === NONE_LABEL);
-      defaults[g.title] = (none ?? g.choices[0])?.label ?? '';
+      defaults[g.title] = defaultChoiceLabel(g.choices);
     }
     setSelected(defaults);
   }, [product?.id]);
