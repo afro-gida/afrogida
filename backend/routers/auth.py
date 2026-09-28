@@ -21,7 +21,7 @@ from core.config import (
     ADMIN_2FA_PHONE, ADMIN_2FA_TTL_SEC, ADMIN_2FA_MAX_ATTEMPTS, ADMIN_2FA_ALLOW_UNSENT_SMS,
 )
 from core import totp
-from core.text import tr_title
+from core.text import normalize_email, tr_title
 from core.crypto import _hmac_hex, enc_str, dec_str
 from core.db import db
 from core.logs import (
@@ -117,6 +117,10 @@ async def auth_register(payload: RegisterInput, request: Request = None):
         raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası girin")
     if not name:
         raise HTTPException(status_code=400, detail="Lütfen adınızı girin")
+    # e-Arşiv fatura e-postayla gönderileceği için kayıtta zorunlu
+    email = normalize_email(payload.email)
+    if not email:
+        raise HTTPException(status_code=400, detail="Geçerli bir e-posta adresi girin (fatura bu adrese gönderilir).")
     await rate_limit(f"register_ip:{_client_ip(request)}", 10, 3600, "Çok fazla kayıt denemesi. Lütfen daha sonra tekrar deneyin.")
     existing = await db.users.find_one({"phone": phone}, {"_id": 0})
     if existing:
@@ -146,7 +150,7 @@ async def auth_register(payload: RegisterInput, request: Request = None):
     await db.users.insert_one({
         "user_id": user_id,
         "name": name or "Üye",
-        "email": None,
+        "email": email,
         "picture": None,
         "phone": phone,
         "role": "member",
@@ -634,11 +638,16 @@ async def update_auth_profile(data: dict, current_user: dict = Depends(get_curre
             updates["name"] = name
     if "marketing_consent" in data:
         updates["marketing_consent"] = bool(data.get("marketing_consent"))
+    if "email" in data:
+        email = normalize_email(data.get("email"))
+        if not email:
+            raise HTTPException(status_code=400, detail="Geçerli bir e-posta adresi girin.")
+        updates["email"] = email
     if updates:
         updates["updated_at"] = now_utc()
         _prof_before = await db.users.find_one({"user_id": current_user["user_id"]}, {"_id": 0})
         await db.users.update_one({"user_id": current_user["user_id"]}, {"$set": updates})
-        for _pf in ["name", "marketing_consent"]:
+        for _pf in ["name", "marketing_consent", "email"]:
             _ov = (_prof_before or {}).get(_pf)
             _nv = updates.get(_pf)
             if _nv is not None and _ov != _nv:

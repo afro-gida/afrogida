@@ -28,6 +28,7 @@ type AuthContextValue = {
   sendOtp: (phone: string, purpose: 'registration' | 'password_reset') => Promise<{ sms_sent: boolean }>;
   register: (data: {
     phone: string;
+    email: string;
     name: string;
     password: string;
     otp_code: string;
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function register(data: {
     phone: string;
+    email: string;
     name: string;
     password: string;
     otp_code: string;

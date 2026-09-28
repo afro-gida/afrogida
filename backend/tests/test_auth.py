@@ -17,12 +17,13 @@ def test_register_then_login(client, db):
     phone = "05559998877"
     _put_otp(db, phone)
     r = client.post("/api/auth/register", json={
-        "name": "Deniz", "phone": phone, "password": "sifre123", "otp_code": "123456",
+        "name": "Deniz", "phone": phone, "email": " Deniz@Ornek.com ", "password": "sifre123", "otp_code": "123456",
     })
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["token"]
     assert body["user"]["name"] == "Deniz"
+    assert body["user"]["email"] == "deniz@ornek.com"
     assert "password_hash" not in body["user"]
     # yeni üye kuponu TAMAMEN admin ayarına bağlı (global_settings.new_member_coupon_id);
     # ayar yoksa (bu testte yok) hiçbir kupon verilmez
@@ -31,7 +32,7 @@ def test_register_then_login(client, db):
     # aynı numarayla tekrar kayıt -> 409
     _put_otp(db, phone)
     assert client.post("/api/auth/register", json={
-        "name": "X", "phone": phone, "password": "x", "otp_code": "123456"}).status_code == 409
+        "name": "X", "phone": phone, "email": "x@ornek.com", "password": "x", "otp_code": "123456"}).status_code == 409
 
     # giriş
     r2 = client.post("/api/auth/login", json={"phone": phone, "password": "sifre123"})
@@ -58,7 +59,7 @@ def test_register_assigns_configured_coupon(client, db):
     phone = "05557778899"
     _put_otp(db, phone)
     r = client.post("/api/auth/register", json={
-        "name": "Kuponlu Üye", "phone": phone, "password": "sifre123", "otp_code": "123456",
+        "name": "Kuponlu Üye", "phone": phone, "email": "kupon@ornek.com", "password": "sifre123", "otp_code": "123456",
     })
     assert r.status_code == 200, r.text
     uid = r.json()["user"]["user_id"]
@@ -73,8 +74,29 @@ def test_register_bad_otp(client, db):
     phone = "05551112233"
     _put_otp(db, phone, code="111111")
     r = client.post("/api/auth/register", json={
-        "name": "A", "phone": phone, "password": "p", "otp_code": "999999"})
+        "name": "A", "phone": phone, "email": "a@ornek.com", "password": "p", "otp_code": "999999"})
     assert r.status_code == 400
+
+
+def test_register_requires_valid_email(client, db):
+    """Kayıtta telefon (SMS doğrulamalı) VE e-posta zorunlu (e-Arşiv fatura)."""
+    phone = "05553334455"
+    for bad in (None, "", "deniz", "deniz@", "deniz@ornek", "a b@ornek.com"):
+        _put_otp(db, phone)
+        body = {"name": "E", "phone": phone, "password": "sifre123", "otp_code": "123456"}
+        if bad is not None:
+            body["email"] = bad
+        r = client.post("/api/auth/register", json=body)
+        assert r.status_code == 400, (bad, r.text)
+        assert "e-posta" in r.json()["detail"]
+    assert db.users.count_documents({"phone": phone}) == 0
+
+
+def test_profile_email_update(client, make_user):
+    _, h = make_user()
+    assert client.put("/api/auth/profile", headers=h, json={"email": "yanlis"}).status_code == 400
+    r = client.put("/api/auth/profile", headers=h, json={"email": "Yeni@Ornek.com"})
+    assert r.status_code == 200 and r.json()["email"] == "yeni@ornek.com"
 
 
 def test_login_unknown_phone_404(client):

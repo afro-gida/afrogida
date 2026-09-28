@@ -1728,6 +1728,17 @@
             },
             "RegisterInput": {
                 "properties": {
+                    "email": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Email"
+                    },
                     "marketing_consent": {
                         "anyOf": [
                             {

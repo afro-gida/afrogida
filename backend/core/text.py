@@ -19,6 +19,17 @@ def _cap(word: str) -> str:
     return tr_upper(word[:1]) + tr_lower(word[1:]) if word else word
 
 
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$")
+
+
+def normalize_email(value):
+    """Geçerliyse küçük harfli e-posta, değilse None (e-Arşiv fatura için)."""
+    s = str(value or "").strip().lower()
+    if not s or len(s) > 254 or ".." in s or not _EMAIL_RE.match(s):
+        return None
+    return s
+
+
 def tr_title(value) -> str:
     """Boşlukları sadeleştirir; her kelimenin (ve tireyle ayrılan parçanın) ilk
     harfini büyütür, gerisini küçültür. Kesme işaretinden sonrası küçük kalır

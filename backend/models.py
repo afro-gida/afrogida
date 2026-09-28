@@ -24,6 +24,8 @@ class PhoneLoginInput(BaseModel):
 class RegisterInput(BaseModel):
     name: str
     phone: str
+    # e-Arşiv fatura gönderimi için; kayıtta zorunlu (auth_register doğrular)
+    email: Optional[str] = None
     password: Optional[str] = None
     otp_code: Optional[str] = None
     marketing_consent: Optional[bool] = None

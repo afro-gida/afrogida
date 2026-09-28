@@ -13,6 +13,9 @@ import { ApiError } from '@/lib/api';
 import { surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
 
+// Sunucudaki core/text.py::normalize_email ile aynı kural.
+const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+
 export default function RegisterScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function RegisterScreen() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [password, setPassword] = useState('');
 
@@ -32,7 +36,9 @@ export default function RegisterScreen() {
   const [termsOk, setTermsOk] = useState(false);
   const [notifyOk, setNotifyOk] = useState(false);
 
-  const canSubmit = name.trim() && phone.trim().length >= 10 && otpCode.trim().length === 6 && password.length >= 6 && termsOk;
+  // Telefon (SMS doğrulamalı) ve e-posta ikisi de zorunlu — e-Arşiv fatura e-postaya gider.
+  const emailOk = EMAIL_RE.test(email.trim());
+  const canSubmit = name.trim() && phone.trim().length >= 10 && emailOk && otpCode.trim().length === 6 && password.length >= 6 && termsOk;
 
   async function handleRequestCode() {
     setError(null);
@@ -56,6 +62,10 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     setError(null);
+    if (!emailOk) {
+      setError('Geçerli bir e-posta adresi gir (faturan bu adrese gönderilir).');
+      return;
+    }
     if (!canSubmit) {
       setError('Lütfen tüm alanları doldur ve zorunlu sözleşmeyi onayla.');
       return;
@@ -64,6 +74,7 @@ export default function RegisterScreen() {
     try {
       await register({
         phone: phone.trim(),
+        email: email.trim().toLowerCase(),
         name: name.trim(),
         password,
         otp_code: otpCode.trim(),
@@ -109,6 +120,19 @@ export default function RegisterScreen() {
             )}
           </Pressable>
         }
+      />
+
+      <FormField
+        label="E-posta"
+        icon="email-outline"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="ornek@eposta.com (fatura için)"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        maxLength={254}
       />
 
       <FormField
