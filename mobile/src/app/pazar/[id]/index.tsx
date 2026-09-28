@@ -44,7 +44,7 @@ import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
 import { Spacing, withAlpha } from '@/constants/theme';
 import type { IoniconName } from '@/components/icon-badge';
-import type { Product } from '@/lib/types';
+import type { CartLine, Product } from '@/lib/types';
 
 const DISCOUNT_SECTION_KEY = '__indirimli';
 const OTHER = 'Diğer';
@@ -162,7 +162,10 @@ export default function MarketProductsScreen() {
   const insets = useSafeAreaInsets();
   // Özelleştirmesi (Boyut/Şekil vb.) olan bir üründe "Seç" butonuna
   // basılınca bu ürün için seçim modalı açılır.
-  const [optionsProduct, setOptionsProduct] = useState<Product | null>(null);
+  // "Seç" ile açılan seçim ekranı. Ürün sepetteyse o satırın miktarı ve
+  // seçimiyle açılır, onaylayınca yeni satır eklemek yerine onu günceller.
+  const [optionsTarget, setOptionsTarget] = useState<{ product: Product; line?: CartLine } | null>(null);
+  const { updateLine } = useCart();
 
   // Aşağı kaydırınca "Pazar saati/Gel-Al saati" bilgi şeridi yukarı kayıp
   // kayboluyor, yukarı kaydırınca geri geliyor — bkz. hedef site.
@@ -428,7 +431,7 @@ export default function MarketProductsScreen() {
                 initialNumToRender={4}
                 windowSize={3}
                 renderItem={({ item: product }) => (
-                  <ProductCard product={product} onSelect={() => setOptionsProduct(product)} />
+                  <ProductCard product={product} onSelect={(line) => setOptionsTarget({ product, line })} />
                 )}
               />
             ) : null
@@ -530,12 +533,23 @@ export default function MarketProductsScreen() {
         />
       )}
 
-      <ProductOptionsModal product={optionsProduct} onClose={() => setOptionsProduct(null)} />
+      <ProductOptionsModal
+        product={optionsTarget?.product ?? null}
+        initialQty={optionsTarget?.line?.qty}
+        initialSelectedOptions={optionsTarget?.line?.selectedOptions}
+        confirmLabel={optionsTarget?.line ? 'Güncelle' : 'Sepete Ekle'}
+        onConfirm={
+          optionsTarget?.line
+            ? (qty, selectedOptions) => updateLine(optionsTarget.line!.lineId, optionsTarget.product, qty, selectedOptions)
+            : undefined
+        }
+        onClose={() => setOptionsTarget(null)}
+      />
     </Screen>
   );
 }
 
-function ProductCard({ product, onSelect }: { product: Product; onSelect: () => void }) {
+function ProductCard({ product, onSelect }: { product: Product; onSelect: (line?: CartLine) => void }) {
   const theme = useTheme();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -595,7 +609,7 @@ function ProductCard({ product, onSelect }: { product: Product; onSelect: () => 
         {/* Seçenekli ürün: "Seç" ile özelleştirme ekranı açılır. */}
         {hasOptions && !outOfStock && (
           <Pressable
-            onPress={onSelect}
+            onPress={() => onSelect(line)}
             hitSlop={6}
             accessibilityLabel={`${product.name} seçeneklerini seç`}
             style={({ pressed }) => [styles.selectPill, { backgroundColor: floatBg, opacity: pressed ? 0.8 : 1 }]}
