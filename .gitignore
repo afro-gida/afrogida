@@ -52,3 +52,4 @@ _archive/
 
 # Claude test hesabi olusturma betigi (sifre ozeti icerir)
 infra/test-hesabi-olustur.ps1
+infra/test-hesaplari-olustur.ps1
