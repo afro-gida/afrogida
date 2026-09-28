@@ -87,14 +87,10 @@ export default function MarketEdit() {
       right={<Button small kind="secondary" icon="arrow-back" label="Pazarlar" onPress={() => router.navigate('/pazarlar')} />}
     >
       <Section title="Genel">
-        <View style={styles.row}>
-          <Field style={styles.grow} label="Pazar adı" value={m.name} onChangeText={(v) => set('name', v)} />
-          <Field style={styles.grow} label="Konum (semt / adres)" value={m.location ?? ''} onChangeText={(v) => set('location', v)} />
-        </View>
+        <Field label="Pazar adı" value={m.name} onChangeText={(v) => set('name', v)} />
         <T size={12.5} bold>Gün</T>
         <Chips options={DAYS.map((d) => ({ value: d, label: d }))} value={m.day} onChange={(v) => set('day', v)} />
         <Field label="Google Haritalar bağlantısı" value={m.google_maps_url ?? ''} onChangeText={(v) => set('google_maps_url', v || null)} autoCapitalize="none" />
-        <Field label="Not (müşteri görür)" value={m.note ?? ''} onChangeText={(v) => set('note', v)} multiline />
         <Toggle label="Pazar aktif" hint="Kapalıysa müşteri listesinde görünmez" value={m.active} onChange={(v) => set('active', v)} />
         <Toggle label="Sipariş alımı açık" value={m.orders_enabled} onChange={(v) => set('orders_enabled', v)} />
       </Section>
