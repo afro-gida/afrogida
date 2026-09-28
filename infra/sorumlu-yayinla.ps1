@@ -5,8 +5,10 @@ $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $env:TEMP 'afro-sorumlu-web'
 Push-Location (Join-Path $root 'sorumlu')
 try {
+    # Yerel gelistirme .env'si (localhost API adresi) yayin derlemesine karismasin
+    $env:EXPO_NO_DOTENV = '1'
     $env:EXPO_PUBLIC_API_URL = '/api'
-    npx expo export -p web --output-dir $out | Out-Null
+    npx expo export -p web --clear --output-dir $out | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Derleme basarisiz' }
 } finally { Pop-Location }
 $tgz = Join-Path $env:TEMP 'sorumlu-web.tgz'
