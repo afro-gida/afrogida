@@ -6644,6 +6644,116 @@
                 "summary": "Admin Web Push Send"
             }
         },
+        "/api/admin/return-requests": {
+            "get": {
+                "description": "Yönetim \"Destek\" ekranı: sorumluların açtığı iade talepleri (en yeni\nüstte). Karar (iade / kupon / ret) sipariş detayında verilir; burada\nsadece liste + \"incelendi\" işareti var.",
+                "operationId": "admin_list_return_requests_api_admin_return_requests_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin List Return Requests"
+            }
+        },
+        "/api/admin/return-requests/{tx_id}": {
+            "put": {
+                "operationId": "admin_update_return_request_api_admin_return_requests__tx_id__put",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tx_id",
+                        "required": true,
+                        "schema": {
+                            "title": "Tx Id",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Update Return Request"
+            }
+        },
         "/api/admin/settings": {
             "put": {
                 "operationId": "compat_update_admin_settings_api_admin_settings_put",

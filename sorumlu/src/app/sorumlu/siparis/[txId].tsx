@@ -90,7 +90,8 @@ export default function SorumluSiparisDetay() {
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusError, setStatusError] = useState('');
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Tedarikçi listeleri sayfa açılınca kapalı; dokunulanlar açılır.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [returnMode, setReturnMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [returnReason, setReturnReason] = useState('');
@@ -165,7 +166,7 @@ export default function SorumluSiparisDetay() {
   }
 
   function toggleSupplier(name: string) {
-    setCollapsed((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
@@ -421,7 +422,7 @@ export default function SorumluSiparisDetay() {
 
               {groupedItems.map(([supplier, rows]) => {
                 // İade talebi seçilirken tüm listeler açık (seçilebilsin)
-                const open = returnMode || !collapsed.has(supplier);
+                const open = returnMode || expanded.has(supplier);
                 return (
                 <View key={supplier} style={[styles.supplierBox, { borderColor: theme.border }]}>
                   {/* Tedarikçi başlığı: aç/kapa + WhatsApp ile paylaş (tedarikçiye ayrı liste) */}
