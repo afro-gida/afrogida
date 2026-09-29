@@ -53,6 +53,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** İade kanıt fotoğrafı yükler (sunucu küçültüp WebP yapar); tam adres döner. */
+export async function uploadImage(file: Blob, filename = 'kanit.jpg'): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, filename);
+  const headers: Record<string, string> = {};
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  const res = await fetch(`${API_BASE_URL}/pazar-sorumlusu/upload`, { method: 'POST', body: form, headers });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, data?.detail ?? res.statusText);
+  const url = String(data?.url ?? '');
+  return url.startsWith('http') ? url : `https://afrogida.com.tr${url}`;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>

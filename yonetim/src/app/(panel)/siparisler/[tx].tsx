@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Badge, Button, ErrorBox, Field, Loading, Notice, Page, Section, T, confirmAsync, dateTime, money } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
@@ -132,6 +132,24 @@ export default function OrderDetail() {
         </View>
       </Section>
 
+      {o.return_request && (
+        <Section title="İade talebi (sorumlu)">
+          <T>{o.return_request.item_names.join(', ')}</T>
+          {!!o.return_request.reason && <T muted>Sebep: {o.return_request.reason}</T>}
+          <T muted size={12}>{o.return_request.requested_by_name || 'Sorumlu'} · {dateTime(o.return_request.requested_at)}</T>
+          {!!o.return_request.photo_urls?.length && (
+            <View style={styles.photos}>
+              {o.return_request.photo_urls.map((u) => (
+                <Pressable key={u} onPress={() => (Platform.OS === 'web' ? window.open(u, '_blank', 'noopener,noreferrer') : null)}>
+                  <Image source={{ uri: u }} style={[styles.photo, { borderColor: t.border }]} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <T muted size={12}>İade kararı (iade / kupon / ret) ve kart iadesi yönetim tarafından verilir.</T>
+        </Section>
+      )}
+
       <Section title="Yönetici notu">
         <Field label="Not (sadece yönetim görür)" value={note} onChangeText={setNote} multiline />
         <Button kind="secondary" label="Notu kaydet" onPress={saveNote} loading={busy === 'note'} />
@@ -158,5 +176,7 @@ const styles = StyleSheet.create({
   kv: { flexDirection: 'row', gap: 10 },
   k: { width: 110 },
   v: { flex: 1 },
+  photos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photo: { width: 96, height: 96, borderRadius: 8, borderWidth: 1 },
   item: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
 });

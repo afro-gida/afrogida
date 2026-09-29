@@ -232,12 +232,23 @@ async def pazar_sorumlusu_request_return(tx_id: str, data: dict, user: dict = De
     managed_names = {_afro_norm(m.get("name") or "") for m in managed}
     order = await _sorumlu_order_or_404(tx_id, managed_names)
 
-    item_indices = [int(i) for i in ((data or {}).get("item_indices") or [])]
-    reason = str((data or {}).get("reason") or "").strip()
+    items = order.get("items") or []
+    try:
+        item_indices = sorted({int(i) for i in ((data or {}).get("item_indices") or []) if 0 <= int(i) < len(items)})
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Geçersiz ürün seçimi")
+    reason = str((data or {}).get("reason") or "").strip()[:500]
     if not item_indices:
         raise HTTPException(status_code=400, detail="İade istenecek en az bir ürün seçilmelidir")
+    # Kanıt fotoğrafları: en fazla 5, sadece kendi sunucumuza yüklenmiş resimler
+    photos = []
+    for u in ((data or {}).get("photo_urls") or [])[:5]:
+        u = str(u or "").strip()
+        if u.startswith("/uploads/"):
+            u = "https://afrogida.com.tr" + u
+        if u.startswith("https://afrogida.com.tr/uploads/") and u not in photos:
+            photos.append(u)
 
-    items = order.get("items") or []
     item_names = [
         (items[i].get("product_name_snapshot") or items[i].get("name") or "Ürün")
         for i in item_indices if 0 <= i < len(items)
@@ -246,6 +257,7 @@ async def pazar_sorumlusu_request_return(tx_id: str, data: dict, user: dict = De
         "item_indices": item_indices,
         "item_names": item_names,
         "reason": reason,
+        "photo_urls": photos,
         "requested_by": user.get("user_id"),
         "requested_by_name": user.get("name") or "",
         "requested_at": now_utc(),
@@ -255,7 +267,7 @@ async def pazar_sorumlusu_request_return(tx_id: str, data: dict, user: dict = De
     await _insert_log("log_admin", {
         "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
         "action": "pazar_sorumlusu_return_requested", "target_type": "order", "target_id": tx_id,
-        "change_details": {"items": item_names, "reason": reason},
+        "change_details": {"items": item_names, "reason": reason, "photos": photos},
         "admin_note": "Sorumlu iade talebi oluşturdu - gerçek iade admin tarafından yapılmalı.",
     }, request)
     return {"success": True}

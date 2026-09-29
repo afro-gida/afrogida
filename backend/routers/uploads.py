@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from core.config import ROOT_DIR
-from core.security import get_current_staff
+from core.security import get_current_pazar_sorumlusu, get_current_staff
 
 router = APIRouter(prefix="/api")
 
@@ -76,6 +76,16 @@ def _optimize_to_webp(content: bytes):
 async def admin_upload_image(file: UploadFile = File(...), staff=Depends(get_current_staff)):
     # Tedarikçiler (esnaf/supplier) de ürün resmi yükleyebilir. Bu endpoint yalnızca
     # dosyayı kaydedip URL döner; ürün sahiplik kontrolü update_product içinde yapılır.
+    return await save_uploaded_image(file)
+
+
+@router.post("/pazar-sorumlusu/upload")
+async def sorumlu_upload_image(file: UploadFile = File(...), user=Depends(get_current_pazar_sorumlusu)):
+    """Pazar sorumlusu: iade talebi kanıt fotoğrafı (aynı küçültme / WebP)."""
+    return await save_uploaded_image(file)
+
+
+async def save_uploaded_image(file: UploadFile) -> dict:
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Bos dosya")

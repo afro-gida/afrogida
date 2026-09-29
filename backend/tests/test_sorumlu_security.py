@@ -148,6 +148,35 @@ def test_sorumlu_adds_and_removes_courier_in_own_market(client, db, make_user, s
     assert db.users.find_one({"user_id": uid})["role"] == "musteri"
 
 
+def test_return_request_with_photos(client, db, sorumlu):
+    import io
+    from PIL import Image
+    h = sorumlu["headers"]
+    # sorumlu kanıt fotoğrafı yükleyebilir; küçültülüp WebP olur
+    buf = io.BytesIO()
+    Image.new("RGB", (2000, 1500), (200, 50, 50)).save(buf, "JPEG")
+    r = client.post("/api/pazar-sorumlusu/upload", headers=h, files={"file": ("k.jpg", buf.getvalue(), "image/jpeg")})
+    assert r.status_code == 200, r.text
+    url = r.json()["url"]
+    assert url.startswith("/uploads/") and url.endswith(".webp")
+
+    tx = f"tx_{uuid.uuid4().hex[:8]}"
+    db.transactions.insert_one({"tx_id": tx, "market_name": "Güvenlik Pazarı", "order_status": "hazir",
+                                "delivery_type": "gel_al", "created_at": datetime.now(timezone.utc),
+                                "items": [{"name": "Domates"}, {"name": "Biber"}]})
+    try:
+        r = client.post(f"/api/pazar-sorumlusu/orders/{tx}/return-request", headers=h, json={
+            "item_indices": [1, 0, 1, 7], "reason": "Ezik",
+            "photo_urls": [url, "https://kotu-site.com/x.jpg", url],
+        })
+        assert r.status_code == 200, r.text
+        rr = db.transactions.find_one({"tx_id": tx})["return_request"]
+        assert rr["item_indices"] == [0, 1] and rr["item_names"] == ["Domates", "Biber"]
+        assert rr["photo_urls"] == ["https://afrogida.com.tr" + url]
+    finally:
+        db.transactions.delete_one({"tx_id": tx})
+
+
 def test_member_login_has_no_device_step(client, sms, make_user):
     phone = "05" + str(uuid.uuid4().int)[:9]
     make_user(role="member", phone=phone)

@@ -39,7 +39,7 @@ export interface SorumluOrder {
   refund_status?: string | null;
   refund_amount?: number | null;
   cancel_reason?: string | null;
-  return_request?: { item_names: string[]; reason: string; requested_by_name: string; requested_at: string } | null;
+  return_request?: { item_names: string[]; reason: string; requested_by_name: string; requested_at: string; photo_urls?: string[] } | null;
 }
 
 const PERIOD_FILTERS: { value: string; label: string }[] = [

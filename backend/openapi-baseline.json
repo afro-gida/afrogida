@@ -142,6 +142,20 @@
                 "title": "Body_afro_admin_upload_pdf_api_admin_upload_pdf_post",
                 "type": "object"
             },
+            "Body_sorumlu_upload_image_api_pazar_sorumlusu_upload_post": {
+                "properties": {
+                    "file": {
+                        "contentMediaType": "application/octet-stream",
+                        "title": "File",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "file"
+                ],
+                "title": "Body_sorumlu_upload_image_api_pazar_sorumlusu_upload_post",
+                "type": "object"
+            },
             "Campaign": {
                 "properties": {
                     "active": {
@@ -10669,6 +10683,61 @@
                     }
                 },
                 "summary": "Pazar Sorumlusu Supplier Products"
+            }
+        },
+        "/api/pazar-sorumlusu/upload": {
+            "post": {
+                "description": "Pazar sorumlusu: iade talebi kanıt fotoğrafı (aynı küçültme / WebP).",
+                "operationId": "sorumlu_upload_image_api_pazar_sorumlusu_upload_post",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_sorumlu_upload_image_api_pazar_sorumlusu_upload_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Sorumlu Upload Image"
             }
         },
         "/api/products": {

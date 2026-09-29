@@ -64,6 +64,14 @@ export type Order = {
   delivery_slot_end?: string | null;
   admin_note?: string | null;
   cancel_reason?: string | null;
+  /** Sorumlunun iade talebi (karar yöneticide: iade / kupon / ret) */
+  return_request?: {
+    item_names: string[];
+    reason?: string;
+    photo_urls?: string[];
+    requested_by_name?: string;
+    requested_at?: string;
+  } | null;
   created_at?: string;
   updated_at?: string;
 };

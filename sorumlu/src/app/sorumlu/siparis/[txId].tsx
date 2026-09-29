@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -8,7 +8,8 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, uploadImage } from '@/lib/api';
+import { pickImage, shrinkImage } from '@/lib/image';
 import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
@@ -93,6 +94,8 @@ export default function SorumluSiparisDetay() {
   const [returnMode, setReturnMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [returnReason, setReturnReason] = useState('');
+  const [returnPhotos, setReturnPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [returnSaving, setReturnSaving] = useState(false);
   const [returnError, setReturnError] = useState('');
 
@@ -194,6 +197,28 @@ export default function SorumluSiparisDetay() {
     });
   }
 
+  function toggleAllItems() {
+    if (!order) return;
+    setSelectedItems((prev) => (prev.size === order.items.length ? new Set() : new Set(order.items.map((_, i) => i))));
+  }
+
+  // Kanıt fotoğrafı: galeri / kamera -> cihazda küçült -> yükle (en fazla 5)
+  async function addReturnPhoto(camera: boolean) {
+    if (Platform.OS !== 'web' || returnPhotos.length >= 5) return;
+    const file = await pickImage(camera);
+    if (!file) return;
+    setPhotoBusy(true);
+    setReturnError('');
+    try {
+      const url = await uploadImage(await shrinkImage(file), 'kanit.jpg');
+      setReturnPhotos((p) => [...p, url]);
+    } catch (err) {
+      setReturnError(err instanceof ApiError ? err.message : 'Fotoğraf yüklenemedi');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   async function submitReturnRequest() {
     if (!txId || selectedItems.size === 0) {
       setReturnError('En az bir ürün seçin');
@@ -205,10 +230,12 @@ export default function SorumluSiparisDetay() {
       await api.post(`/pazar-sorumlusu/orders/${txId}/return-request`, {
         item_indices: Array.from(selectedItems),
         reason: returnReason.trim(),
+        photo_urls: returnPhotos,
       });
       setReturnMode(false);
       setSelectedItems(new Set());
       setReturnReason('');
+      setReturnPhotos([]);
       load();
     } catch (err) {
       setReturnError(err instanceof ApiError ? err.message : 'Talep oluşturulamadı');
@@ -380,11 +407,21 @@ export default function SorumluSiparisDetay() {
                     İade talebi oluşturuldu: {order.return_request.item_names.join(', ')}
                     {order.return_request.reason ? ` — "${order.return_request.reason}"` : ''}
                   </ThemedText>
+                  {!!order.return_request.photo_urls?.length && (
+                    <View style={[styles.photoRow, { marginTop: 6 }]}>
+                      {order.return_request.photo_urls.map((u) => (
+                        <View key={u} style={[styles.photoThumb, { borderColor: theme.border }]}>
+                          <Image source={{ uri: u }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               )}
 
               {groupedItems.map(([supplier, rows]) => {
-                const open = !collapsed.has(supplier);
+                // İade talebi seçilirken tüm listeler açık (seçilebilsin)
+                const open = returnMode || !collapsed.has(supplier);
                 return (
                 <View key={supplier} style={[styles.supplierBox, { borderColor: theme.border }]}>
                   {/* Tedarikçi başlığı: aç/kapa + WhatsApp ile paylaş (tedarikçiye ayrı liste) */}
@@ -425,7 +462,43 @@ export default function SorumluSiparisDetay() {
               })}
 
               {returnMode && (
+                <Pressable onPress={toggleAllItems} style={[styles.allBtn, { borderColor: theme.danger }]}>
+                  <ThemedText type="smallBold" themeColor="danger">
+                    {selectedItems.size === order.items.length ? '☑ Seçimi kaldır' : '☐ Hepsini seç'}
+                  </ThemedText>
+                </Pressable>
+              )}
+
+              {returnMode && (
                 <View style={{ gap: 8, marginTop: 8 }}>
+                  <ThemedText type="small" themeColor="textSecondary">Kanıt fotoğrafı (en fazla 5)</ThemedText>
+                  <View style={styles.photoRow}>
+                    {returnPhotos.map((u) => (
+                      <View key={u} style={[styles.photoThumb, { borderColor: theme.border }]}>
+                        <Image source={{ uri: u }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        <Pressable style={styles.photoRemove} onPress={() => setReturnPhotos((p) => p.filter((x) => x !== u))} accessibilityLabel="Fotoğrafı kaldır">
+                          <Ionicons name="close" size={14} color="#fff" />
+                        </Pressable>
+                      </View>
+                    ))}
+                    {photoBusy && (
+                      <View style={[styles.photoThumb, { borderColor: theme.border, alignItems: 'center', justifyContent: 'center' }]}>
+                        <ActivityIndicator color={theme.tint} />
+                      </View>
+                    )}
+                  </View>
+                  {returnPhotos.length < 5 && (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable style={[styles.photoBtn, { borderColor: theme.tint }]} onPress={() => addReturnPhoto(false)} disabled={photoBusy}>
+                        <Ionicons name="images-outline" size={16} color={theme.tint} />
+                        <ThemedText type="smallBold" themeColor="tint">Galeri</ThemedText>
+                      </Pressable>
+                      <Pressable style={[styles.photoBtn, { borderColor: theme.tint }]} onPress={() => addReturnPhoto(true)} disabled={photoBusy}>
+                        <Ionicons name="camera-outline" size={16} color={theme.tint} />
+                        <ThemedText type="smallBold" themeColor="tint">Kamera</ThemedText>
+                      </Pressable>
+                    </View>
+                  )}
                   <TextInput
                     value={returnReason}
                     onChangeText={setReturnReason}
@@ -457,6 +530,11 @@ const styles = StyleSheet.create({
   gridValue: { fontSize: 17, lineHeight: 22 },
   card: { borderRadius: 16, padding: Spacing.three, gap: 8 },
   statusRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  allBtn: { alignSelf: 'flex-start', borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginTop: 6 },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoThumb: { width: 72, height: 72, borderRadius: 10, borderWidth: 1, overflow: 'hidden' },
+  photoRemove: { position: 'absolute', top: 3, right: 3, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  photoBtn: { flex: 1, flexDirection: 'row', gap: 6, borderWidth: 1.5, borderRadius: 999, paddingVertical: 9, alignItems: 'center', justifyContent: 'center' },
   supplierBox: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, gap: 6, marginTop: 6 },
   supplierHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   supplierToggle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
