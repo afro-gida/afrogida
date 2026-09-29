@@ -9992,6 +9992,120 @@
                 "summary": "Pazar Sorumlusu Couriers"
             }
         },
+        "/api/pazar-sorumlusu/couriers/assign": {
+            "post": {
+                "description": "Sorumlu, KENDİ pazarına kurye ekler (telefonla). Kişi önce müşteri\nsitesinden üye olmuş olmalı; tedarikçi / yönetici / sorumlu hesabı kurye\nyapılamaz. Başka pazarlara (courier_markets'teki diğer adlar) dokunulmaz.",
+                "operationId": "pazar_sorumlusu_assign_courier_api_pazar_sorumlusu_couriers_assign_post",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Assign Courier"
+            }
+        },
+        "/api/pazar-sorumlusu/couriers/unassign": {
+            "post": {
+                "description": "Kuryeyi sorumlunun KENDİ pazarından çıkarır; başka pazarı kalmazsa\nnormal üyeye döner.",
+                "operationId": "pazar_sorumlusu_unassign_courier_api_pazar_sorumlusu_couriers_unassign_post",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Unassign Courier"
+            }
+        },
         "/api/pazar-sorumlusu/markets": {
             "get": {
                 "description": "Kendine atanmış pazar(lar)ın listesi.",

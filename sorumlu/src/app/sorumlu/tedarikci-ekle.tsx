@@ -50,6 +50,12 @@ export default function SorumluTedarikciEkle() {
     ])
       .then(([m, a, s]) => {
         setMarkets(m);
+        // Başta: bugün pazarım varsa bugün, yoksa haftada pazarımın olduğu İLK gün
+        // (bugünü seçip boş liste göstermek "kimse atanmıyor" gibi görünüyordu)
+        if (!m.some((x) => x.day === todayName())) {
+          const first = DAYS.find((d) => m.some((x) => x.day === d));
+          if (first) setDay(first);
+        }
         setAll(a);
         setAssigned(s);
       })

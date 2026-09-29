@@ -89,7 +89,7 @@ export default function SorumluHome() {
             <Ionicons name="bicycle-outline" size={20} color={theme.tint} />
             <ThemedText type="smallBold">Kuryeler</ThemedText>
           </View>
-          <ThemedText themeColor="textSecondary" type="small">Pazarındaki kuryeleri gör</ThemedText>
+          <ThemedText themeColor="textSecondary" type="small">Pazarına kurye ekle, çıkar</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={() => logout()}>

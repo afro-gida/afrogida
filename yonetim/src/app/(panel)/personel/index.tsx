@@ -141,7 +141,10 @@ function SupplierChainSection({ cfg, markets, onOk, onFail }: Cb & { cfg: Catalo
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   // Gün kutusu: sadece seçilen günün pazarları listelenir (başta bugün).
-  const [day, setDay] = useState<string>(todayName());
+  // Bugün pazar yoksa haftada pazarı olan ilk gün (boş liste gösterilmesin)
+  const [day, setDay] = useState<string>(() =>
+    markets.some((m) => m.day === todayName()) ? todayName() : DAYS.find((d) => markets.some((m) => m.day === d)) ?? todayName(),
+  );
   const dayMarkets = markets.filter((m) => m.day === day);
 
   const sells = (sg: string, m: Market) => (map[sg] ?? []).some((n) => normName(n) === normName(m.name));

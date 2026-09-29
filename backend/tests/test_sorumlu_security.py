@@ -102,6 +102,52 @@ def test_sorumlu_sees_all_suppliers_and_assigns_only_known(client, db, sorumlu):
         cat._CACHE_TS = 0
 
 
+def test_order_status_only_moves_forward(client, db, sorumlu, monkeypatch):
+    import routers.pazar_sorumlusu as ps
+    monkeypatch.setattr(ps, "send_delivery_sms", lambda *a, **k: True)
+    tx = f"tx_{uuid.uuid4().hex[:8]}"
+    db.transactions.insert_one({"tx_id": tx, "market_name": "Güvenlik Pazarı", "order_status": "talep_alindi",
+                                "delivery_type": "gel_al", "items": [], "created_at": datetime.now(timezone.utc)})
+    h = sorumlu["headers"]
+    url = f"/api/pazar-sorumlusu/orders/{tx}/status"
+    try:
+        assert client.post(url, headers=h, json={"order_status": "hazirlaniyor"}).status_code == 200
+        # geri almak yasak
+        r = client.post(url, headers=h, json={"order_status": "hazirlik_bekliyor"})
+        assert r.status_code == 400 and "geri alınamaz" in r.json()["detail"]
+        # aynı durum da yeniden ayarlanamaz; ileri gider
+        assert client.post(url, headers=h, json={"order_status": "hazirlaniyor"}).status_code == 400
+        assert client.post(url, headers=h, json={"order_status": "hazir"}).status_code == 200
+        assert client.post(url, headers=h, json={"order_status": "hazirlaniyor"}).status_code == 400
+        assert db.transactions.find_one({"tx_id": tx})["order_status"] == "hazir"
+    finally:
+        db.transactions.delete_one({"tx_id": tx})
+
+
+def test_sorumlu_adds_and_removes_courier_in_own_market(client, db, make_user, sorumlu):
+    h = sorumlu["headers"]
+    phone = "05" + str(uuid.uuid4().int)[:9]
+    uid, _ = make_user(role="member", phone=phone)
+    r = client.post("/api/pazar-sorumlusu/couriers/assign", headers=h, json={"identifier": phone, "market_id": sorumlu["market_id"]})
+    assert r.status_code == 200, r.text
+    u = db.users.find_one({"user_id": uid})
+    assert u["role"] == "kurye" and u["courier_markets"] == ["Güvenlik Pazarı"]
+    names = [c["user_id"] for c in client.get("/api/pazar-sorumlusu/couriers", headers=h).json()]
+    assert uid in names
+    # başkasının pazarına ekleyemez
+    assert client.post("/api/pazar-sorumlusu/couriers/assign", headers=h,
+                       json={"identifier": phone, "market_id": "market_baskasi"}).status_code == 403
+    # tedarikçi hesabı kurye yapılamaz
+    sp = "05" + str(uuid.uuid4().int)[:9]
+    make_user(role="esnaf", phone=sp, supplier_group="X")
+    assert client.post("/api/pazar-sorumlusu/couriers/assign", headers=h,
+                       json={"identifier": sp, "market_id": sorumlu["market_id"]}).status_code == 400
+    # çıkarınca başka pazarı yoksa üyeye döner
+    r = client.post("/api/pazar-sorumlusu/couriers/unassign", headers=h, json={"user_id": uid, "market_id": sorumlu["market_id"]})
+    assert r.status_code == 200, r.text
+    assert db.users.find_one({"user_id": uid})["role"] == "musteri"
+
+
 def test_member_login_has_no_device_step(client, sms, make_user):
     phone = "05" + str(uuid.uuid4().int)[:9]
     make_user(role="member", phone=phone)

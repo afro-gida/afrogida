@@ -23,6 +23,8 @@ from services.sms import _generate_sms_code, send_delivery_sms
 
 SORUMLU_SETTABLE_STATUSES = {"hazirlik_bekliyor", "hazirlaniyor", "hazir"}
 ORDER_FINAL_STATUSES = {"teslim_edildi", "iptal_edildi", "teslim_alinmadi", "musteri_gelmedi_iptal"}
+# Sipariş aşamalarının sırası — durum bu sırada sadece ileri gider
+ORDER_STATUS_FLOW = ["talep_alindi", "hazirlik_bekliyor", "hazirlaniyor", "hazir", "yolda", "teslim_edildi"]
 
 router = APIRouter(prefix="/api/pazar-sorumlusu")
 
@@ -170,6 +172,9 @@ async def pazar_sorumlusu_update_order_status(tx_id: str, data: dict, user: dict
     current_status = str(order.get("order_status") or "").strip().lower()
     if current_status in ORDER_FINAL_STATUSES:
         raise HTTPException(status_code=400, detail=f"Bu sipariş '{order.get('order_status')}' durumunda, değişiklik yapılamaz.")
+    # Durum sadece İLERİ gider: "Hazır" olan sipariş "Hazırlanıyor"a vb. geri alınamaz
+    if current_status in ORDER_STATUS_FLOW and ORDER_STATUS_FLOW.index(new_status) <= ORDER_STATUS_FLOW.index(current_status):
+        raise HTTPException(status_code=400, detail="Sipariş durumu geri alınamaz; sadece bir sonraki aşamaya ilerletilebilir.")
 
     updates = {"order_status": new_status, "updated_at": now_utc()}
     delivery_sms_sent = None
@@ -327,6 +332,63 @@ async def pazar_sorumlusu_couriers(user: dict = Depends(get_current_pazar_soruml
                 "markets": mkts,
             })
     return result
+
+
+@router.post("/couriers/assign")
+async def pazar_sorumlusu_assign_courier(data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu, KENDİ pazarına kurye ekler (telefonla). Kişi önce müşteri
+    sitesinden üye olmuş olmalı; tedarikçi / yönetici / sorumlu hesabı kurye
+    yapılamaz. Başka pazarlara (courier_markets'teki diğer adlar) dokunulmaz."""
+    ident = str((data or {}).get("identifier") or "").strip()
+    market_id = str((data or {}).get("market_id") or "").strip()
+    if not ident or not market_id:
+        raise HTTPException(status_code=400, detail="Telefon ve pazar seçilmelidir")
+    managed = await _managed_market_docs(user)
+    market = _require_managed(market_id, managed)
+    target = await db.users.find_one({"$or": [{"phone": ident}, {"user_id": ident}]}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Bu numarayla kayıtlı üye yok. Kişi önce siteden üye olmalı.")
+    if target.get("role") not in ("musteri", "member", "kurye"):
+        raise HTTPException(status_code=400, detail="Bu hesap kurye yapılamaz (tedarikçi, sorumlu veya yönetici hesabı).")
+    mkts = list(target.get("courier_markets") or ([target["courier_market"]] if target.get("courier_market") else []))
+    if not any(_afro_norm(m) == _afro_norm(market["name"]) for m in mkts):
+        mkts.append(market["name"])
+    await db.users.update_one({"user_id": target["user_id"]},
+                              {"$set": {"role": "kurye", "courier_markets": mkts, "courier_market": mkts[0]}})
+    await _insert_log("log_admin", {
+        "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
+        "action": "pazar_sorumlusu_courier_assigned", "target_type": "user", "target_id": target["user_id"],
+        "change_details": {"market_name": market["name"]}, "admin_note": "",
+    }, request)
+    return {"success": True}
+
+
+@router.post("/couriers/unassign")
+async def pazar_sorumlusu_unassign_courier(data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Kuryeyi sorumlunun KENDİ pazarından çıkarır; başka pazarı kalmazsa
+    normal üyeye döner."""
+    courier_id = str((data or {}).get("user_id") or "").strip()
+    market_id = str((data or {}).get("market_id") or "").strip()
+    managed = await _managed_market_docs(user)
+    market = _require_managed(market_id, managed)
+    target = await db.users.find_one({"user_id": courier_id, "role": "kurye"}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Kurye bulunamadı")
+    mkts = list(target.get("courier_markets") or ([target["courier_market"]] if target.get("courier_market") else []))
+    new_mkts = [m for m in mkts if _afro_norm(m) != _afro_norm(market["name"])]
+    if len(new_mkts) == len(mkts):
+        raise HTTPException(status_code=403, detail="Bu kurye sizin pazarınızda değil")
+    await db.users.update_one({"user_id": courier_id}, {"$set": {
+        "courier_markets": new_mkts,
+        "courier_market": new_mkts[0] if new_mkts else None,
+        "role": "kurye" if new_mkts else "musteri",
+    }})
+    await _insert_log("log_admin", {
+        "admin_id": user.get("user_id"), "admin_name": user.get("name", ""),
+        "action": "pazar_sorumlusu_courier_unassigned", "target_type": "user", "target_id": courier_id,
+        "change_details": {"market_name": market["name"]}, "admin_note": "",
+    }, request)
+    return {"success": True}
 
 
 @router.get("/suppliers/{supplier_group}/products")

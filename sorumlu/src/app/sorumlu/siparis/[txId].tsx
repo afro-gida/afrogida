@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -89,6 +89,7 @@ export default function SorumluSiparisDetay() {
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusError, setStatusError] = useState('');
 
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [returnMode, setReturnMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [returnReason, setReturnReason] = useState('');
@@ -158,6 +159,30 @@ export default function SorumluSiparisDetay() {
     } finally {
       setNotifyBusy(null);
     }
+  }
+
+  function toggleSupplier(name: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  /** Tedarikçiye WhatsApp ile gönderilecek liste. Gizlilik kararı: sadece sipariş
+   *  no, ürün, miktar ve seçenekler — müşteri adı/telefonu/adresi ve fiyat YOK. */
+  function shareSupplierList(supplier: string, items: SorumluOrder['items']) {
+    if (!order) return;
+    const lines = items.map((it) => {
+      const opts = (it.selected_options ?? []).map((o) => `${o.title}: ${o.label}`).join(', ');
+      return `• ${it.qty} ${it.unit} ${it.name}${opts ? ` (${opts})` : ''}`;
+    });
+    const text = `Afro Gıda · Sipariş #${order.tx_id.slice(-6).toUpperCase()}\n${supplier} listesi\n\n${lines.join('\n')}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    // Web'de tıklama olayı içinde senkron açılmalı (açılır pencere engeline takılmasın)
+    if (Platform.OS === 'web') window.open(url, '_blank', 'noopener,noreferrer');
+    else Linking.openURL(url);
   }
 
   function toggleItem(index: number) {
@@ -262,14 +287,16 @@ export default function SorumluSiparisDetay() {
               <ThemedText type="smallBold">Durum</ThemedText>
               {!isFinal && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  Hazırlık aşamalarını ilerletmek için birine dokun
+                  Siparişi bir sonraki aşamaya ilerletmek için dokun (geri alınamaz)
                 </ThemedText>
               )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
                 {(CANCELLED.has(order.order_status) ? [...STATUS_FLOW, order.order_status] : STATUS_FLOW).map((s) => {
                   const active = s === order.order_status;
                   const meta = STATUS_META[s];
-                  const tappable = !isFinal && !active && SORUMLU_SETTABLE.has(s) && !statusBusy;
+                  // Sadece İLERİ: mevcut aşamadan önceki aşamalara dönülemez (sunucu da engeller)
+                  const ahead = STATUS_FLOW.indexOf(s) > STATUS_FLOW.indexOf(order.order_status);
+                  const tappable = !isFinal && !active && ahead && SORUMLU_SETTABLE.has(s) && !statusBusy;
                   return (
                     <Pressable
                       key={s}
@@ -356,10 +383,23 @@ export default function SorumluSiparisDetay() {
                 </View>
               )}
 
-              {groupedItems.map(([supplier, rows]) => (
-                <View key={supplier} style={{ gap: 4, marginTop: 6 }}>
-                  <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '700' }}>{supplier}</ThemedText>
-                  {rows.map(({ item, index }) => (
+              {groupedItems.map(([supplier, rows]) => {
+                const open = !collapsed.has(supplier);
+                return (
+                <View key={supplier} style={[styles.supplierBox, { borderColor: theme.border }]}>
+                  {/* Tedarikçi başlığı: aç/kapa + WhatsApp ile paylaş (tedarikçiye ayrı liste) */}
+                  <View style={styles.supplierHead}>
+                    <Pressable style={styles.supplierToggle} onPress={() => toggleSupplier(supplier)} accessibilityLabel={`${supplier} listesini ${open ? 'gizle' : 'göster'}`}>
+                      <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={18} color={theme.text} />
+                      <ThemedText type="smallBold" style={{ flex: 1 }} numberOfLines={1}>{supplier}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">{rows.length} ürün</ThemedText>
+                    </Pressable>
+                    <Pressable style={[styles.shareBtn, { backgroundColor: '#25D366' }]} onPress={() => shareSupplierList(supplier, rows.map((r) => r.item))} accessibilityLabel={`${supplier} listesini WhatsApp ile paylaş`}>
+                      <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                      <ThemedText type="smallBold" style={{ color: '#fff' }}>Paylaş</ThemedText>
+                    </Pressable>
+                  </View>
+                  {open && rows.map(({ item, index }) => (
                     <Pressable
                       key={index}
                       style={styles.itemRow}
@@ -381,7 +421,8 @@ export default function SorumluSiparisDetay() {
                     </Pressable>
                   ))}
                 </View>
-              ))}
+                );
+              })}
 
               {returnMode && (
                 <View style={{ gap: 8, marginTop: 8 }}>
@@ -416,6 +457,10 @@ const styles = StyleSheet.create({
   gridValue: { fontSize: 17, lineHeight: 22 },
   card: { borderRadius: 16, padding: Spacing.three, gap: 8 },
   statusRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  supplierBox: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, gap: 6, marginTop: 6 },
+  supplierHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  supplierToggle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999,
     borderWidth: 1.5, paddingVertical: 6, paddingHorizontal: 12,
