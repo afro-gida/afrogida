@@ -21,6 +21,8 @@ interface Product {
   image_url?: string | null;
   in_stock: boolean;
   active: boolean;
+  /** Yönetici onayı bekleyen talep: yeni ürün ya da değişiklik */
+  pending_approval?: 'new' | 'update' | null;
 }
 
 /** Ürünlerim: resimli liste; ürüne dokununca tam ekran düzenleme açılır. */
@@ -80,6 +82,14 @@ export default function UrunlerimScreen() {
                 {!p.in_stock ? '  ' : ''}
                 {!p.in_stock && <ThemedText type="small" themeColor="danger">Tükendi</ThemedText>}
               </ThemedText>
+              {!!p.pending_approval && (
+                <ThemedText type="small" style={{ color: '#D97706' }}>
+                  {p.pending_approval === 'new' ? 'Yeni ürün · onay bekliyor' : 'Değişiklik onay bekliyor'}
+                </ThemedText>
+              )}
+              {!p.pending_approval && !p.active && (
+                <ThemedText type="small" themeColor="textSecondary">Satışta değil</ThemedText>
+              )}
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </Pressable>

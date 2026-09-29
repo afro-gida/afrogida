@@ -88,6 +88,13 @@ export type Product = {
   customization_options?: OptionGroup[] | null;
   created_at?: string;
   updated_at?: string;
+  /** Tedarikçi talebi (Ürün Talepleri ekranında onaylanır) */
+  pending_approval?: {
+    type: 'new' | 'update';
+    changes: Record<string, unknown>;
+    requested_at?: string;
+    requested_by_name?: string;
+  } | null;
 };
 
 /** Sunucunun "gönderilmediyse koru" dediği fiyat alanları (routers/products.py

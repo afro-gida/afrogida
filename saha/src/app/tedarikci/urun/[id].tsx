@@ -25,6 +25,7 @@ type Product = {
   description?: string | null;
   in_stock: boolean;
   active: boolean;
+  pending_approval?: 'new' | 'update' | null;
   [k: string]: unknown;
 };
 
@@ -121,14 +122,18 @@ export default function UrunDuzenle() {
       unit,
       supplier_price: num,
       in_stock: inStock,
-      active: true,
       image_url: imageUrl,
       description: description.trim() || null,
     };
-    delete (payload as Record<string, unknown>).id;
+    // Sunucunun tuttuğu alanlar geri gönderilmez (aktiflik yöneticide)
+    for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at']) delete (payload as Record<string, unknown>)[k];
     try {
-      if (isNew) await api.post('/admin/products', payload);
-      else await api.put(`/admin/products/${id}`, payload);
+      const saved = isNew
+        ? await api.post<Product>('/admin/products', payload)
+        : await api.put<Product>(`/admin/products/${id}`, payload);
+      if (saved?.pending_approval && Platform.OS === 'web') {
+        window.alert(isNew ? 'Ürün yönetici onayına gönderildi. Onaylanınca satışa açılır.' : 'Değişiklik yönetici onayına gönderildi. Onaylanınca geçerli olur. (Stok durumu hemen geçerli.)');
+      }
       router.back();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Kaydedilemedi');
@@ -158,6 +163,16 @@ export default function UrunDuzenle() {
         <ActivityIndicator color={theme.tint} style={{ marginTop: Spacing.five }} />
       ) : (
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <View style={[styles.notice, { backgroundColor: theme.authCard }]}>
+            <Ionicons name="shield-checkmark-outline" size={18} color="#D97706" />
+            <ThemedText type="small" style={{ flex: 1 }}>
+              {orig?.pending_approval === 'new'
+                ? 'Bu ürün yönetici onayı bekliyor. Onaylanınca satışa açılır.'
+                : orig?.pending_approval === 'update'
+                  ? 'Değişikliğin yönetici onayı bekliyor. Aşağıda gönderdiğin hali görüyorsun.'
+                  : 'Ekleme ve değişiklikler yönetici onayından sonra geçerli olur. Stok durumu hemen değişir.'}
+            </ThemedText>
+          </View>
           {/* Ürün resmi */}
           <Pressable onPress={() => changePhoto(false)} style={[styles.photo, { backgroundColor: theme.authCard, borderColor: theme.border }]}>
             {imageUrl ? (
@@ -272,6 +287,7 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepInput: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700' },
+  notice: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: Spacing.two },
   stockRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: Spacing.three, marginTop: Spacing.one },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
 });

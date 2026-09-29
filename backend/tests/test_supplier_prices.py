@@ -46,8 +46,9 @@ def test_supplier_cannot_set_customer_price(client, make_user, db):
     pid = _seed_product(db, sg)
     _, sup = _supplier(make_user, sg)
 
+    _, admin = make_user(role="yonetici")
     base = {"name": "Test Domates", "category": "Domates", "subcategory": "Sebze", "unit": "Kg"}
-    # müşteri fiyatını doğrudan düşürme denemesi -> yok sayılır
+    # müşteri fiyatını doğrudan düşürme denemesi -> yok sayılır, talep de açılmaz
     r = client.put(f"/api/admin/products/{pid}", headers=sup,
                    json={**base, "price": 1, "sale_price": 1, "gel_al_price": 1, "supplier_price": 50})
     assert r.status_code == 200, r.text
@@ -55,19 +56,29 @@ def test_supplier_cannot_set_customer_price(client, make_user, db):
     doc = db.products.find_one({"id": pid})
     assert doc["price"] == 80.0 and doc["sale_price"] == 80.0 and doc["gel_al_price"] == 80.0
     # aynı supplier_price tekrar gönderildi -> fiyat değişikliği sayılmaz, kilit yok
-    assert not doc.get("supplier_price_locked_until")
+    assert not doc.get("supplier_price_locked_until") and not doc.get("pending_approval")
 
-    # alış fiyatı değişince satış = alış + kâr kademesi (60–89,99 -> +40)
+    # alış fiyatı değişince onaya düşer; canlı fiyat onaya kadar aynı
     r = client.put(f"/api/admin/products/{pid}", headers=sup, json={**base, "supplier_price": 60})
     assert r.status_code == 200, r.text
+    assert r.json()["supplier_price"] == 60 and r.json()["pending_approval"] == "update"
+    doc = db.products.find_one({"id": pid})
+    assert doc["supplier_price"] == 50 and doc["price"] == 80
+    assert doc["pending_approval"]["changes"]["sale_price"] == 100
+
+    # onayda satış = alış + kâr kademesi (60–89,99 -> +40), gün sonuna kilit
+    assert client.post(f"/api/admin/product-requests/{pid}/approve", headers=admin).status_code == 200
     doc = db.products.find_one({"id": pid})
     assert doc["supplier_price"] == 60 and doc["sale_price"] == 100 and doc["price"] == 100
-    assert doc["profit_margin_amount"] == 40
+    assert doc["profit_margin_amount"] == 40 and "pending_approval" not in doc
+    assert doc["supplier_price_locked_until"]
 
-    # stok değişikliği gibi fiyatsız kayıtlar kilide takılmaz
+    # stok değişikliği onay beklemez, kilide de takılmaz
     r = client.put(f"/api/admin/products/{pid}", headers=sup,
                    json={**base, "supplier_price": 60, "in_stock": False})
     assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["in_stock"] is False and "pending_approval" not in doc
     # aynı gün ikinci fiyat değişikliği kilitli
     r = client.put(f"/api/admin/products/{pid}", headers=sup, json={**base, "supplier_price": 70})
     assert r.status_code == 400
@@ -84,6 +95,11 @@ def test_partial_update_keeps_image_and_options(client, make_user, db):
     r = client.put(f"/api/admin/products/{pid}", headers=sup,
                    json={"name": "Yeni Ad", "category": "Domates", "in_stock": False})
     assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["name"] == "Test Domates" and doc["in_stock"] is False  # stok anında, ad onayda
+    assert doc["pending_approval"]["changes"] == {"name": "Yeni Ad"}
+    _, admin = make_user(role="yonetici")
+    assert client.post(f"/api/admin/product-requests/{pid}/approve", headers=admin).status_code == 200
     doc = db.products.find_one({"id": pid})
     assert doc["name"] == "Yeni Ad" and doc["in_stock"] is False
     assert doc["image_url"] == "https://afrogida.com.tr/uploads/x.webp"
@@ -114,6 +130,9 @@ def test_supplier_create_uses_supplier_price(client, make_user, db):
     # gönderdiği satış fiyatı / kâr yok sayılır; 40–59,99 -> +30
     assert doc["profit_margin_amount"] == 30
     assert doc["sale_price"] == 70 and doc["price"] == 70
+    # yönetici onaylayana kadar satışta değil
+    assert doc["active"] is False and doc["pending_approval"]["type"] == "new"
+    assert body["pending_approval"] == "new"
 
 
 import pytest  # noqa: E402

@@ -131,7 +131,84 @@ _SUPPLIER_READONLY_PRICE_FIELDS = ("price", "gel_al_price", "eve_servis_price")
 
 
 def _supplier_view(product: dict) -> dict:
-    return {k: v for k, v in product.items() if k not in _SUPPLIER_HIDDEN_PRODUCT_FIELDS}
+    """Tedarikçi, onay bekleyen değişikliklerini ürünün üstüne işlenmiş görür
+    (düzenleme formu kendi girdiğini göstersin); `pending_approval` sadece
+    türüyle ("new" | "update") döner."""
+    pending = product.get("pending_approval")
+    doc = dict(product)
+    if isinstance(pending, dict):
+        doc.update(pending.get("changes") or {})
+        doc["pending_approval"] = pending.get("type")
+    return {k: v for k, v in doc.items() if k not in _SUPPLIER_HIDDEN_PRODUCT_FIELDS}
+
+
+# Tedarikçinin onaysız ANINDA geçen tek alanı: stok. Tükenen ürün onay
+# beklerken satılmaya devam etmesin.
+_SUPPLIER_INSTANT_FIELDS = ("in_stock",)
+# Tedarikçinin değiştirebildiği (onaya giden) alanlar ve alış fiyatından
+# türeyen müşteri fiyatı alanları (alış değişirse talebe birlikte yazılır).
+_SUPPLIER_REQUEST_FIELDS = (
+    "name", "category", "subcategory", "unit", "image_url", "description",
+    "supplier_price", "selectable", "spicy_type", "customization_options",
+    "customization_note_enabled", "customization_note_label",
+)
+_PRICE_DERIVED_FIELDS = (
+    "price", "sale_price", "gel_al_price", "eve_servis_price",
+    "profit_margin_amount", "price_updated_at", "price_updated_by",
+)
+
+
+def _same(a, b) -> bool:
+    # None / "" / False / [] (kayıtta hiç olmayan alan) boş sayılır
+    return (not a and not b) or a == b
+
+
+async def _queue_supplier_update(product_id, existing, pending, sent, updates, staff):
+    """Satıştaki ürünün tedarikçi güncellemesi: canlı ürün değişmez, fark
+    `pending_approval.changes`'e yazılır (Yönetim > Ürün Talepleri onaylar).
+    Stok (in_stock) anında geçer."""
+    changes = dict((pending or {}).get("changes") or {}) if isinstance(pending, dict) else {}
+    diff = {k: updates.get(k) for k in _SUPPLIER_REQUEST_FIELDS
+            if k in sent and not _same(updates.get(k), existing.get(k))}
+    if "supplier_price" in diff:
+        diff.update({k: updates.get(k) for k in _PRICE_DERIVED_FIELDS if k in updates})
+    # Gönderilip canlı değerle aynı olan alan önceki talepten düşer (geri alındı)
+    for k in sent:
+        if k in _SUPPLIER_REQUEST_FIELDS and k not in diff:
+            changes.pop(k, None)
+            if k == "supplier_price":
+                for d in _PRICE_DERIVED_FIELDS:
+                    changes.pop(d, None)
+    changes.update(diff)
+
+    set_doc: dict = {"updated_at": now_utc()}
+    for f in _SUPPLIER_INSTANT_FIELDS:
+        if f in sent:
+            set_doc[f] = updates[f]
+    op: dict = {"$set": set_doc}
+    if changes:
+        set_doc["pending_approval"] = _pending_request("update", staff, changes)
+    else:
+        op["$unset"] = {"pending_approval": ""}
+    await db.products.update_one({"id": product_id}, op)
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    return JSONResponse(jsonable_encoder(_supplier_view(product)))
+
+
+def _end_of_day_istanbul_utc():
+    from zoneinfo import ZoneInfo
+    now_ist = datetime.now(ZoneInfo("Europe/Istanbul"))
+    return now_ist.replace(hour=23, minute=59, second=59, microsecond=999999).astimezone(timezone.utc)
+
+
+def _pending_request(kind: str, staff: dict, changes: dict) -> dict:
+    return {
+        "type": kind,
+        "changes": changes,
+        "requested_at": now_utc(),
+        "requested_by": staff.get("user_id"),
+        "requested_by_name": staff.get("name") or "",
+    }
 
 
 def _supplier_response(product) -> JSONResponse:
@@ -201,11 +278,18 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
     # sale_price gönderilmemişse müşteri fiyatı (price) ile başlat
     if data.get("sale_price") is None:
         data["sale_price"] = data.get("price")
+    if is_supplier_role(staff):
+        # Tedarikçinin açtığı ürün yönetici onaylayana kadar satışta değil
+        # (Yönetim > Ürün Talepleri).
+        data["active"] = False
     product = Product(**data)
-    await db.products.insert_one(product.dict())
+    doc = product.dict()
+    if is_supplier_role(staff):
+        doc["pending_approval"] = _pending_request("new", staff, {})
+    await db.products.insert_one(dict(doc))
     await _insert_log("log_admin", {"admin_id": staff["user_id"], "admin_name": staff.get("name",""), "action": "product_created", "target_type": "product", "target_id": product.id, "change_details": {"field": "new_product", "old_value": None, "new_value": {"name": data.get("name"), "sale_price": data.get("sale_price")}}, "admin_note": ""}, request)
     if is_supplier_role(staff):
-        return _supplier_response(product)
+        return JSONResponse(jsonable_encoder(_supplier_view(doc)))
     return product
 
 
@@ -258,7 +342,7 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         protected_from_supplier = [
             "profit_margin_amount", "sale_price", "price_updated_by",
             "campaign_discount_percent", "campaign_min_qty", "quality",
-            "hidden", "active_gel_al", "active_eve_servis",
+            "hidden", "active", "active_gel_al", "active_eve_servis",
             "supplier_price_locked_until", "price_updated_at",
             *_SUPPLIER_READONLY_PRICE_FIELDS,
         ]
@@ -348,7 +432,17 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             updates["price_updated_by"] = "admin"
     if not updates.get("price"):
         updates["price"] = updates.get("gel_al_price") or 0
-    
+
+    if is_supplier:
+        pending = existing.get("pending_approval")
+        if isinstance(pending, dict) and pending.get("type") == "new":
+            # Henüz onaylanmamış yeni ürün (satışta değil): düzeltmeler doğrudan
+            # ürüne yazılır, talep açık kalır. Fiyat kilidi onayda başlar.
+            updates.pop("supplier_price_locked_until", None)
+            updates["pending_approval"] = {**pending, "requested_at": now_utc()}
+        else:
+            return await _queue_supplier_update(product_id, existing, pending, sent, updates, staff)
+
     updates["updated_at"] = now_utc()
     result = await db.products.update_one({"id": product_id}, {"$set": updates})
     if result.matched_count == 0:
@@ -384,6 +478,55 @@ async def delete_product(product_id: str, staff=Depends(get_current_staff), requ
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     await _insert_log("log_admin", {"admin_id": staff["user_id"], "admin_name": staff.get("name",""), "action": "product_deleted", "target_type": "product", "target_id": product_id, "change_details": {"field": "deleted", "old_value": (_del_prod or {}).get("name"), "new_value": None}, "admin_note": ""}, request)
+    return {"success": True}
+
+
+# ---------------- Ürün Talepleri (tedarikçi ekleme/güncelleme onayı) ----------------
+@router.get("/admin/product-requests")
+async def admin_list_product_requests(admin=Depends(get_current_admin)):
+    """Onay bekleyen tedarikçi talepleri (en eski üstte). Ürünün canlı hali +
+    `pending_approval.changes` birlikte döner; ekran eski → yeni gösterir."""
+    return await db.products.find(
+        {"pending_approval": {"$type": "object"}}, {"_id": 0},
+    ).sort("pending_approval.requested_at", 1).to_list(2000)
+
+
+async def _pending_product(product_id: str) -> dict:
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product or not isinstance(product.get("pending_approval"), dict):
+        raise HTTPException(status_code=404, detail="Onay bekleyen talep bulunamadı")
+    return product
+
+
+@router.post("/admin/product-requests/{product_id}/approve")
+async def admin_approve_product_request(product_id: str, admin=Depends(get_current_admin), request: Request = None):
+    product = await _pending_product(product_id)
+    pending = product["pending_approval"]
+    now = now_utc()
+    if pending.get("type") == "new":
+        set_doc = {"active": True, "updated_at": now}
+    else:
+        set_doc = {**(pending.get("changes") or {}), "updated_at": now}
+        if "supplier_price" in set_doc:
+            # Tedarikçi fiyatı günde bir kez: kilit onaylandığı gün sonuna kadar
+            set_doc["price_updated_at"] = now
+            set_doc["supplier_price_locked_until"] = _end_of_day_istanbul_utc()
+    await db.products.update_one({"id": product_id}, {"$set": set_doc, "$unset": {"pending_approval": ""}})
+    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "product_request_approved", "target_type": "product", "target_id": product_id, "change_details": {"field": pending.get("type"), "old_value": None, "new_value": list((pending.get("changes") or {}).keys())}, "admin_note": ""}, request)
+    return {"success": True}
+
+
+@router.post("/admin/product-requests/{product_id}/reject")
+async def admin_reject_product_request(product_id: str, admin=Depends(get_current_admin), request: Request = None):
+    """Yeni ürün talebi reddedilirse ürün silinir (hiç satışa çıkmadı);
+    güncelleme talebi reddedilirse canlı ürün olduğu gibi kalır."""
+    product = await _pending_product(product_id)
+    kind = product["pending_approval"].get("type")
+    if kind == "new":
+        await db.products.delete_one({"id": product_id})
+    else:
+        await db.products.update_one({"id": product_id}, {"$unset": {"pending_approval": ""}})
+    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "product_request_rejected", "target_type": "product", "target_id": product_id, "change_details": {"field": kind, "old_value": product.get("name"), "new_value": None}, "admin_note": ""}, request)
     return {"success": True}
 
 
