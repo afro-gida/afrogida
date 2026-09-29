@@ -10,6 +10,7 @@ from core.db import db
 from core.security import get_current_courier, get_user_courier_market, get_user_courier_markets, _afro_market_eq, rate_limit
 from core.util import now_utc, new_id
 from services.push import send_push_to_users
+from services.delivery_code import code_due, issue_delivery_code
 
 router = APIRouter(prefix="/api/courier")
 
@@ -51,7 +52,8 @@ def _courier_order_view(o: dict) -> dict:
         "departed_at": o.get("departed_at"),
         "courier_id": o.get("courier_id"),
         "courier_name": o.get("courier_name"),
-        "delivery_code": dec_str(o.get("delivery_code")) if o.get("order_status") in ("hazir", "yolda") else None,
+        # Teslim kodu kuryeye ASLA gönderilmez: kod müşteride; kurye teslimde
+        # müşteriden alıp girer (yoksa kurye kodsuz "teslim edildi" yapabilirdi).
     }
 
 
@@ -177,6 +179,10 @@ async def courier_depart(tx_id: str, current: dict = Depends(get_current_courier
         "courier_id": current.get("user_id"),
         "courier_name": current.get("name"),
     }
+    # Eve Servis teslim kodu kurye yola çıkınca üretilir ve müşteriye SMS'le
+    # gider (gün sonuna kadar geçerli) — bkz. services/delivery_code.py
+    if code_due(order, "yolda"):
+        updates.update(await issue_delivery_code(order, tx_id))
     await db.transactions.update_one({"tx_id": tx_id}, {"$set": updates})
     await db.orders.update_one({"$or": [{"tx_id": tx_id}, {"order_id": tx_id}]}, {"$set": updates})
     await db.order_status_logs.insert_one({
@@ -216,7 +222,7 @@ async def courier_verify_delivery_code(tx_id: str, data: dict, current: dict = D
         raise HTTPException(status_code=400, detail="Lütfen teslim kodunu girin")
     expected = str(dec_str(order.get("delivery_code")) or "").strip()
     if not expected:
-        raise HTTPException(status_code=400, detail="Bu sipariş için henüz teslim kodu oluşturulmadı. Sipariş 'Hazır' olmalı.")
+        raise HTTPException(status_code=400, detail="Bu sipariş için henüz teslim kodu yok. Kod, 'Yola Çıktım' dendiğinde müşteriye SMS ile gider.")
     await rate_limit(f"courier_verify:{current.get('user_id')}", 15, 600, "Çok fazla hatalı kod denemesi. 10 dakika bekleyin.")
     if not hmac.compare_digest(submitted, expected):
         raise HTTPException(status_code=400, detail="Teslim kodu hatalı. Müşterinin SMS ile aldığı 6 haneli kodu girin.")

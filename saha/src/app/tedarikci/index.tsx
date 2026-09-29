@@ -70,7 +70,7 @@ export default function TedarikciHome() {
               <ThemedText style={{ color: '#fff' }} type="smallBold">Okudum, Kabul Ediyorum</ThemedText>
             )}
           </Pressable>
-          <Pressable onPress={logout}>
+          <Pressable onPress={() => logout()}>
             <ThemedText themeColor="textSecondary" type="small" style={{ textAlign: 'center', marginTop: Spacing.two }}>
               Çıkış Yap
             </ThemedText>
@@ -102,7 +102,7 @@ export default function TedarikciHome() {
           <ThemedText themeColor="textSecondary" type="small">Tezgah fiyatından hesaplanan satış logu</ThemedText>
         </Pressable>
 
-        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={logout}>
+        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={() => logout()}>
           <ThemedText themeColor="danger" type="smallBold">Çıkış Yap</ThemedText>
         </Pressable>
       </View>

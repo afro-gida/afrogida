@@ -184,7 +184,7 @@ export default function KuryeHome() {
           <ThemedText themeColor="textSecondary">Şu an aktif sipariş yok.</ThemedText>
         )}
 
-        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={logout}>
+        <Pressable style={[styles.outlineBtn, { borderColor: theme.danger, marginTop: Spacing.four }]} onPress={() => logout()}>
           <ThemedText themeColor="danger" type="smallBold">Çıkış Yap</ThemedText>
         </Pressable>
       </ScrollView>

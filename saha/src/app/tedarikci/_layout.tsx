@@ -1,8 +1,12 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
 
 export default function TedarikciLayout() {
   const theme = useTheme();
+  const { user, loading } = useAuth();
+  // Çıkış yapılınca / oturum düşünce giriş ekranına dön (eskiden ekran kalıyordu)
+  if (!loading && (!user || !['esnaf', 'supplier'].includes(user.role))) return <Redirect href="/giris" />;
   const headerOptions = {
     headerStyle: { backgroundColor: theme.authCard },
     headerTintColor: theme.text,

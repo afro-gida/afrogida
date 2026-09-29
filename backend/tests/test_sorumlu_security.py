@@ -103,8 +103,8 @@ def test_sorumlu_sees_all_suppliers_and_assigns_only_known(client, db, sorumlu):
 
 
 def test_order_status_only_moves_forward(client, db, sorumlu, monkeypatch):
-    import routers.pazar_sorumlusu as ps
-    monkeypatch.setattr(ps, "send_delivery_sms", lambda *a, **k: True)
+    import services.delivery_code as dc
+    monkeypatch.setattr(dc, "send_delivery_sms", lambda *a, **k: True)
     tx = f"tx_{uuid.uuid4().hex[:8]}"
     db.transactions.insert_one({"tx_id": tx, "market_name": "Güvenlik Pazarı", "order_status": "talep_alindi",
                                 "delivery_type": "gel_al", "items": [], "created_at": datetime.now(timezone.utc)})

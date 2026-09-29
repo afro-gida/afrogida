@@ -20,6 +20,7 @@ from core.util import _afro_norm, now_utc
 from services.catalog import _read_catalog_config, _write_catalog_config
 from services.push import send_push_to_courier_markets, send_push_to_users
 from services.sms import _generate_sms_code, send_delivery_sms
+from services.delivery_code import code_due, issue_delivery_code
 
 SORUMLU_SETTABLE_STATUSES = {"hazirlik_bekliyor", "hazirlaniyor", "hazir"}
 ORDER_FINAL_STATUSES = {"teslim_edildi", "iptal_edildi", "teslim_alinmadi", "musteri_gelmedi_iptal"}
@@ -179,25 +180,11 @@ async def pazar_sorumlusu_update_order_status(tx_id: str, data: dict, user: dict
     updates = {"order_status": new_status, "updated_at": now_utc()}
     delivery_sms_sent = None
 
-    # "Hazır" işaretlenince kurye teslim kodu üretilip müşteriye SMS'le
-    # gönderilir - admin panelindeki akışla aynı (bkz. admin_orders.py).
-    if new_status == "hazir" and current_status != "hazir":
-        delivery_code = dec_str(order.get("delivery_code")) or _generate_sms_code()
-        delivery_expires_at = datetime.now().replace(hour=23, minute=59, second=0, microsecond=0)
-        updates["delivery_code"] = enc_str(delivery_code)
-        updates["delivery_code_expires_at"] = delivery_expires_at
-        user_phone = None
-        if order.get("user_id"):
-            user_doc = await db.users.find_one({"user_id": order.get("user_id")}, {"_id": 0, "phone": 1})
-            user_phone = (user_doc or {}).get("phone")
-        if not user_phone:
-            user_phone = order.get("phone") or order.get("customer_phone")
-        delivery_sms_sent = send_delivery_sms(user_phone, tx_id, delivery_code) if user_phone else False
-        updates["delivery_sms_sent"] = delivery_sms_sent
-        updates["delivery_sms_sent_at"] = now_utc() if delivery_sms_sent else None
-        sms_state = "sent" if delivery_sms_sent else "failed"
-        updates["sms_status"] = sms_state
-        updates["pickup_sms_status"] = sms_state
+    # Teslim kodu: Gel-Al'da "Hazır" olunca üretilip SMS'le gider (gün sonuna
+    # kadar geçerli). Eve Servis'te kurye yola çıkınca üretilir (courier.py).
+    if code_due(order, new_status):
+        updates.update(await issue_delivery_code(order, tx_id))
+        delivery_sms_sent = updates["delivery_sms_sent"]
 
     await db.transactions.update_one({"tx_id": tx_id}, {"$set": updates})
     await db.orders.update_one({"$or": [{"tx_id": tx_id}, {"order_id": tx_id}]}, {"$set": updates})

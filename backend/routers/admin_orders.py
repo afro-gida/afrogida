@@ -15,6 +15,7 @@ from services.orders import _as_float, _dec_order, _dec_orders
 from services.payments import _paytr_refund
 from services.push import send_push_to_courier_markets
 from services.sms import _generate_sms_code, send_delivery_sms
+from services.delivery_code import code_due, issue_delivery_code
 
 router = APIRouter(prefix="/api/admin/orders")
 
@@ -101,23 +102,12 @@ async def admin_update_order(tx_id: str, data: dict, current_admin: dict = Depen
             updates["no_show_sms_sent"] = penalty.get("sms_sent")
             updates["delivery_box_message"] = "Sipariş teslim alınmadı. " + (penalty.get("message") or "")
 
-    if new_status in ready_statuses and old_status not in ready_statuses:
-        delivery_code = str(updates.get("delivery_code") or dec_str(existing_order.get("delivery_code")) or _generate_sms_code())
-        delivery_expires_at = datetime.now().replace(hour=23, minute=59, second=0, microsecond=0)
-        updates["delivery_code"] = enc_str(delivery_code)
-        updates["delivery_code_expires_at"] = delivery_expires_at
-        user_phone = None
-        if existing_order.get("user_id"):
-            user_doc = await db.users.find_one({"user_id": existing_order.get("user_id")}, {"_id": 0, "phone": 1})
-            user_phone = (user_doc or {}).get("phone")
-        if not user_phone:
-            user_phone = existing_order.get("phone") or existing_order.get("customer_phone")
-        delivery_sms_sent = send_delivery_sms(user_phone, tx_id, delivery_code) if user_phone else False
-        updates["delivery_sms_sent"] = delivery_sms_sent
-        updates["delivery_sms_sent_at"] = now_utc() if delivery_sms_sent else None
-        # Frontend sipariş detay ekranı SMS durumunu bu alanlardan okur
-        sms_state = "sent" if delivery_sms_sent else "failed"
-        updates["sms_status"] = sms_state
+    _norm_new = "hazir" if new_status in ready_statuses else new_status
+    if _norm_new != old_status and code_due(existing_order, _norm_new):
+        # Teslim kodu: Gel-Al "Hazır"da, Eve Servis "Yolda"da; gün sonuna kadar geçerli
+        updates.update(await issue_delivery_code(existing_order, tx_id))
+        delivery_sms_sent = updates["delivery_sms_sent"]
+        sms_state = updates["sms_status"]
         updates["pickup_sms_status"] = sms_state
 
     result = await db.transactions.update_one({"tx_id": tx_id}, {"$set": updates})
