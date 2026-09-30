@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
+import { OptionsEditor, type OptionGroup } from '@/components/options-editor';
 
 interface SupplierEntry {
   supplier_group: string;
@@ -24,6 +25,7 @@ interface Product {
   in_stock?: boolean;
   active?: boolean;
   hidden?: boolean;
+  customization_options?: OptionGroup[] | null;
 }
 
 type Row = SupplierEntry & { products: Product[] };
@@ -49,6 +51,14 @@ export default function SorumluTedarikciler() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<Product | null>(null);
+
+  // Seçenekler kaydedilince listedeki ürünü yerinde güncelle
+  function optionsSaved(options: OptionGroup[] | null) {
+    const id = editing?.id;
+    setRows((prev) => prev?.map((r) => ({ ...r, products: r.products.map((p) => (p.id === id ? { ...p, customization_options: options } : p)) })) ?? null);
+    setEditing(null);
+  }
 
   useEffect(() => {
     (async () => {
@@ -189,6 +199,12 @@ export default function SorumluTedarikciler() {
                                   {off ? 'Satışta değil' : 'Tükendi'}
                                 </ThemedText>
                               )}
+                              <Pressable style={[styles.optBtn, { borderColor: theme.tint }]} onPress={() => setEditing(p)} hitSlop={6}>
+                                <Ionicons name="options-outline" size={12} color={theme.tint} />
+                                <ThemedText style={[styles.optText, { color: theme.tint }]}>
+                                  {p.customization_options?.length ? `Seçenekler (${p.customization_options.length})` : 'Seçenek ekle'}
+                                </ThemedText>
+                              </Pressable>
                             </View>
                             <ThemedText type="small" themeColor="textSecondary" style={styles.numCol}>{tl(p.supplier_price)}</ThemedText>
                             <ThemedText type="smallBold" style={styles.numCol}>{tl(sell(p))}</ThemedText>
@@ -207,6 +223,7 @@ export default function SorumluTedarikciler() {
         {rows && rows.length === 0 && <ThemedText themeColor="textSecondary">Pazarında bağlı tedarikçi yok.</ThemedText>}
         {rows && rows.length > 0 && visible.length === 0 && <ThemedText themeColor="textSecondary">"{query}" bulunamadı.</ThemedText>}
       </ScrollView>
+      <OptionsEditor product={editing} onClose={() => setEditing(null)} onSaved={optionsSaved} />
     </Screen>
   );
 }
@@ -228,4 +245,6 @@ const styles = StyleSheet.create({
   nameCol: { flex: 1, minWidth: 0 },
   numCol: { width: 54, textAlign: 'right' },
   tag: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  optBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 7, marginTop: 3 },
+  optText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
 });

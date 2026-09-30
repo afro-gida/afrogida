@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { BackButton } from '@/components/back-button';
 
 export default function SorumluLayout() {
   const theme = useTheme();
@@ -14,10 +15,12 @@ export default function SorumluLayout() {
     headerTitleStyle: { color: theme.text },
     // Varsayılan alt çizgi koyu temada parlak beyaz görünüyordu.
     headerShadowVisible: false,
+    headerBackVisible: false,
+    headerLeft: () => <BackButton fallback="/sorumlu" />,
   };
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ title: 'Pazarım', ...headerOptions }} />
+      <Stack.Screen name="index" options={{ title: 'Pazarım', ...headerOptions, headerLeft: undefined }} />
       <Stack.Screen name="siparisler" options={{ title: 'Sipariş Takip', ...headerOptions }} />
       <Stack.Screen name="siparis/[txId]" options={{ title: 'Sipariş Detayı', ...headerOptions }} />
       <Stack.Screen name="tedarikciler" options={{ title: 'Tedarikçiler', ...headerOptions }} />

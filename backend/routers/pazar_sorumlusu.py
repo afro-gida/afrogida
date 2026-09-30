@@ -22,7 +22,8 @@ from services.push import send_push_to_courier_markets, send_push_to_users
 from services.sms import _generate_sms_code, send_delivery_sms
 from services.delivery_code import code_due, issue_delivery_code
 from routers.products import (
-    approve_product_request, list_pending_product_requests, pending_product, reject_product_request,
+    _clean_supplier_fields, approve_product_request, list_pending_product_requests, pending_product,
+    reject_product_request,
 )
 
 SORUMLU_SETTABLE_STATUSES = {"hazirlik_bekliyor", "hazirlaniyor", "hazir"}
@@ -434,6 +435,31 @@ async def pazar_sorumlusu_approve_product_request(product_id: str, user: dict = 
 @router.post("/product-requests/{product_id}/reject")
 async def pazar_sorumlusu_reject_product_request(product_id: str, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
     return await reject_product_request(await _my_pending_product(product_id, user), user, request)
+
+
+@router.put("/products/{product_id}/options")
+async def pazar_sorumlusu_update_product_options(product_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …)
+    doğrudan düzenler (onay veren kendisi). Bekleyen tedarikçi talebinde de
+    seçenek değişikliği varsa, sonradan onaylanıp bunu ezmesin diye düşülür."""
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+    if product.get("supplier_group") not in await _my_supplier_groups(user):
+        raise HTTPException(status_code=403, detail="Bu ürün sizin pazarınızda değil")
+    clean = {"customization_options": (data or {}).get("customization_options")}
+    _clean_supplier_fields(clean)
+    op: dict = {"$set": {"customization_options": clean["customization_options"], "updated_at": now_utc()}}
+    pending = product.get("pending_approval")
+    if isinstance(pending, dict) and "customization_options" in (pending.get("changes") or {}):
+        rest = {k: v for k, v in pending["changes"].items() if k != "customization_options"}
+        if rest or pending.get("type") == "new":
+            op["$set"]["pending_approval.changes"] = rest
+        else:
+            op["$unset"] = {"pending_approval": ""}
+    await db.products.update_one({"id": product_id}, op)
+    await _insert_log("log_admin", {"admin_id": user["user_id"], "admin_name": user.get("name", ""), "action": "product_options_updated", "target_type": "product", "target_id": product_id, "change_details": {"field": "customization_options", "old_value": None, "new_value": len(clean["customization_options"] or [])}, "admin_note": ""}, request)
+    return {"success": True, "customization_options": clean["customization_options"]}
 
 
 @router.get("/all-suppliers")

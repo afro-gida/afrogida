@@ -115,6 +115,32 @@ def test_supplier_options_and_campaign_go_to_approval(client, make_user, db):
     assert r.status_code == 400
 
 
+def test_sorumlu_edits_options_directly(client, make_user, db):
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    _, sup = _supplier(make_user, sg)
+    sor = sorumlu_for(db, make_user, sg)
+    other = sorumlu_for(db, make_user, f"Baska{uuid.uuid4().hex[:6]}")
+    # tedarikçinin bekleyen talebinde ad + seçenek değişikliği var
+    client.put(f"/api/admin/products/{pid}", headers=sup, json={
+        "name": "Yeni Ad", "category": "Domates",
+        "customization_options": [{"title": "Eski", "choices": [{"label": "A"}]}],
+    })
+    opts = [{"title": "Boyut", "choices": [{"label": "İstemiyorum", "price_delta": 0}, {"label": "Büyük", "price_delta": 10}]}]
+    url = f"/api/pazar-sorumlusu/products/{pid}/options"
+    assert client.put(url, headers=other, json={"customization_options": opts}).status_code == 403
+    assert client.put(url, headers=sor, json={"customization_options": [{"title": "", "choices": []}]}).status_code == 400
+    r = client.put(url, headers=sor, json={"customization_options": opts})
+    assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["customization_options"][0]["title"] == "Boyut"
+    # talepten seçenek düştü, ad değişikliği bekliyor
+    assert doc["pending_approval"]["changes"] == {"name": "Yeni Ad"}
+    # tüm seçenekleri kaldırma
+    assert client.put(url, headers=sor, json={"customization_options": []}).status_code == 200
+    assert db.products.find_one({"id": pid})["customization_options"] is None
+
+
 def test_supplier_cannot_reactivate_or_approve(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     pid = _seed_product(db, sg, active=False)

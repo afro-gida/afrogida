@@ -1,6 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { BackButton } from '@/components/back-button';
 
 export default function TedarikciLayout() {
   const theme = useTheme();
@@ -13,10 +14,12 @@ export default function TedarikciLayout() {
     headerTitleStyle: { color: theme.text },
     // Varsayılan alt çizgi koyu temada parlak beyaz görünüyordu.
     headerShadowVisible: false,
+    headerBackVisible: false,
+    headerLeft: () => <BackButton fallback="/tedarikci" />,
   };
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ title: 'Tedarikçi Paneli', ...headerOptions }} />
+      <Stack.Screen name="index" options={{ title: 'Tedarikçi Paneli', ...headerOptions, headerLeft: undefined }} />
       <Stack.Screen name="urunlerim" options={{ title: 'Ürünlerim', ...headerOptions }} />
       <Stack.Screen name="urun/[id]" options={{ title: 'Ürün', ...headerOptions }} />
       <Stack.Screen name="satislarim" options={{ title: 'Satışlarım', ...headerOptions }} />

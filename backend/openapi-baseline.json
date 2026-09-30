@@ -10733,6 +10733,72 @@
                 "summary": "Pazar Sorumlusu Reject Product Request"
             }
         },
+        "/api/pazar-sorumlusu/products/{product_id}/options": {
+            "put": {
+                "description": "Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …)\ndoğrudan düzenler (onay veren kendisi). Bekleyen tedarikçi talebinde de\nseçenek değişikliği varsa, sonradan onaylanıp bunu ezmesin diye düşülür.",
+                "operationId": "pazar_sorumlusu_update_product_options_api_pazar_sorumlusu_products__product_id__options_put",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "product_id",
+                        "required": true,
+                        "schema": {
+                            "title": "Product Id",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Update Product Options"
+            }
+        },
         "/api/pazar-sorumlusu/suppliers": {
             "get": {
                 "description": "Kendine atanmış pazar(lar)dan herhangi birinde çalışan tedarikçiler\n(catalog_config.supplier_markets'e göre).",
