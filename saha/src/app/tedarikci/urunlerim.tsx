@@ -59,7 +59,20 @@ export default function UrunlerimScreen() {
         {loading && <ActivityIndicator color={theme.tint} style={{ marginTop: Spacing.three }} />}
         {!!error && <ThemedText themeColor="danger">{error}</ThemedText>}
 
-        {products.map((p) => (
+        {/* Onay bekleyenler en üstte ayrı başlık altında */}
+        {[
+          { key: 'pending', title: 'Onay Bekleyen Ürünler', items: products.filter((p) => !!p.pending_approval) },
+          { key: 'live', title: 'Ürünlerim', items: products.filter((p) => !p.pending_approval) },
+        ].filter((g) => g.items.length > 0).map((g, _, groups) => (
+          <View key={g.key} style={{ gap: Spacing.two }}>
+            {groups.length > 1 && (
+              <View style={styles.sectionHead}>
+                {g.key === 'pending' && <Ionicons name="time-outline" size={16} color="#D97706" />}
+                <ThemedText type="smallBold" style={g.key === 'pending' ? { color: '#D97706' } : undefined}>{g.title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">({g.items.length})</ThemedText>
+              </View>
+            )}
+            {g.items.map((p) => (
           <Pressable
             key={p.id}
             onPress={() => router.push({ pathname: '/tedarikci/urun/[id]', params: { id: p.id } })}
@@ -93,6 +106,8 @@ export default function UrunlerimScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </Pressable>
+            ))}
+          </View>
         ))}
         {!loading && !error && products.length === 0 && (
           <ThemedText themeColor="textSecondary">Henüz ürün eklemedin.</ThemedText>
@@ -104,6 +119,7 @@ export default function UrunlerimScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: Spacing.three, gap: Spacing.two },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.one },
   addBtn: { borderRadius: 999, paddingVertical: Spacing.two, alignItems: 'center' },
   card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2, borderRadius: 16, padding: Spacing.two + 2 },
   thumb: { width: 60, height: 60, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
