@@ -104,7 +104,10 @@ def test_supplier_options_and_campaign_go_to_approval(client, make_user, db):
     assert ch["campaign_discount_percent"] == 90 and ch["campaign_min_qty"] == 3  # %90 üst sınır
     assert client.post(f"{REQ}/{pid}/approve", headers=sor).status_code == 200
     doc = db.products.find_one({"id": pid})
-    assert doc["customization_options"][0]["choices"][1] == {"label": "Büyük", "price_delta": 10}
+    # "İstemiyorum" başa yazılsa da hep EN ALTTA, 0 TL
+    assert doc["customization_options"][0]["choices"] == [
+        {"label": "Büyük", "price_delta": 10}, {"label": "İstemiyorum", "price_delta": 0},
+    ]
     assert doc["campaign_discount_percent"] == 90
 
     # boş seçenek adı reddedilir
@@ -139,6 +142,34 @@ def test_sorumlu_edits_options_directly(client, make_user, db):
     # tüm seçenekleri kaldırma
     assert client.put(url, headers=sor, json={"customization_options": []}).status_code == 200
     assert db.products.find_one({"id": pid})["customization_options"] is None
+
+
+def test_none_choice_always_last_and_free(client, make_user, db):
+    """Kim kaydederse kaydetsin: her grubun sonunda tek "İstemiyorum" 0 TL;
+    ücretlendirilemez, silinemez, eski yazımları (Seçmiyorum) da çevrilir."""
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    sor = sorumlu_for(db, make_user, sg)
+    url = f"/api/pazar-sorumlusu/products/{pid}/options"
+    r = client.put(url, headers=sor, json={"customization_options": [
+        {"title": "Boyut", "choices": [{"label": "istemiyorum", "price_delta": 25}, {"label": "Büyük", "price_delta": 10}]},
+        {"title": "Şekil", "choices": [{"label": "Seçmiyorum"}, {"label": "Küp", "price_delta": 0}, {"label": "Dilim"}]},
+    ]})
+    assert r.status_code == 200, r.text
+    groups = db.products.find_one({"id": pid})["customization_options"]
+    assert [c["label"] for c in groups[0]["choices"]] == ["Büyük", "İstemiyorum"]
+    assert [c["label"] for c in groups[1]["choices"]] == ["Küp", "Dilim", "İstemiyorum"]
+    assert all(g["choices"][-1] == {"label": "İstemiyorum", "price_delta": 0} for g in groups)
+    # sadece "İstemiyorum" olan grup anlamsız -> reddedilir
+    r = client.put(url, headers=sor, json={"customization_options": [{"title": "Boş", "choices": [{"label": "İstemiyorum"}]}]})
+    assert r.status_code == 400
+
+    # yönetici kaydı da aynı kurala uyar
+    _, admin = make_user(role="yonetici")
+    r = client.put(f"/api/admin/products/{pid}", headers=admin, json={"name": "Test Domates", "category": "Domates",
+        "customization_options": [{"title": "Boyut", "choices": [{"label": "İstemiyorum"}, {"label": "Orta", "price_delta": 5}]}]})
+    assert r.status_code == 200, r.text
+    assert [c["label"] for c in db.products.find_one({"id": pid})["customization_options"][0]["choices"]] == ["Orta", "İstemiyorum"]
 
 
 def test_supplier_cannot_reactivate_or_approve(client, make_user, db):

@@ -11,6 +11,11 @@ import { LAST_TIER_MAX, profitFor } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
 
 const UNITS = ['Kg', 'Adet', 'Demet', 'Paket', 'Litre'];
+/** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
+const NONE_CHOICE = 'İstemiyorum';
+const isNone = (label: string) => ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'].includes(label.trim().toLocaleLowerCase('tr-TR'));
+const withoutNone = (groups: OptionGroup[] | null | undefined): OptionGroup[] =>
+  (groups ?? []).map((g) => ({ ...g, choices: (g.choices ?? []).filter((c) => !isNone(c.label ?? '')) }));
 
 const EMPTY: Omit<Product, 'id'> = {
   name: '',
@@ -58,7 +63,8 @@ export default function ProductEdit() {
       .then((rows) => {
         const found = rows.find((r) => r.id === id);
         if (!found) return setError('Ürün bulunamadı');
-        setP({ ...found, customization_options: found.customization_options ?? [] });
+        // "İstemiyorum" düzenlenebilir listede tutulmaz; en altta kilitli gösterilir
+        setP({ ...found, customization_options: withoutNone(found.customization_options) });
         setOrigSupp(Number(found.supplier_price || 0));
       })
       .catch((e) => setError(errMsg(e)));
@@ -93,17 +99,18 @@ export default function ProductEdit() {
       return setError(supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış fiyatı için kâr kademesi yok.` : 'Alış fiyatını girin.');
     }
     for (const g of groups) {
-      if (!g.title.trim() || g.choices.length === 0 || g.choices.some((c) => !c.label.trim())) {
-        return setError('Seçenek gruplarında boş başlık veya seçenek var.');
+      if (!g.title.trim() || g.choices.length === 0 || g.choices.some((c) => !c.label.trim() || isNone(c.label))) {
+        return setError('Seçenek gruplarında boş başlık, boş seçenek ya da "İstemiyorum" dışında seçeneği olmayan grup var.');
       }
     }
+    const savedGroups = groups.map((g) => ({ ...g, choices: [...g.choices, { label: NONE_CHOICE, price_delta: 0 }] }));
     // Ürünün tamamı + alış fiyatı gönderilir; satış fiyatını ve kârı sunucu
     // kâr tablosundan hesaplar (gönderilen satış fiyatı yok sayılır).
     const body: any = {
       ...p,
       name: p.name.trim(),
       supplier_price: supp,
-      customization_options: groups.length ? groups : null,
+      customization_options: savedGroups.length ? savedGroups : null,
     };
     for (const f of ['sale_price', 'profit_margin_amount', 'price', 'gel_al_price', 'eve_servis_price']) delete body[f];
     delete body.id;
@@ -225,9 +232,9 @@ export default function ProductEdit() {
 
       <Section
         title="Seçenekler (Boyut, Şekil…)"
-        right={<Button small kind="secondary" icon="add" label="Grup ekle" onPress={() => setGroups([...groups, { title: '', choices: [{ label: 'İstemiyorum', price_delta: 0 }] }])} />}
+        right={<Button small kind="secondary" icon="add" label="Grup ekle" onPress={() => setGroups([...groups, { title: '', choices: [{ label: '', price_delta: 0 }] }])} />}
       >
-        <T muted size={12.5}>Ek fiyat kilo/adet başına satış fiyatına eklenir ve tamamen platformun olur. "İstemiyorum" / "Seçmiyorum" varsayılan seçimdir.</T>
+        <T muted size={12.5}>Ek fiyat kilo/adet başına satış fiyatına eklenir ve tamamen platformun olur. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılan seçimdir.</T>
         {groups.map((g, gi) => (
           <View key={gi} style={[styles.group, { borderColor: t.border }]}>
             <View style={styles.titleRow}>
@@ -269,6 +276,18 @@ export default function ProductEdit() {
                 </Pressable>
               </View>
             ))}
+            {/* Sabit, kilitli: hep en altta, 0 TL, silinemez */}
+            <View style={styles.choiceRow}>
+              <View style={[styles.cell, styles.flex, styles.locked, { backgroundColor: t.cardAlt, borderColor: t.border }]}>
+                <T muted>{NONE_CHOICE}</T>
+              </View>
+              <View style={[styles.cell, styles.priceCol, styles.locked, { backgroundColor: t.cardAlt, borderColor: t.border, alignItems: 'center' }]}>
+                <T muted>0</T>
+              </View>
+              <View style={[styles.iconBtn, { opacity: 0.6 }]}>
+                <Ionicons name="lock-closed" size={16} color={t.muted} />
+              </View>
+            </View>
             <Button small kind="ghost" icon="add" label="Seçenek ekle" onPress={() => setGroups(groups.map((x, i) => (i === gi ? { ...x, choices: [...x.choices, { label: '', price_delta: 0 }] } : x)))} />
           </View>
         ))}
@@ -300,6 +319,7 @@ const styles = StyleSheet.create({
   choiceRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   cell: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 14, minWidth: 0 },
   priceCol: { width: 92 },
+  locked: { borderStyle: 'dashed', justifyContent: 'center', minHeight: 38 },
   iconBtn: { width: 38, height: 38, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   iconSpace: { width: 38 },
   group: { borderWidth: 1, borderRadius: 10, padding: 10, gap: 8 },

@@ -32,6 +32,9 @@ type Product = {
 type CatalogConfig = { categories: string[]; subcategories: Record<string, string[]> };
 type Choice = { label: string; price_delta: number };
 type OptionGroup = { title: string; choices: Choice[] };
+/** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
+const NONE_CHOICE = 'İstemiyorum';
+const isNone = (label: string) => ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'].includes(label.trim().toLocaleLowerCase('tr-TR'));
 
 
 /**
@@ -83,7 +86,9 @@ export default function UrunDuzenle() {
         setDescription(p.description ?? '');
         setGroups(((p.customization_options as OptionGroup[] | null) ?? []).map((g) => ({
           title: g.title ?? '',
-          choices: (g.choices ?? []).map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
+          choices: (g.choices ?? [])
+            .filter((c) => !isNone(c.label ?? ''))
+            .map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
         })));
         setCampaignPct(p.campaign_discount_percent ? String(p.campaign_discount_percent) : '');
         setCampaignMin(p.campaign_min_qty ? String(p.campaign_min_qty) : '');
@@ -123,9 +128,10 @@ export default function UrunDuzenle() {
     const priceChanged = num !== Number(orig?.supplier_price ?? 0);
     if (priceChanged && num % PRICE_STEP !== 0) return setError('Fiyat 5 TL\'nin katı olmalı (5, 10, 15, 20 …)');
     const cleanGroups = groups.map((g) => ({ title: g.title.trim(), choices: g.choices.map((c) => ({ ...c, label: c.label.trim() })) }));
-    if (cleanGroups.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label))) {
-      return setError('Seçeneklerde boş grup adı veya boş seçenek var');
+    if (cleanGroups.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label || isNone(c.label)))) {
+      return setError('Seçeneklerde boş grup adı, boş seçenek ya da "İstemiyorum" dışında seçeneği olmayan grup var');
     }
+    for (const g of cleanGroups) g.choices.push({ label: NONE_CHOICE, price_delta: 0 });
     const pct = Math.min(90, Number(campaignPct) || 0);
     const minQty = Number(campaignMin.replace(',', '.')) || 0;
     setSaving(true);
@@ -292,14 +298,14 @@ export default function UrunDuzenle() {
             <ThemedText type="smallBold" style={[styles.sectionTitle, styles.flex]}>Seçenekler (Boyut, Şekil …)</ThemedText>
             <Pressable
               style={[styles.smallBtn, { borderColor: theme.tint }]}
-              onPress={() => setGroups([...groups, { title: '', choices: [{ label: 'İstemiyorum', price_delta: 0 }, { label: '', price_delta: 0 }] }])}
+              onPress={() => setGroups([...groups, { title: '', choices: [{ label: '', price_delta: 0 }] }])}
             >
               <Ionicons name="add" size={16} color={theme.tint} />
               <ThemedText type="small" themeColor="tint">Grup ekle</ThemedText>
             </Pressable>
           </View>
           {groups.length === 0 && (
-            <ThemedText type="small" themeColor="textSecondary">Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapsın istiyorsan grup ekle. İlk seçenek varsayılandır.</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapsın istiyorsan grup ekle. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılandır.</ThemedText>
           )}
           {groups.map((g, gi) => {
             const setGroup = (ng: OptionGroup) => setGroups(groups.map((x, i) => (i === gi ? ng : x)));
@@ -338,6 +344,18 @@ export default function UrunDuzenle() {
                     </Pressable>
                   </View>
                 ))}
+                {/* Sabit, kilitli: hep en altta, 0 TL, silinemez */}
+                <View style={styles.pair}>
+                  <View style={[styles.input, styles.flex, styles.locked, { borderColor: theme.border, backgroundColor: theme.authCard }]}>
+                    <ThemedText type="small" themeColor="textSecondary">{NONE_CHOICE}</ThemedText>
+                  </View>
+                  <View style={[styles.input, styles.deltaCol, styles.locked, { borderColor: theme.border, backgroundColor: theme.authCard, alignItems: 'center' }]}>
+                    <ThemedText type="small" themeColor="textSecondary">0</ThemedText>
+                  </View>
+                  <View style={[styles.iconBtn, { opacity: 0.6 }]}>
+                    <Ionicons name="lock-closed" size={16} color={theme.textSecondary} />
+                  </View>
+                </View>
                 <Pressable style={styles.addChoice} onPress={() => setGroup({ ...g, choices: [...g.choices, { label: '', price_delta: 0 }] })}>
                   <Ionicons name="add" size={16} color={theme.tint} />
                   <ThemedText type="small" themeColor="tint">Seçenek ekle</ThemedText>
@@ -386,6 +404,7 @@ const styles = StyleSheet.create({
   smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10 },
   group: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, gap: 8 },
   deltaCol: { width: 84 },
+  locked: { justifyContent: 'center', minHeight: 40, borderStyle: 'dashed' },
   iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   addChoice: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4 },
   notice: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: Spacing.two },

@@ -155,6 +155,30 @@ _SUPPLIER_REQUEST_FIELDS = (
 )
 
 
+NONE_CHOICE = "İstemiyorum"
+_NONE_LABELS = {"istemiyorum", "seçmiyorum", "farketmez", "fark etmez"}
+
+
+def _is_none_label(label) -> bool:
+    return str(label or "").strip().replace("I", "ı").replace("İ", "i").lower() in _NONE_LABELS
+
+
+def with_none_choice_last(groups):
+    """Her seçenek grubunun EN ALTINDA sabit "İstemiyorum" (0 TL) olur —
+    kim kaydederse kaydetsin (kullanıcı kuralı). Veride başka yerde / başka
+    yazımla (Seçmiyorum, Farketmez) duran "hiçbiri" seçeneği ayıklanıp sona
+    tek bir "İstemiyorum" eklenir."""
+    if not groups:
+        return groups
+    out = []
+    for g in groups:
+        if not isinstance(g, dict):
+            continue
+        real = [c for c in (g.get("choices") or []) if isinstance(c, dict) and not _is_none_label(c.get("label"))]
+        out.append({**g, "choices": real + [{"label": NONE_CHOICE, "price_delta": 0}]})
+    return out
+
+
 def _clean_supplier_fields(data: dict) -> None:
     """Tedarikçinin gönderdiği seçenek / kampanya alanlarını sınırla (onaya
     gitse de bozuk veri müşteri ekranını kırmasın)."""
@@ -168,7 +192,8 @@ def _clean_supplier_fields(data: dict) -> None:
             if not isinstance(g, dict) or not str(g.get("title") or "").strip():
                 raise HTTPException(status_code=400, detail="Seçenek grubunun adı boş olamaz")
             choices = []
-            for c in (g.get("choices") or [])[:12]:
+            real_choices = [c for c in (g.get("choices") or []) if not (isinstance(c, dict) and _is_none_label(c.get("label")))]
+            for c in real_choices[:12]:
                 label = str((c or {}).get("label") or "").strip()[:40] if isinstance(c, dict) else ""
                 if not label:
                     raise HTTPException(status_code=400, detail="Seçenek adı boş olamaz")
@@ -180,7 +205,7 @@ def _clean_supplier_fields(data: dict) -> None:
             if not choices:
                 raise HTTPException(status_code=400, detail="Her seçenek grubunda en az bir seçenek olmalı")
             groups.append({"title": str(g["title"]).strip()[:40], "choices": choices})
-        data["customization_options"] = groups or None
+        data["customization_options"] = with_none_choice_last(groups) or None
 _PRICE_DERIVED_FIELDS = (
     "price", "sale_price", "gel_al_price", "eve_servis_price",
     "profit_margin_amount", "price_updated_at", "price_updated_by",
@@ -308,6 +333,8 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
     # sale_price gönderilmemişse müşteri fiyatı (price) ile başlat
     if data.get("sale_price") is None:
         data["sale_price"] = data.get("price")
+    if data.get("customization_options"):
+        data["customization_options"] = with_none_choice_last(data["customization_options"])
     if is_supplier_role(staff):
         # Tedarikçinin açtığı ürün yönetici onaylayana kadar satışta değil
         # (Yönetim > Ürün Talepleri).
@@ -465,6 +492,8 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             updates["price_updated_by"] = "admin"
     if not updates.get("price"):
         updates["price"] = updates.get("gel_al_price") or 0
+    if "customization_options" in sent and updates.get("customization_options"):
+        updates["customization_options"] = with_none_choice_last(updates["customization_options"])
 
     if is_supplier:
         pending = existing.get("pending_approval")

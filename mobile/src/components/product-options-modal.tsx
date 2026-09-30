@@ -156,7 +156,8 @@ export function ProductOptionsModal({
             {groups.map((group) => (
               <View key={group.title} style={styles.group}>
                 <ThemedText style={styles.groupTitle}>{cap(group.title)}</ThemedText>
-                {group.choices.map((choice) => {
+                {/* "İstemiyorum" her zaman en altta (eski kayıtlarda başta durabiliyor) */}
+                {[...group.choices.filter((c) => !isNoneLabel(c.label)), ...group.choices.filter((c) => isNoneLabel(c.label))].map((choice) => {
                   const active = selected[group.title] === choice.label;
                   return (
                     <Pressable

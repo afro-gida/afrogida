@@ -10,6 +10,11 @@ import { Spacing } from '@/constants/theme';
 export type Choice = { label: string; price_delta: number };
 export type OptionGroup = { title: string; choices: Choice[] };
 
+/** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
+export const NONE_CHOICE = 'İstemiyorum';
+const NONE_LABELS = ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'];
+const isNone = (label: string) => NONE_LABELS.includes(label.trim().toLocaleLowerCase('tr-TR'));
+
 /**
  * Bir ürünün seçeneklerini (Boyut, Şekil …) düzenleme penceresi. Sorumlu
  * onay veren kişi olduğu için kaydedince doğrudan geçerli olur
@@ -34,7 +39,10 @@ export function OptionsEditor({
     setGroups(
       (product?.customization_options ?? []).map((g) => ({
         title: g.title ?? '',
-        choices: (g.choices ?? []).map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
+        // "İstemiyorum" düzenlenebilir listede tutulmaz; en altta kilitli gösterilir
+        choices: (g.choices ?? [])
+          .filter((c) => !isNone(c.label ?? ''))
+          .map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
       })),
     );
   }, [product]);
@@ -42,9 +50,10 @@ export function OptionsEditor({
   async function save() {
     if (!product) return;
     const clean = groups.map((g) => ({ title: g.title.trim(), choices: g.choices.map((c) => ({ ...c, label: c.label.trim() })) }));
-    if (clean.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label))) {
-      return setError('Boş grup adı veya boş seçenek var');
+    if (clean.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label || isNone(c.label)))) {
+      return setError('Boş grup adı, boş seçenek ya da "İstemiyorum" dışında en az bir seçenek eksik');
     }
+    for (const g of clean) g.choices.push({ label: NONE_CHOICE, price_delta: 0 });
     setSaving(true);
     setError('');
     try {
@@ -77,7 +86,7 @@ export function OptionsEditor({
 
           <ScrollView contentContainerStyle={{ gap: Spacing.two }} keyboardShouldPersistTaps="handled">
             <ThemedText type="small" themeColor="textSecondary">
-              Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapar. İlk seçenek varsayılandır; ek fiyat kilo/adet başına eklenir.
+              Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapar. Ek fiyat kilo/adet başına eklenir. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılandır.
             </ThemedText>
             {groups.map((g, gi) => {
               const setGroup = (ng: OptionGroup) => setGroups(groups.map((x, i) => (i === gi ? ng : x)));
@@ -116,6 +125,18 @@ export function OptionsEditor({
                       </Pressable>
                     </View>
                   ))}
+                  {/* Sabit, kilitli: hep en altta, 0 TL, silinemez */}
+                  <View style={styles.row}>
+                    <View style={[input, styles.flex, styles.locked, { backgroundColor: theme.backgroundSelected }]}>
+                      <ThemedText type="small" themeColor="textSecondary">{NONE_CHOICE}</ThemedText>
+                    </View>
+                    <View style={[input, styles.delta, styles.locked, { backgroundColor: theme.backgroundSelected, alignItems: 'center' }]}>
+                      <ThemedText type="small" themeColor="textSecondary">0</ThemedText>
+                    </View>
+                    <View style={[styles.iconBtn, { opacity: 0.6 }]}>
+                      <Ionicons name="lock-closed" size={16} color={theme.textSecondary} />
+                    </View>
+                  </View>
                   <Pressable style={styles.link} onPress={() => setGroup({ ...g, choices: [...g.choices, { label: '', price_delta: 0 }] })}>
                     <Ionicons name="add" size={16} color={theme.tint} />
                     <ThemedText type="small" themeColor="tint">Seçenek ekle</ThemedText>
@@ -125,7 +146,7 @@ export function OptionsEditor({
             })}
             <Pressable
               style={[styles.addGroup, { borderColor: theme.tint }]}
-              onPress={() => setGroups([...groups, { title: '', choices: [{ label: 'İstemiyorum', price_delta: 0 }, { label: '', price_delta: 0 }] }])}
+              onPress={() => setGroups([...groups, { title: '', choices: [{ label: '', price_delta: 0 }] }])}
             >
               <Ionicons name="add" size={18} color={theme.tint} />
               <ThemedText type="smallBold" themeColor="tint">Grup ekle</ThemedText>
@@ -151,6 +172,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15 },
   delta: { width: 78 },
+  locked: { justifyContent: 'center', minHeight: 38, borderStyle: 'dashed' },
   iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   link: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 2 },
   addGroup: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 12, paddingVertical: 10 },
