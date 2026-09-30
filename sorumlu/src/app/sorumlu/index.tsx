@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,6 +31,17 @@ export default function SorumluHome() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Yüklenemedi'))
       .finally(() => setLoading(false));
   }, []);
+
+  // Bekleyen ürün talebi sayısı (ekrana her dönüşte tazelenir)
+  const [requestCount, setRequestCount] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get<unknown[]>('/pazar-sorumlusu/product-requests')
+        .then((r) => setRequestCount(r.length))
+        .catch(() => setRequestCount(0));
+    }, []),
+  );
 
   const marketNames = markets.map((m) => m.name).join(', ');
 
@@ -66,6 +77,19 @@ export default function SorumluHome() {
             <ThemedText type="smallBold">Sipariş Takip</ThemedText>
           </View>
           <ThemedText themeColor="textSecondary" type="small">Pazarındaki siparişleri gör</ThemedText>
+        </Pressable>
+
+        <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/urun-talepleri')}>
+          <View style={styles.cardTitle}>
+            <Ionicons name="checkmark-done-outline" size={20} color={theme.tint} />
+            <ThemedText type="smallBold" style={{ flex: 1 }}>Ürün Talepleri</ThemedText>
+            {requestCount > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+                <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>{requestCount}</ThemedText>
+              </View>
+            )}
+          </View>
+          <ThemedText themeColor="textSecondary" type="small">Tedarikçilerin eklediği / değiştirdiği ürünleri onayla</ThemedText>
         </Pressable>
 
         <Pressable style={[styles.card, { backgroundColor: theme.authCard }]} onPress={() => router.push('/sorumlu/tedarikciler')}>

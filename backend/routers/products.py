@@ -482,25 +482,25 @@ async def delete_product(product_id: str, staff=Depends(get_current_staff), requ
 
 
 # ---------------- Ürün Talepleri (tedarikçi ekleme/güncelleme onayı) ----------------
-@router.get("/admin/product-requests")
-async def admin_list_product_requests(admin=Depends(get_current_admin)):
-    """Onay bekleyen tedarikçi talepleri (en eski üstte). Ürünün canlı hali +
+# Onay PAZAR SORUMLUSUNDA (kendi pazarlarının tedarikçileri için); uçlar
+# routers/pazar_sorumlusu.py'de (/api/pazar-sorumlusu/product-requests).
+async def list_pending_product_requests(supplier_groups) -> list:
+    """Onay bekleyen talepler (en eski üstte). Ürünün canlı hali +
     `pending_approval.changes` birlikte döner; ekran eski → yeni gösterir."""
     return await db.products.find(
-        {"pending_approval": {"$type": "object"}}, {"_id": 0},
+        {"pending_approval": {"$type": "object"}, "supplier_group": {"$in": list(supplier_groups)}}, {"_id": 0},
     ).sort("pending_approval.requested_at", 1).to_list(2000)
 
 
-async def _pending_product(product_id: str) -> dict:
+async def pending_product(product_id: str) -> dict:
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not product or not isinstance(product.get("pending_approval"), dict):
         raise HTTPException(status_code=404, detail="Onay bekleyen talep bulunamadı")
     return product
 
 
-@router.post("/admin/product-requests/{product_id}/approve")
-async def admin_approve_product_request(product_id: str, admin=Depends(get_current_admin), request: Request = None):
-    product = await _pending_product(product_id)
+async def approve_product_request(product: dict, actor: dict, request: Request = None):
+    product_id = product["id"]
     pending = product["pending_approval"]
     now = now_utc()
     if pending.get("type") == "new":
@@ -512,21 +512,20 @@ async def admin_approve_product_request(product_id: str, admin=Depends(get_curre
             set_doc["price_updated_at"] = now
             set_doc["supplier_price_locked_until"] = _end_of_day_istanbul_utc()
     await db.products.update_one({"id": product_id}, {"$set": set_doc, "$unset": {"pending_approval": ""}})
-    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "product_request_approved", "target_type": "product", "target_id": product_id, "change_details": {"field": pending.get("type"), "old_value": None, "new_value": list((pending.get("changes") or {}).keys())}, "admin_note": ""}, request)
+    await _insert_log("log_admin", {"admin_id": actor["user_id"], "admin_name": actor.get("name", ""), "action": "product_request_approved", "target_type": "product", "target_id": product_id, "change_details": {"field": pending.get("type"), "old_value": None, "new_value": list((pending.get("changes") or {}).keys())}, "admin_note": ""}, request)
     return {"success": True}
 
 
-@router.post("/admin/product-requests/{product_id}/reject")
-async def admin_reject_product_request(product_id: str, admin=Depends(get_current_admin), request: Request = None):
+async def reject_product_request(product: dict, actor: dict, request: Request = None):
     """Yeni ürün talebi reddedilirse ürün silinir (hiç satışa çıkmadı);
     güncelleme talebi reddedilirse canlı ürün olduğu gibi kalır."""
-    product = await _pending_product(product_id)
+    product_id = product["id"]
     kind = product["pending_approval"].get("type")
     if kind == "new":
         await db.products.delete_one({"id": product_id})
     else:
         await db.products.update_one({"id": product_id}, {"$unset": {"pending_approval": ""}})
-    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "product_request_rejected", "target_type": "product", "target_id": product_id, "change_details": {"field": kind, "old_value": product.get("name"), "new_value": None}, "admin_note": ""}, request)
+    await _insert_log("log_admin", {"admin_id": actor["user_id"], "admin_name": actor.get("name", ""), "action": "product_request_rejected", "target_type": "product", "target_id": product_id, "change_details": {"field": kind, "old_value": product.get("name"), "new_value": None}, "admin_note": ""}, request)
     return {"success": True}
 
 

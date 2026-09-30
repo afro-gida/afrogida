@@ -11,9 +11,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: '/', label: 'Özet', icon: 'grid-outline' },
   { href: '/siparisler', label: 'Siparişler', icon: 'receipt-outline' },
   { href: '/pazarlar', label: 'Pazarlar', icon: 'storefront-outline' },
-  { href: '/urunler', label: 'Ürünler', icon: 'nutrition-outline' },
-  { href: '/urun-talepleri', label: 'Ürün Talepleri', icon: 'git-pull-request-outline' },
-  { href: '/personel', label: 'Personel', icon: 'people-circle-outline' },
+  { href: '/urunler', label: 'Ürünler', icon: 'nutrition-outline' },  { href: '/personel', label: 'Personel', icon: 'people-circle-outline' },
   { href: '/uyeler', label: 'Üyeler', icon: 'people-outline' },
   { href: '/destek', label: 'Destek', icon: 'help-buoy-outline' },
 ];

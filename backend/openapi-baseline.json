@@ -6240,158 +6240,6 @@
                 "summary": "Admin Assign Pazar Sorumlusu"
             }
         },
-        "/api/admin/product-requests": {
-            "get": {
-                "description": "Onay bekleyen tedarikçi talepleri (en eski üstte). Ürünün canlı hali +\n`pending_approval.changes` birlikte döner; ekran eski → yeni gösterir.",
-                "operationId": "admin_list_product_requests_api_admin_product_requests_get",
-                "parameters": [
-                    {
-                        "in": "header",
-                        "name": "authorization",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Authorization"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        },
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        },
-                        "description": "Validation Error"
-                    }
-                },
-                "summary": "Admin List Product Requests"
-            }
-        },
-        "/api/admin/product-requests/{product_id}/approve": {
-            "post": {
-                "operationId": "admin_approve_product_request_api_admin_product_requests__product_id__approve_post",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "product_id",
-                        "required": true,
-                        "schema": {
-                            "title": "Product Id",
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "header",
-                        "name": "authorization",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Authorization"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        },
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        },
-                        "description": "Validation Error"
-                    }
-                },
-                "summary": "Admin Approve Product Request"
-            }
-        },
-        "/api/admin/product-requests/{product_id}/reject": {
-            "post": {
-                "description": "Yeni ürün talebi reddedilirse ürün silinir (hiç satışa çıkmadı);\ngüncelleme talebi reddedilirse canlı ürün olduğu gibi kalır.",
-                "operationId": "admin_reject_product_request_api_admin_product_requests__product_id__reject_post",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "product_id",
-                        "required": true,
-                        "schema": {
-                            "title": "Product Id",
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "header",
-                        "name": "authorization",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "title": "Authorization"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        },
-                        "description": "Successful Response"
-                    },
-                    "422": {
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        },
-                        "description": "Validation Error"
-                    }
-                },
-                "summary": "Admin Reject Product Request"
-            }
-        },
         "/api/admin/products": {
             "get": {
                 "operationId": "admin_list_products_api_admin_products_get",
@@ -10732,6 +10580,157 @@
                     }
                 },
                 "summary": "Pazar Sorumlusu Update Order Status"
+            }
+        },
+        "/api/pazar-sorumlusu/product-requests": {
+            "get": {
+                "description": "Kendi pazarlarındaki tedarikçilerin onay bekleyen ürün ekleme /\ngüncelleme talepleri. Onaylanınca satışa / canlıya geçer.",
+                "operationId": "pazar_sorumlusu_product_requests_api_pazar_sorumlusu_product_requests_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Product Requests"
+            }
+        },
+        "/api/pazar-sorumlusu/product-requests/{product_id}/approve": {
+            "post": {
+                "operationId": "pazar_sorumlusu_approve_product_request_api_pazar_sorumlusu_product_requests__product_id__approve_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "product_id",
+                        "required": true,
+                        "schema": {
+                            "title": "Product Id",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Approve Product Request"
+            }
+        },
+        "/api/pazar-sorumlusu/product-requests/{product_id}/reject": {
+            "post": {
+                "operationId": "pazar_sorumlusu_reject_product_request_api_pazar_sorumlusu_product_requests__product_id__reject_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "product_id",
+                        "required": true,
+                        "schema": {
+                            "title": "Product Id",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Reject Product Request"
             }
         },
         "/api/pazar-sorumlusu/suppliers": {

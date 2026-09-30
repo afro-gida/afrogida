@@ -21,6 +21,9 @@ from services.catalog import _read_catalog_config, _write_catalog_config
 from services.push import send_push_to_courier_markets, send_push_to_users
 from services.sms import _generate_sms_code, send_delivery_sms
 from services.delivery_code import code_due, issue_delivery_code
+from routers.products import (
+    approve_product_request, list_pending_product_requests, pending_product, reject_product_request,
+)
 
 SORUMLU_SETTABLE_STATUSES = {"hazirlik_bekliyor", "hazirlaniyor", "hazir"}
 ORDER_FINAL_STATUSES = {"teslim_edildi", "iptal_edildi", "teslim_alinmadi", "musteri_gelmedi_iptal"}
@@ -402,6 +405,35 @@ async def pazar_sorumlusu_supplier_products(supplier_group: str, user: dict = De
     if not any(_afro_norm(m) in managed_names for m in sg_markets):
         raise HTTPException(status_code=403, detail="Bu tedarikçi sizin pazarlarınızda değil")
     return await db.products.find({"supplier_group": supplier_group}, {"_id": 0}).sort("name", 1).to_list(2000)
+
+
+async def _my_supplier_groups(user: dict) -> set:
+    """Sorumlunun pazarlarında çalışan tedarikçi adları (supplier_markets)."""
+    return {s["supplier_group"] for s in await pazar_sorumlusu_suppliers(user)}
+
+
+@router.get("/product-requests")
+async def pazar_sorumlusu_product_requests(user: dict = Depends(get_current_pazar_sorumlusu)):
+    """Kendi pazarlarındaki tedarikçilerin onay bekleyen ürün ekleme /
+    güncelleme talepleri. Onaylanınca satışa / canlıya geçer."""
+    return await list_pending_product_requests(await _my_supplier_groups(user))
+
+
+async def _my_pending_product(product_id: str, user: dict) -> dict:
+    product = await pending_product(product_id)
+    if product.get("supplier_group") not in await _my_supplier_groups(user):
+        raise HTTPException(status_code=403, detail="Bu tedarikçi sizin pazarlarınızda değil")
+    return product
+
+
+@router.post("/product-requests/{product_id}/approve")
+async def pazar_sorumlusu_approve_product_request(product_id: str, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    return await approve_product_request(await _my_pending_product(product_id, user), user, request)
+
+
+@router.post("/product-requests/{product_id}/reject")
+async def pazar_sorumlusu_reject_product_request(product_id: str, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    return await reject_product_request(await _my_pending_product(product_id, user), user, request)
 
 
 @router.get("/all-suppliers")

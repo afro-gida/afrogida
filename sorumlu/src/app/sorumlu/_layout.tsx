@@ -23,6 +23,7 @@ export default function SorumluLayout() {
       <Stack.Screen name="tedarikciler" options={{ title: 'Tedarikçiler', ...headerOptions }} />
       <Stack.Screen name="tedarikci-ekle" options={{ title: 'Pazarlara Tedarikçi Ata', ...headerOptions }} />
       <Stack.Screen name="kuryeler" options={{ title: 'Kuryeler', ...headerOptions }} />
+      <Stack.Screen name="urun-talepleri" options={{ title: 'Ürün Talepleri', ...headerOptions }} />
     </Stack>
   );
 }

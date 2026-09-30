@@ -6,7 +6,7 @@ import { Button, Card, ErrorBox, Notice, Page, T, money } from '@/components/ui'
 import { api, errMsg } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
-type Stats = { markets: number; products: number; outOfStock: number; todayOrders: number; todayTotal: number; members: number; pendingReturns: number; pendingComplaints: number; productRequests: number };
+type Stats = { markets: number; products: number; outOfStock: number; todayOrders: number; todayTotal: number; members: number; pendingReturns: number; pendingComplaints: number };
 
 export default function Overview() {
   const router = useRouter();
@@ -17,16 +17,14 @@ export default function Overview() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [markets, products, orders, members, returns, complaints, productRequests] =await Promise.all([
+      const [markets, products, orders, members, returns, complaints] = await Promise.all([
         api.get<any[]>('/admin/markets'),
         api.get<any[]>('/admin/products'),
         api.get<any[]>('/admin/orders?filter_type=today'),
         api.get<{ count: number }>('/admin/members/count'),
         // Destek sayıları özeti bozmasın: hata verirse boş say.
         api.get<any[]>('/admin/return-requests').catch(() => []),
-        api.get<any[]>('/admin/complaints').catch(() => []),
-        api.get<any[]>('/admin/product-requests').catch(() => []),
-      ]);
+        api.get<any[]>('/admin/complaints').catch(() => []),      ]);
       const pending = (s?: string) => s !== 'resolved';
       setStats({
         markets: markets.length,
@@ -36,9 +34,7 @@ export default function Overview() {
         todayTotal: orders.reduce((s, o) => s + (Number(o.total ?? o.amount) || 0), 0),
         members: members.count,
         pendingReturns: returns.filter((r) => pending(r.return_request?.status)).length,
-        pendingComplaints: complaints.filter((c) => pending(c.status)).length,
-        productRequests: productRequests.length,
-      });
+        pendingComplaints: complaints.filter((c) => pending(c.status)).length,      });
     } catch (e) {
       setError(errMsg(e));
     }
@@ -69,7 +65,6 @@ export default function Overview() {
           {tile('Pazarlar', String(stats.markets), '/pazarlar')}
           {tile('Ürünler', String(stats.products), '/urunler', `${stats.outOfStock} tükendi`)}
           {tile('Üyeler', String(stats.members), '/uyeler')}
-          {tile('Ürün talepleri', String(stats.productRequests), '/urun-talepleri', 'onay bekliyor')}
           {tile('Destek (bekleyen)', String(stats.pendingReturns + stats.pendingComplaints), '/destek', `${stats.pendingReturns} iade · ${stats.pendingComplaints} öneri/şikayet`)}
         </View>
       )}

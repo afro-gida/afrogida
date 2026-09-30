@@ -11,6 +11,12 @@ def _supplier(make_user, sg):
                      supplier_contract_accepted_version="test-v1")
 
 
+def sorumlu_for(db, make_user, sg):
+    # onay pazar sorumlusunda (bkz. test_product_requests.py)
+    from tests.test_product_requests import sorumlu_for as _f
+    return _f(db, make_user, sg)
+
+
 def _seed_product(db, sg, **fields):
     pid = f"prod_test_{uuid.uuid4().hex[:8]}"
     doc = {
@@ -67,7 +73,7 @@ def test_supplier_cannot_set_customer_price(client, make_user, db):
     assert doc["pending_approval"]["changes"]["sale_price"] == 100
 
     # onayda satış = alış + kâr kademesi (60–89,99 -> +40), gün sonuna kilit
-    assert client.post(f"/api/admin/product-requests/{pid}/approve", headers=admin).status_code == 200
+    assert client.post(f"/api/pazar-sorumlusu/product-requests/{pid}/approve", headers=sorumlu_for(db, make_user, sg)).status_code == 200
     doc = db.products.find_one({"id": pid})
     assert doc["supplier_price"] == 60 and doc["sale_price"] == 100 and doc["price"] == 100
     assert doc["profit_margin_amount"] == 40 and "pending_approval" not in doc
@@ -99,7 +105,7 @@ def test_partial_update_keeps_image_and_options(client, make_user, db):
     assert doc["name"] == "Test Domates" and doc["in_stock"] is False  # stok anında, ad onayda
     assert doc["pending_approval"]["changes"] == {"name": "Yeni Ad"}
     _, admin = make_user(role="yonetici")
-    assert client.post(f"/api/admin/product-requests/{pid}/approve", headers=admin).status_code == 200
+    assert client.post(f"/api/pazar-sorumlusu/product-requests/{pid}/approve", headers=sorumlu_for(db, make_user, sg)).status_code == 200
     doc = db.products.find_one({"id": pid})
     assert doc["name"] == "Yeni Ad" and doc["in_stock"] is False
     assert doc["image_url"] == "https://afrogida.com.tr/uploads/x.webp"

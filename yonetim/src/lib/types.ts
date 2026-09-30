@@ -87,15 +87,7 @@ export type Product = {
   campaign_min_qty?: number | null;
   customization_options?: OptionGroup[] | null;
   created_at?: string;
-  updated_at?: string;
-  /** Tedarikçi talebi (Ürün Talepleri ekranında onaylanır) */
-  pending_approval?: {
-    type: 'new' | 'update';
-    changes: Record<string, unknown>;
-    requested_at?: string;
-    requested_by_name?: string;
-  } | null;
-};
+  updated_at?: string;};
 
 /** Sunucunun "gönderilmediyse koru" dediği fiyat alanları (routers/products.py
  *  DUAL_PRICE_FIELDS). Sadece stok/durum değişirken bunlar GÖNDERİLMEZ — yoksa
