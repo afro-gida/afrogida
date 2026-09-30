@@ -6,13 +6,14 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
+import { OPTION_PRESETS, presetFor } from '@/lib/option-presets';
 
 export type Choice = { label: string; price_delta: number };
 export type OptionGroup = { title: string; choices: Choice[] };
 
 /** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
 export const NONE_CHOICE = 'İstemiyorum';
-const NONE_LABELS = ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'];
+const NONE_LABELS = ['istemiyorum', 'seçmiyorum'];
 const isNone = (label: string) => NONE_LABELS.includes(label.trim().toLocaleLowerCase('tr-TR'));
 
 /**
@@ -69,6 +70,8 @@ export function OptionsEditor({
   }
 
   const input = [styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.background }];
+  // Üründe zaten olan gruplar kısayollarda tekrar önerilmez
+  const quickPresets = OPTION_PRESETS.filter((p) => !groups.some((g) => presetFor(g.title) === p));
 
   return (
     <Modal visible={!!product} transparent animationType="fade" onRequestClose={onClose}>
@@ -88,12 +91,34 @@ export function OptionsEditor({
             <ThemedText type="small" themeColor="textSecondary">
               Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapar. Ek fiyat kilo/adet başına eklenir. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılandır.
             </ThemedText>
+            {/* Kısayollar: dokununca grup seçenekleriyle (0 ₺) gelir */}
+            {quickPresets.length > 0 && (
+              <View style={styles.presetRow}>
+                <ThemedText type="small" themeColor="textSecondary">Hızlı ekle:</ThemedText>
+                {quickPresets.map((p) => (
+                  <Pressable
+                    key={p.title}
+                    style={[styles.presetChip, { borderColor: theme.tint }]}
+                    onPress={() => setGroups([...groups, { title: p.title, choices: p.choices.map((label) => ({ label, price_delta: 0 })) }])}
+                  >
+                    <Ionicons name="add" size={13} color={theme.tint} />
+                    <ThemedText type="small" themeColor="tint">{p.title}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             {groups.map((g, gi) => {
               const setGroup = (ng: OptionGroup) => setGroups(groups.map((x, i) => (i === gi ? ng : x)));
+              // Başlık bir kısayola uyarsa ve seçenekler henüz boşsa kendiliğinden doldur
+              const onTitle = (v: string) => {
+                const preset = presetFor(v);
+                const empty = g.choices.every((c) => !c.label.trim());
+                setGroup(preset && empty ? { title: v, choices: preset.choices.map((label) => ({ label, price_delta: 0 })) } : { ...g, title: v });
+              };
               return (
                 <View key={gi} style={[styles.group, { borderColor: theme.border }]}>
                   <View style={styles.row}>
-                    <TextInput value={g.title} onChangeText={(v) => setGroup({ ...g, title: v })} autoCapitalize="words" placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[input, styles.flex]} />
+                    <TextInput value={g.title} onChangeText={onTitle} autoCapitalize="words" placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[input, styles.flex]} />
                     <Pressable style={[styles.iconBtn, { backgroundColor: theme.danger }]} onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil">
                       <Ionicons name="trash-outline" size={17} color="#fff" />
                     </Pressable>
@@ -172,6 +197,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15 },
   delta: { width: 78 },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  presetChip: { flexDirection: 'row', alignItems: 'center', gap: 2, borderWidth: 1, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 9 },
   locked: { justifyContent: 'center', minHeight: 38, borderStyle: 'dashed' },
   iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   link: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 2 },

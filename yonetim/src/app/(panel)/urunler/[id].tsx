@@ -9,11 +9,12 @@ import { pickImage, shrinkImage } from '@/lib/image';
 import { salePrice, type CatalogConfig, type OptionGroup, type Product } from '@/lib/types';
 import { LAST_TIER_MAX, profitFor } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
+import { OPTION_PRESETS, presetFor } from '@/lib/option-presets';
 
 const UNITS = ['Kg', 'Adet', 'Demet', 'Paket', 'Litre'];
 /** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
 const NONE_CHOICE = 'İstemiyorum';
-const isNone = (label: string) => ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'].includes(label.trim().toLocaleLowerCase('tr-TR'));
+const isNone = (label: string) => ['istemiyorum', 'seçmiyorum'].includes(label.trim().toLocaleLowerCase('tr-TR'));
 const withoutNone = (groups: OptionGroup[] | null | undefined): OptionGroup[] =>
   (groups ?? []).map((g) => ({ ...g, choices: (g.choices ?? []).filter((c) => !isNone(c.label ?? '')) }));
 
@@ -235,10 +236,33 @@ export default function ProductEdit() {
         right={<Button small kind="secondary" icon="add" label="Grup ekle" onPress={() => setGroups([...groups, { title: '', choices: [{ label: '', price_delta: 0 }] }])} />}
       >
         <T muted size={12.5}>Ek fiyat kilo/adet başına satış fiyatına eklenir ve tamamen platformun olur. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılan seçimdir.</T>
+        {/* Kısayollar: dokununca grup seçenekleriyle (0 ₺) gelir; başlığa yazınca da dolar */}
+        {OPTION_PRESETS.some((pr) => !groups.some((g) => presetFor(g.title) === pr)) && (
+          <View style={styles.presetRow}>
+            <T muted size={12.5}>Hızlı ekle:</T>
+            {OPTION_PRESETS.filter((pr) => !groups.some((g) => presetFor(g.title) === pr)).map((pr) => (
+              <Button
+                key={pr.title}
+                small
+                kind="secondary"
+                icon="add"
+                label={pr.title}
+                onPress={() => setGroups([...groups, { title: pr.title, choices: pr.choices.map((label) => ({ label, price_delta: 0 })) }])}
+              />
+            ))}
+          </View>
+        )}
         {groups.map((g, gi) => (
           <View key={gi} style={[styles.group, { borderColor: t.border }]}>
             <View style={styles.titleRow}>
-              <Field style={styles.flex} label="Grup adı" autoCapitalize="words" placeholder="Boyut" value={g.title} onChangeText={(v) => setGroups(groups.map((x, i) => (i === gi ? { ...x, title: v } : x)))} />
+              <Field style={styles.flex} label="Grup adı" autoCapitalize="words" placeholder="Boyut" value={g.title} onChangeText={(v) => {
+                // Başlık bir kısayola uyarsa ve seçenekler henüz boşsa kendiliğinden doldur
+                const preset = presetFor(v);
+                const empty = g.choices.every((c) => !c.label.trim());
+                setGroups(groups.map((x, i) => (i !== gi ? x : preset && empty
+                  ? { title: v, choices: preset.choices.map((label) => ({ label, price_delta: 0 })) }
+                  : { ...x, title: v })));
+              }} />
               <Pressable onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil" style={[styles.iconBtn, { backgroundColor: t.danger }]}>
                 <Ionicons name="trash-outline" size={17} color="#fff" />
               </Pressable>
@@ -319,6 +343,7 @@ const styles = StyleSheet.create({
   choiceRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   cell: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 14, minWidth: 0 },
   priceCol: { width: 92 },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   locked: { borderStyle: 'dashed', justifyContent: 'center', minHeight: 38 },
   iconBtn: { width: 38, height: 38, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   iconSpace: { width: 38 },

@@ -15,7 +15,7 @@ import type { Product, SelectedOption } from '@/lib/types';
 export const NONE_LABEL = 'İstemiyorum';
 
 // Veride "hiçbiri" seçeneği farklı yazılabiliyor ("İstemiyorum", "Seçmiyorum").
-const NONE_LABELS = ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'];
+const NONE_LABELS = ['istemiyorum', 'seçmiyorum'];
 
 export function isNoneLabel(label: string) {
   return NONE_LABELS.includes(label.trim().toLocaleLowerCase('tr-TR'));

@@ -188,6 +188,19 @@ def test_none_choice_always_last_and_free(client, make_user, db):
     assert [c["label"] for c in db.products.find_one({"id": pid})["customization_options"][0]["choices"]] == ["Orta", "İstemiyorum"]
 
 
+def test_farketmez_is_a_real_choice(client, make_user, db):
+    """Şekil: Düz / Farketmez kısayolu — "Farketmez" gerçek seçenek olarak
+    kalır, "İstemiyorum" yine en altta."""
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    sor = sorumlu_for(db, make_user, sg)
+    r = client.put(f"/api/pazar-sorumlusu/products/{pid}/options", headers=sor, json={"customization_options": [
+        {"title": "Şekil", "choices": [{"label": "Düz"}, {"label": "Farketmez"}]}]})
+    assert r.status_code == 200, r.text
+    labels = [c["label"] for c in db.products.find_one({"id": pid})["customization_options"][0]["choices"]]
+    assert labels == ["Düz", "Farketmez", "İstemiyorum"]
+
+
 def test_supplier_cannot_reactivate_or_approve(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     pid = _seed_product(db, sg, active=False)

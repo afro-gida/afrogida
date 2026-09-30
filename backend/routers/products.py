@@ -156,7 +156,7 @@ _SUPPLIER_REQUEST_FIELDS = (
 
 
 NONE_CHOICE = "İstemiyorum"
-_NONE_LABELS = {"istemiyorum", "seçmiyorum", "farketmez", "fark etmez"}
+_NONE_LABELS = {"istemiyorum", "seçmiyorum"}  # "Farketmez" gerçek bir seçenek olabilir (Şekil)
 
 
 def _is_none_label(label) -> bool:
