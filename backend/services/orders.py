@@ -14,6 +14,7 @@ import pytz
 from fastapi import HTTPException, Request
 
 from core.config import _AFRO_DOC_NAME_TR
+from core.coupon_dates import is_expired
 from core.crypto import enc_str, dec_str, order_signature
 from core.db import db
 from core.logs import _mask_phone
@@ -228,20 +229,24 @@ async def _evaluate_coupon(code: str, user: Optional[dict], subtotal, payment_me
             _used = int(ua.get("used_count") or 0)
             if _used >= _lim:
                 raise HTTPException(status_code=400, detail="Bu kupon için kullanım hakkınız doldu")
+            # Kişiye verilirken belirlenen son kullanma tarihi
+            if is_expired(ua.get("valid_until")):
+                raise HTTPException(status_code=400, detail="Kupon süresi dolmuş")
+        elif not assigned:
+            # Kimseye özel verilmemiş (herkese açık kod): kişi başı sınır
+            # (per_user_limit) tamamlanan/bekleyen siparişlerden sayılır.
+            _lim = int(coupon.get("per_user_limit") or 1)
+            _used = await db.transactions.count_documents({
+                "user_id": user.get("user_id"), "coupon_code": code,
+                "order_status": {"$nin": ["iptal_edildi", "teslim_alinmadi", "musteri_gelmedi_iptal"]},
+            })
+            if _used >= _lim:
+                raise HTTPException(status_code=400, detail="Bu kupon için kullanım hakkınız doldu")
     if coupon.get("members_only", True) and not user:
         raise HTTPException(status_code=401, detail="Kupon kullanmak için giriş yapmalısınız")
-    valid_until = coupon.get("valid_until")
-    if valid_until:
-        try:
-            expires = datetime.fromisoformat(str(valid_until).replace("Z", "+00:00"))
-            if expires.tzinfo is None:
-                expires = expires.replace(tzinfo=timezone.utc)
-            if expires < now_utc():
-                raise HTTPException(status_code=400, detail="Kupon süresi dolmuş")
-        except HTTPException:
-            raise
-        except Exception:
-            pass
+    # "YYYY-MM-DD" o günün sonuna (Türkiye) kadar geçerli (core/coupon_dates.py)
+    if is_expired(coupon.get("valid_until")):
+        raise HTTPException(status_code=400, detail="Kupon süresi dolmuş")
     min_amount = money_d(coupon.get("min_amount", 0) or 0)
     if total < min_amount:
         raise HTTPException(status_code=400, detail=f"Minimum sipariş tutarı: {min_amount:.0f}₺")

@@ -14,8 +14,45 @@ from services.coupon_anomaly import (
     check_high_value_coupon, check_user_coupon_use_burst,
 )
 from services.orders import _evaluate_coupon
+from core.coupon_dates import clean_date, is_expired
 
 router = APIRouter(prefix="/api")
+
+
+def _date_or_400(value):
+    try:
+        return clean_date(value)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+async def _validated_coupon_fields(payload: CouponInput, coupon_id: Optional[str] = None, old: Optional[dict] = None) -> dict:
+    """Yönetimden gelen kuponu denetler: kod tekil, indirim mantıklı, tarih geçerli."""
+    data = payload.dict()
+    data["code"] = "".join(str(data.get("code") or "").upper().split())[:40]
+    data["title"] = str(data.get("title") or "").strip()[:80]
+    if len(data["code"]) < 3:
+        raise HTTPException(status_code=400, detail="Kupon kodu en az 3 karakter olmalı")
+    if not data["title"]:
+        raise HTTPException(status_code=400, detail="Kupon başlığı gerekli")
+    clash = await db.coupons.find_one({"code": data["code"], **({"id": {"$ne": coupon_id}} if coupon_id else {})}, {"_id": 0, "id": 1})
+    if clash:
+        raise HTTPException(status_code=400, detail="Bu kupon kodu zaten var")
+    amount = data.get("discount_amount")
+    if amount is not None and float(amount) > 0:
+        data["discount_amount"] = round(float(amount), 2)
+    else:
+        data["discount_amount"] = None
+        if not 1 <= int(data.get("discount_percent") or 0) <= 100:
+            raise HTTPException(status_code=400, detail="İndirim yüzdesi 1-100 arası olmalı")
+    if float(data.get("min_amount") or 0) < 0:
+        raise HTTPException(status_code=400, detail="Minimum tutar negatif olamaz")
+    # Güncellemede tarihi değişmeyen (geçmiş) eski kupon yine kaydedilebilsin
+    if old is not None and (data.get("valid_until") or None) == (old.get("valid_until") or None):
+        pass
+    else:
+        data["valid_until"] = _date_or_400(data.get("valid_until"))
+    return data
 
 
 @router.get("/coupons", response_model=List[Coupon])
@@ -26,25 +63,35 @@ async def list_coupons(user=Depends(get_optional_user)):
         # Tek kullanımlık kuponlar zaten kullanılmışsa genel olarak gizle
         if c.get("single_use") and c.get("used"):
             continue
+        if is_expired(c.get("valid_until")):
+            continue
         assigned = c.get("assigned_user_ids") or []
+        # GİZLİLİK: kupona tanımlı DİĞER üyelerin kimlikleri müşteriye gitmez
+        # (eskiden assignments/assigned_user_ids olduğu gibi dönüyordu).
+        public = {**c, "assigned_user_ids": [], "assignments": []}
         if user:
             # Members see: coupons assigned to them, OR general (unassigned) coupons
             if assigned:
                 if user["user_id"] in assigned:
-                    # Kullanıcıya özel kalan hak kontrolü: 0 ise gizle
+                    # Kullanıcıya özel kalan hak / son kullanma kontrolü
                     ua = next((a for a in (c.get("assignments") or []) if a.get("user_id") == user["user_id"]), None)
                     if ua:
                         used = int(ua.get("used_count") or 0)
                         limit = int(ua.get("limit") or c.get("per_user_limit") or 1)
-                        if used >= limit:
-                            continue  # Kalan hak 0, listeye ekleme
-                    result.append(c)
+                        if used >= limit or is_expired(ua.get("valid_until")):
+                            continue  # Kalan hak 0 / süresi dolmuş, listeye ekleme
+                        public["assignments"] = [ua]
+                        # Kişiye özel tarih kuponunkinden erkense onu göster
+                        if ua.get("valid_until"):
+                            public["valid_until"] = ua["valid_until"]
+                    public["assigned_user_ids"] = [user["user_id"]]
+                    result.append(public)
             else:
-                result.append(c)
+                result.append(public)
         else:
             # Guests see only public, unassigned coupons
             if not assigned and not c.get("members_only", True):
-                result.append(c)
+                result.append(public)
     return result
 
 
@@ -95,6 +142,8 @@ async def admin_redeem_coupon(payload: RedeemInput, admin=Depends(get_current_ad
         raise HTTPException(status_code=400, detail="Bu kupon pasif durumda")
     if coupon.get("single_use") and coupon.get("used"):
         raise HTTPException(status_code=400, detail="Bu kupon daha önce kullanılmış")
+    if is_expired(coupon.get("valid_until")):
+        raise HTTPException(status_code=400, detail="Kupon süresi dolmuş")
     # Per-user kullanım hakkı takibi: kupon belirli bir üye için kullanılıyorsa sayacı artır.
     target_uid = (payload.user_id or "").strip() or None
     assignments = coupon.get("assignments") or []
@@ -108,6 +157,8 @@ async def admin_redeem_coupon(payload: RedeemInput, admin=Depends(get_current_ad
             _used = int(ua.get("used_count") or 0)
             if _used >= _lim:
                 raise HTTPException(status_code=400, detail="Bu üyenin kupon kullanım hakkı dolmuş")
+            if is_expired(ua.get("valid_until")):
+                raise HTTPException(status_code=400, detail="Bu üyenin kuponunun süresi dolmuş")
             ua["used_count"] = _used + 1
             ua["last_used_at"] = now_utc()
             await db.coupons.update_one({"id": coupon["id"]}, {"$set": {"assignments": assignments}})
@@ -150,14 +201,16 @@ async def admin_assign_coupon_all(data: dict, admin=Depends(get_current_admin), 
     """Seçili kuponu tüm mevcut üyelere, verilen kullanım hakkı (limit) ile tanımlar."""
     coupon_id = str(data.get("coupon_id") or "").strip()
     limit = _norm_limit(data.get("limit"), 1)
+    valid_until = _date_or_400(data.get("valid_until"))
     if not coupon_id:
         raise HTTPException(status_code=400, detail="Kupon seçilmedi")
     coupon = await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
     if not coupon:
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")
+    # Sadece müşteri üyeler (personel/yönetici hesaplarına kupon gitmez)
     members = await db.users.find(
-        {"role": {"$in": ["musteri", "member", "yonetici", "admin"]}}, {"_id": 0, "user_id": 1}
-    ).to_list(5000)
+        {"role": {"$in": ["musteri", "member"]}}, {"_id": 0, "user_id": 1}
+    ).to_list(20000)
     # Mevcut kullanım sayaçlarını koru
     prev = {a.get("user_id"): a for a in (coupon.get("assignments") or [])}
     assignments = []
@@ -171,6 +224,8 @@ async def admin_assign_coupon_all(data: dict, admin=Depends(get_current_admin), 
             "limit": limit,
             "used_count": int(old.get("used_count") or 0),
             "last_used_at": old.get("last_used_at"),
+            "valid_until": valid_until,
+            "assigned_at": now_utc(),
         })
     user_ids = [a["user_id"] for a in assignments]
     await db.coupons.update_one(
@@ -199,6 +254,7 @@ async def admin_assign_coupon_member(data: dict, admin=Depends(get_current_admin
     coupon_id = str(data.get("coupon_id") or "").strip()
     user_id = str(data.get("user_id") or "").strip()
     limit = _norm_limit(data.get("limit"), 1)
+    valid_until = _date_or_400(data.get("valid_until"))
     if not coupon_id or not user_id:
         raise HTTPException(status_code=400, detail="Kupon ve üye seçilmelidir")
     coupon = await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
@@ -214,11 +270,14 @@ async def admin_assign_coupon_member(data: dict, admin=Depends(get_current_admin
     found = False
     for a in assignments:
         if a.get("user_id") == user_id:
+            # Tekrar verme: hak ve tarih güncellenir, kullanım sayacı korunur
             a["limit"] = limit
+            a["valid_until"] = valid_until
             found = True
             break
     if not found:
-        assignments.append({"user_id": user_id, "limit": limit, "used_count": 0, "last_used_at": None})
+        assignments.append({"user_id": user_id, "limit": limit, "used_count": 0, "last_used_at": None,
+                            "valid_until": valid_until, "assigned_at": now_utc()})
     user_ids = [a["user_id"] for a in assignments]
     await db.coupons.update_one(
         {"id": coupon_id},
@@ -321,6 +380,8 @@ async def admin_coupon_details(coupon_id: str, admin=Depends(get_current_admin))
             "used_count": used,
             "remaining": max(0, lim - used),
             "last_used_at": a.get("last_used_at"),
+            "valid_until": a.get("valid_until"),
+            "expired": is_expired(a.get("valid_until")),
         })
     logs = await db.coupon_usage_logs.find(
         {"coupon_id": coupon_id}, {"_id": 0}
@@ -336,8 +397,7 @@ async def admin_coupon_details(coupon_id: str, admin=Depends(get_current_admin))
 
 @router.post("/admin/coupons", response_model=Coupon)
 async def create_coupon(payload: CouponInput, admin=Depends(get_current_admin), request: Request = None):
-    coupon = Coupon(**payload.dict())
-    coupon.code = coupon.code.upper().strip()
+    coupon = Coupon(**await _validated_coupon_fields(payload))
     await db.coupons.insert_one(coupon.dict())
     await _insert_log("log_coupons", {"coupon_id": coupon.id, "coupon_code": coupon.code, "user_id": None, "action": "coupon_created", "order_id": None, "discount_amount": coupon.discount_amount, "discount_type": "fixed_amount", "original_total": None, "final_total": None, "performed_by": "admin", "admin_id": admin["user_id"], "admin_note": ""}, request)
     await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name",""), "action": "coupon_created", "target_type": "coupon", "target_id": coupon.id, "change_details": {"coupon_code": coupon.code, "discount_amount": coupon.discount_amount}, "admin_note": ""}, request)
@@ -348,11 +408,14 @@ async def create_coupon(payload: CouponInput, admin=Depends(get_current_admin), 
 
 @router.put("/admin/coupons/{coupon_id}", response_model=Coupon)
 async def update_coupon(coupon_id: str, payload: CouponInput, admin=Depends(get_current_admin), request: Request = None):
-    updates = payload.dict()
-    updates["code"] = updates["code"].upper().strip()
-    result = await db.coupons.update_one({"id": coupon_id}, {"$set": updates})
-    if result.matched_count == 0:
+    old = await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
+    if not old:
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")
+    updates = await _validated_coupon_fields(payload, coupon_id, old)
+    # Kimlere verildiği bu formdan değişmez (Ver / Geri al uçları yönetir)
+    updates.pop("assigned_user_ids", None)
+    await db.coupons.update_one({"id": coupon_id}, {"$set": updates})
+    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "coupon_updated", "target_type": "coupon", "target_id": coupon_id, "change_details": {"coupon_code": updates["code"]}, "admin_note": ""}, request)
     coupon = await db.coupons.find_one({"id": coupon_id}, {"_id": 0})
     await check_high_value_coupon(coupon, admin, request, action="coupon_updated")
     return coupon
@@ -366,4 +429,45 @@ async def delete_coupon(coupon_id: str, admin=Depends(get_current_admin), reques
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")
     await _insert_log("log_coupons", {"coupon_id": coupon_id, "coupon_code": (_del_cpn or {}).get("code",""), "user_id": None, "action": "coupon_cancelled", "order_id": None, "discount_amount": None, "discount_type": None, "original_total": None, "final_total": None, "performed_by": "admin", "admin_id": admin["user_id"], "admin_note": "Admin tarafından silindi"}, request)
     await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name",""), "action": "coupon_deleted", "target_type": "coupon", "target_id": coupon_id, "change_details": {"coupon_code": (_del_cpn or {}).get("code","")}, "admin_note": ""}, request)
+    # Silinen kupon yeni üye kuponuysa ayar da kalkar (yeni üyelere verilmez)
+    await db.settings.update_one({"id": "global_settings", "new_member_coupon_id": coupon_id},
+                                 {"$set": {"new_member_coupon_id": None}})
     return {"success": True}
+
+
+# ---- Yeni üyelere otomatik kupon (kayıt olunca verilir; routers/auth.py) ----
+@router.get("/admin/coupons-new-member")
+async def admin_get_new_member_coupon(admin=Depends(get_current_admin)):
+    st = await db.settings.find_one({"id": "global_settings"}, {"_id": 0}) or {}
+    return {
+        "coupon_id": st.get("new_member_coupon_id") or None,
+        "limit": _norm_limit(st.get("new_member_coupon_limit"), 1),
+        "days": int(st.get("new_member_coupon_days") or 0),
+    }
+
+
+@router.put("/admin/coupons-new-member")
+async def admin_set_new_member_coupon(data: dict, admin=Depends(get_current_admin), request: Request = None):
+    """Kayıt olan her yeni üyeye verilecek kupon: seç (coupon_id) ya da kaldır
+    (coupon_id boş). limit = kullanım hakkı, days = kayıttan itibaren kaç gün
+    geçerli (0 = kuponun kendi tarihi / süresiz)."""
+    coupon_id = str((data or {}).get("coupon_id") or "").strip() or None
+    limit = _norm_limit((data or {}).get("limit"), 1)
+    try:
+        days = max(0, min(3650, int((data or {}).get("days") or 0)))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Gün sayısı rakam olmalı")
+    if coupon_id:
+        c = await db.coupons.find_one({"id": coupon_id}, {"_id": 0, "active": 1})
+        if not c:
+            raise HTTPException(status_code=404, detail="Kupon bulunamadı")
+        if not c.get("active", True):
+            raise HTTPException(status_code=400, detail="Pasif kupon yeni üyelere verilemez")
+    await db.settings.update_one(
+        {"id": "global_settings"},
+        {"$set": {"id": "global_settings", "new_member_coupon_id": coupon_id,
+                  "new_member_coupon_limit": limit, "new_member_coupon_days": days, "updated_at": now_utc()}},
+        upsert=True,
+    )
+    await _insert_log("log_admin", {"admin_id": admin["user_id"], "admin_name": admin.get("name", ""), "action": "new_member_coupon_set", "target_type": "coupon", "target_id": coupon_id, "change_details": {"limit": limit, "days": days}, "admin_note": ""}, request)
+    return {"success": True, "coupon_id": coupon_id, "limit": limit, "days": days}

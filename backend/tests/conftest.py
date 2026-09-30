@@ -1,6 +1,6 @@
 """Test altyapısı.
 
-İzole bir MongoDB veritabanına (`afrogida_test`) karşı çalışır — staging veya
+İzole bir MongoDB veritabanına (`afrogida_test_<pid>`, çalıştırma başına) karşı çalışır — staging veya
 production DB'sine ASLA dokunmaz. `server.py` import edilmeden önce ortam
 değişkenleri ayarlanır.
 
@@ -21,7 +21,11 @@ sys.path.insert(0, str(BACKEND))
 os.chdir(BACKEND)
 (BACKEND / "uploads").mkdir(exist_ok=True)
 
-TEST_DB = "afrogida_test"
+# Her test çalıştırmasının KENDİ veritabanı: aynı makinede eşzamanlı iki
+# pytest (ör. başka bir çalışma kopyası) ortak "afrogida_test"i açılışta
+# silip birbirinin oturum/ürün/üye kayıtlarını yok ediyordu — rastgele
+# "Geçersiz oturum", "seed ürünü bulunamadı", "numara zaten kayıtlı" hataları.
+TEST_DB = f"afrogida_test_{os.getpid()}"
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ["DB_NAME"] = TEST_DB
 os.environ.setdefault("AFRO_SECRET_KEY", "test-secret-key")

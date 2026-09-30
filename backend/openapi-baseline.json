@@ -3179,6 +3179,105 @@
                 "summary": "Create Coupon"
             }
         },
+        "/api/admin/coupons-new-member": {
+            "get": {
+                "operationId": "admin_get_new_member_coupon_api_admin_coupons_new_member_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Get New Member Coupon"
+            },
+            "put": {
+                "description": "Kayıt olan her yeni üyeye verilecek kupon: seç (coupon_id) ya da kaldır\n(coupon_id boş). limit = kullanım hakkı, days = kayıttan itibaren kaç gün\ngeçerli (0 = kuponun kendi tarihi / süresiz).",
+                "operationId": "admin_set_new_member_coupon_api_admin_coupons_new_member_put",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Set New Member Coupon"
+            }
+        },
         "/api/admin/coupons/assign-all": {
             "post": {
                 "description": "Seçili kuponu tüm mevcut üyelere, verilen kullanım hakkı (limit) ile tanımlar.",

@@ -22,6 +22,7 @@ from core.config import (
 )
 from core import totp
 from core.text import normalize_email, tr_title
+from core.coupon_dates import days_from_today
 from core.crypto import _hmac_hex, enc_str, dec_str, hash_token
 from core.db import db
 from core.logs import (
@@ -182,7 +183,10 @@ async def auth_register(payload: RegisterInput, request: Request = None):
             if _nm:
                 _asg = _nm.get("assignments") or []
                 if not any(a.get("user_id") == user_id for a in _asg):
-                    _asg.append({"user_id": user_id, "limit": _nm_limit, "used_count": 0, "last_used_at": None})
+                    # Kayıttan itibaren N gün geçerli (Kuponlar > Yeni üye kuponu)
+                    _asg.append({"user_id": user_id, "limit": _nm_limit, "used_count": 0, "last_used_at": None,
+                                 "valid_until": days_from_today(_st.get("new_member_coupon_days")),
+                                 "assigned_at": now_utc()})
                     await db.coupons.update_one(
                         {"id": _nm_id},
                         {"$set": {"assignments": _asg,
