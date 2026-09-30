@@ -437,30 +437,52 @@ async def pazar_sorumlusu_reject_product_request(product_id: str, user: dict = D
     return await reject_product_request(await _my_pending_product(product_id, user), user, request)
 
 
-@router.put("/products/{product_id}/options")
-async def pazar_sorumlusu_update_product_options(product_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
-    """Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …)
-    doğrudan düzenler (onay veren kendisi). Bekleyen tedarikçi talebinde de
-    seçenek değişikliği varsa, sonradan onaylanıp bunu ezmesin diye düşülür."""
+async def _set_my_product_fields(product_id: str, user: dict, fields: dict, action: str, request) -> None:
+    """Sorumlunun kendi pazarındaki üründe doğrudan alan değiştirmesi (onay veren
+    kendisi). Bekleyen tedarikçi talebinde aynı alanlar varsa, sonradan
+    onaylanıp bunu ezmesin diye talepten düşülür."""
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     if product.get("supplier_group") not in await _my_supplier_groups(user):
         raise HTTPException(status_code=403, detail="Bu ürün sizin pazarınızda değil")
-    clean = {"customization_options": (data or {}).get("customization_options")}
-    _clean_supplier_fields(clean)
-    op: dict = {"$set": {"customization_options": clean["customization_options"], "updated_at": now_utc()}}
+    op: dict = {"$set": {**fields, "updated_at": now_utc()}}
     pending = product.get("pending_approval")
-    if isinstance(pending, dict) and "customization_options" in (pending.get("changes") or {}):
-        rest = {k: v for k, v in pending["changes"].items() if k != "customization_options"}
+    if isinstance(pending, dict) and any(k in (pending.get("changes") or {}) for k in fields):
+        rest = {k: v for k, v in pending["changes"].items() if k not in fields}
         if rest or pending.get("type") == "new":
             op["$set"]["pending_approval.changes"] = rest
         else:
             op["$unset"] = {"pending_approval": ""}
     await db.products.update_one({"id": product_id}, op)
-    await _insert_log("log_admin", {"admin_id": user["user_id"], "admin_name": user.get("name", ""), "action": "product_options_updated", "target_type": "product", "target_id": product_id, "change_details": {"field": "customization_options", "old_value": None, "new_value": len(clean["customization_options"] or [])}, "admin_note": ""}, request)
+    await _insert_log("log_admin", {"admin_id": user["user_id"], "admin_name": user.get("name", ""), "action": action, "target_type": "product", "target_id": product_id, "change_details": {"field": ",".join(fields), "old_value": {k: product.get(k) for k in fields if k != "customization_options"}, "new_value": {k: v for k, v in fields.items() if k != "customization_options"}}, "admin_note": ""}, request)
+
+
+@router.put("/products/{product_id}/options")
+async def pazar_sorumlusu_update_product_options(product_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …) düzenler."""
+    clean = {"customization_options": (data or {}).get("customization_options")}
+    _clean_supplier_fields(clean)
+    await _set_my_product_fields(product_id, user, clean, "product_options_updated", request)
     return {"success": True, "customization_options": clean["customization_options"]}
 
+
+@router.put("/products/{product_id}/campaign")
+async def pazar_sorumlusu_update_product_campaign(product_id: str, data: dict, user: dict = Depends(get_current_pazar_sorumlusu), request: Request = None):
+    """"Çok al az öde" kampanyası (en az miktar + % indirim) — sadece sorumlu /
+    yönetici ayarlar; indirim tedarikçinin alacağından düşer. İkisi de 0 = kapalı."""
+    clean = {
+        "campaign_discount_percent": (data or {}).get("campaign_discount_percent") or 0,
+        "campaign_min_qty": (data or {}).get("campaign_min_qty") or 0,
+    }
+    try:
+        _clean_supplier_fields(clean)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Kampanya değerleri sayı olmalı")
+    if (clean["campaign_discount_percent"] > 0) != (clean["campaign_min_qty"] > 0):
+        raise HTTPException(status_code=400, detail="İndirim ve en az miktar birlikte girilmeli (kapatmak için ikisi de 0)")
+    await _set_my_product_fields(product_id, user, clean, "product_campaign_updated", request)
+    return {"success": True, **clean}
 
 @router.get("/all-suppliers")
 async def pazar_sorumlusu_all_suppliers(user: dict = Depends(get_current_pazar_sorumlusu)):

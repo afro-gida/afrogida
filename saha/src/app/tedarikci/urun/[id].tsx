@@ -51,8 +51,6 @@ export default function UrunDuzenle() {
   const [inStock, setInStock] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [campaignPct, setCampaignPct] = useState('');
-  const [campaignMin, setCampaignMin] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,8 +76,6 @@ export default function UrunDuzenle() {
         setInStock(p.in_stock);
         setImageUrl(p.image_url ?? null);
         setDescription(p.description ?? '');
-        setCampaignPct(p.campaign_discount_percent ? String(p.campaign_discount_percent) : '');
-        setCampaignMin(p.campaign_min_qty ? String(p.campaign_min_qty) : '');
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Yüklenemedi'))
       .finally(() => setLoading(false));
@@ -115,8 +111,6 @@ export default function UrunDuzenle() {
     if (!Number.isFinite(num) || num < 0) return setError('Fiyatı rakamla gir (ör. 45)');
     const priceChanged = num !== Number(orig?.supplier_price ?? 0);
     if (priceChanged && num % PRICE_STEP !== 0) return setError('Fiyat 5 TL\'nin katı olmalı (5, 10, 15, 20 …)');
-    const pct = Math.min(90, Number(campaignPct) || 0);
-    const minQty = Number(campaignMin.replace(',', '.')) || 0;
     setSaving(true);
     setError('');
     // Mevcut ürünün tüm alanları + değişiklikler (resim/seçenekler vb. korunur)
@@ -130,12 +124,10 @@ export default function UrunDuzenle() {
       in_stock: inStock,
       image_url: imageUrl,
       description: description.trim() || null,
-      campaign_discount_percent: pct,
-      campaign_min_qty: minQty,
     };
     // Sunucunun tuttuğu alanlar geri gönderilmez (aktiflik yöneticide)
-    // Seçenekler sorumlu / yönetici işi: tedarikçi göndermez
-    for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at', 'customization_options']) delete (payload as Record<string, unknown>)[k];
+    // Seçenek ve kampanya sorumlu / yönetici işi: tedarikçi göndermez
+    for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at', 'customization_options', 'campaign_discount_percent', 'campaign_min_qty']) delete (payload as Record<string, unknown>)[k];
     try {
       const saved = isNew
         ? await api.post<Product>('/admin/products', payload)
@@ -262,20 +254,6 @@ export default function UrunDuzenle() {
           <ThemedText type="small" themeColor="textSecondary">Açıklama (isteğe bağlı)</ThemedText>
           <TextInput value={description} onChangeText={setDescription} multiline placeholder="Örn: Günlük taze, köy domatesi" placeholderTextColor={theme.textSecondary} style={[inputStyle, { minHeight: 70, textAlignVertical: 'top' }]} />
 
-          {/* Kampanya: çok al az öde */}
-          <ThemedText type="smallBold" style={styles.sectionTitle}>Kampanya (çok al az öde)</ThemedText>
-          <View style={styles.pair}>
-            <View style={styles.flex}>
-              <ThemedText type="small" themeColor="textSecondary">İndirim (%)</ThemedText>
-              <TextInput value={campaignPct} onChangeText={(v) => setCampaignPct(v.replace(/[^\d]/g, '').slice(0, 2))} keyboardType="number-pad" placeholder="0" placeholderTextColor={theme.textSecondary} style={inputStyle} />
-            </View>
-            <View style={styles.flex}>
-              <ThemedText type="small" themeColor="textSecondary">En az miktar ({unit.toLowerCase()})</ThemedText>
-              <TextInput value={campaignMin} onChangeText={(v) => setCampaignMin(v.replace(/[^\d.,]/g, ''))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={theme.textSecondary} style={inputStyle} />
-            </View>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary">İkisi de doluysa kampanya açılır. Örn: 3 kg ve üzeri %10 indirim.</ThemedText>
-
           <Pressable style={[styles.stockRow, { backgroundColor: theme.authCard }]} onPress={() => setInStock((v) => !v)}>
             <ThemedText type="smallBold" style={{ flex: 1 }}>Stokta</ThemedText>
             <ThemedText type="smallBold" themeColor={inStock ? 'tint' : 'danger'}>{inStock ? 'Var' : 'Tükendi'}</ThemedText>
@@ -310,8 +288,6 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepInput: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700' },
-  sectionTitle: { marginTop: Spacing.two },
-  pair: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   notice: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: Spacing.two },
   stockRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: Spacing.three, marginTop: Spacing.one },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },

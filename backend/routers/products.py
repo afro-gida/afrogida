@@ -152,7 +152,6 @@ _SUPPLIER_REQUEST_FIELDS = (
     "name", "category", "subcategory", "unit", "image_url", "description",
     "supplier_price", "selectable", "spicy_type",
     "customization_note_enabled", "customization_note_label",
-    "campaign_discount_percent", "campaign_min_qty",
 )
 
 
@@ -310,8 +309,10 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
             raise HTTPException(status_code=403, detail="Hesabınıza tedarikçi atanmamış")
         await _afro_require_supplier_contract(staff)
         data["supplier_group"] = sg
-        data["customization_options"] = None  # seçenekleri sorumlu / yönetici ekler
-        _clean_supplier_fields(data)
+        # seçenek ve kampanyayı sorumlu / yönetici ayarlar
+        data["customization_options"] = None
+        data["campaign_discount_percent"] = 0
+        data["campaign_min_qty"] = 0
         # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatını
         # (satış = alış + kâr kademesi) sunucu hesaplar — gönderdiği fiyatlar yok sayılır.
         data["gel_al_price"] = 0
@@ -395,10 +396,6 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             raise HTTPException(status_code=403, detail="Bu ürünü düzenleme yetkiniz yok")
         await _afro_require_supplier_contract(staff)
         updates["supplier_group"] = sg
-        # sadece gönderilen alanlar denetlenir (dokunulmayan eski veri aynen kalır)
-        _sent_clean = {k: updates[k] for k in ("campaign_discount_percent", "campaign_min_qty") if k in sent}
-        _clean_supplier_fields(_sent_clean)
-        updates.update(_sent_clean)
         
         # TEDARİKÇİ KISITLARI (Faz 1):
         # - Sadece supplier_price + temel bilgiler (name, description, image, stock, unit) güncelleyebilir
@@ -406,8 +403,9 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         # - supplier_price değiştirirse sale_price otomatik hesaplanır (= supplier_price + profit_margin_amount)
         protected_from_supplier = [
             "profit_margin_amount", "sale_price", "price_updated_by", "quality",
-            # Seçenekler (Boyut, Şekil …) sadece sorumlu / yönetici işi
-            "customization_options",
+            # Seçenekler (Boyut, Şekil …) ve kampanya (çok al az öde) sadece
+            # sorumlu / yönetici işi (kampanya indirimi tedarikçiden düşer)
+            "customization_options", "campaign_discount_percent", "campaign_min_qty",
             "hidden", "active", "active_gel_al", "active_eve_servis",
             "supplier_price_locked_until", "price_updated_at",
             *_SUPPLIER_READONLY_PRICE_FIELDS,

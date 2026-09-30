@@ -10733,9 +10733,75 @@
                 "summary": "Pazar Sorumlusu Reject Product Request"
             }
         },
+        "/api/pazar-sorumlusu/products/{product_id}/campaign": {
+            "put": {
+                "description": "\"Çok al az öde\" kampanyası (en az miktar + % indirim) — sadece sorumlu /\nyönetici ayarlar; indirim tedarikçinin alacağından düşer. İkisi de 0 = kapalı.",
+                "operationId": "pazar_sorumlusu_update_product_campaign_api_pazar_sorumlusu_products__product_id__campaign_put",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "product_id",
+                        "required": true,
+                        "schema": {
+                            "title": "Product Id",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Pazar Sorumlusu Update Product Campaign"
+            }
+        },
         "/api/pazar-sorumlusu/products/{product_id}/options": {
             "put": {
-                "description": "Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …)\ndoğrudan düzenler (onay veren kendisi). Bekleyen tedarikçi talebinde de\nseçenek değişikliği varsa, sonradan onaylanıp bunu ezmesin diye düşülür.",
+                "description": "Sorumlu, kendi pazarındaki bir ürünün seçeneklerini (Boyut, Şekil …) düzenler.",
                 "operationId": "pazar_sorumlusu_update_product_options_api_pazar_sorumlusu_products__product_id__options_put",
                 "parameters": [
                     {

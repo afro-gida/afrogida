@@ -103,7 +103,9 @@ def _supplier_items_of_order(order: dict, target_norm: str, cost_map: dict):
             continue
         qty = _as_float(it.get("qty", it.get("quantity", 0)), 0)
         unit_cost = _item_unit_cost(it, cost_map)
-        lt = round(unit_cost * qty, 2)
+        # Kampanya ("çok al az öde") indirimi tedarikçinin alacağından düşer
+        camp = _as_float(it.get("campaign_discount"), 0)
+        lt = round(max(0.0, unit_cost * qty - camp), 2)
         is_ref = bool(refunded_flags[idx]) if idx < len(refunded_flags) else False
         sup_items.append({
             "name": it.get("name") or it.get("product_name_snapshot") or "Ürün",
@@ -111,6 +113,7 @@ def _supplier_items_of_order(order: dict, target_norm: str, cost_map: dict):
             "unit": it.get("unit") or it.get("unit_snapshot") or "",
             "price": unit_cost,
             "line_total": lt,
+            "campaign_discount": round(camp, 2),
             "category": it.get("category_snapshot") or "",
             "refunded": is_ref,
         })

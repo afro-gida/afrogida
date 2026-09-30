@@ -404,3 +404,34 @@ def test_market_reset_campaigns_scopes_by_supplier(client, make_user, db):
         else:
             db.catalog_config.delete_many({})
         _reset_catalog_cache()
+
+
+def test_campaign_discount_applied_and_charged_to_supplier(client, make_user, db):
+    """"Çok al az öde": eşik aşılınca ürün fiyatına % indirim; indirim
+    tedarikçinin alacağından düşer, platform kârı sabit kalır."""
+    import uuid
+    sg = f"Kampanyaci{uuid.uuid4().hex[:6]}"
+    pid = f"prod_camp_{uuid.uuid4().hex[:6]}"
+    db.products.insert_one({"id": pid, "name": "Kampanya Biberi", "category": "Biber", "unit": "kg",
+                            "price": 100.0, "gel_al_price": 100.0, "sale_price": 100.0, "supplier_price": 60.0,
+                            "supplier_group": sg, "in_stock": True, "active": True,
+                            "campaign_discount_percent": 10, "campaign_min_qty": 3})
+    _, h = make_user()
+    # eşiğin altı: indirim yok
+    r = _order(client, h, [{"id": pid, "qty": 2}])
+    assert r.status_code == 200, r.text
+    assert r.json()["order"]["amount"] == pytest.approx(200)
+    # eşik: 3 kg x 100 = 300, %10 -> 270
+    r = _order(client, h, [{"id": pid, "qty": 3}], subtotal=270, amount=270)
+    assert r.status_code == 200, r.text
+    order = r.json()["order"]
+    assert order["amount"] == pytest.approx(270)
+    assert order["items"][0]["campaign_discount"] == pytest.approx(30)
+
+    db.transactions.update_one({"tx_id": order["tx_id"]}, {"$set": {"order_status": "teslim_edildi"}})
+    _, sup = make_user(role="esnaf", supplier_group=sg)
+    sales = client.get("/api/supplier/my-sales", headers=sup).json()
+    line = [e for e in sales["log"] if e["items"][0]["qty"] == 3][0]
+    # tedarikçi: 3 x 60 = 180 - 30 indirim = 150; platform kârı 270 - 150 = 120 (= 3 x 40, sabit)
+    assert line["subtotal"] == pytest.approx(150)
+    assert line["items"][0]["campaign_discount"] == pytest.approx(30)

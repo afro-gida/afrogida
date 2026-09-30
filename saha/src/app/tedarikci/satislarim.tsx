@@ -16,6 +16,8 @@ interface SaleItem {
   unit?: string;
   price?: number;
   unit_price?: number;
+  /** "Çok al az öde" kampanya indirimi — alacağından düşer */
+  campaign_discount?: number;
 }
 
 interface SaleLog {
@@ -84,6 +86,9 @@ export default function SatislarimScreen() {
             {s.items.map((it, ii) => (
               <ThemedText key={ii} type="small" themeColor="textSecondary">
                 {it.name ?? it.product_name ?? 'Ürün'} × {it.qty ?? it.quantity ?? 1} {it.unit ?? ''}
+                {!!it.campaign_discount && (
+                  <ThemedText type="small" style={{ color: '#D97706' }}>{`  ·  kampanya indirimi -${money(it.campaign_discount)}`}</ThemedText>
+                )}
               </ThemedText>
             ))}
             {s.refunded && (

@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
 import { OptionsEditor, type OptionGroup } from '@/components/options-editor';
+import { CampaignEditor } from '@/components/campaign-editor';
 
 interface SupplierEntry {
   supplier_group: string;
@@ -26,6 +27,9 @@ interface Product {
   active?: boolean;
   hidden?: boolean;
   customization_options?: OptionGroup[] | null;
+  unit?: string;
+  campaign_discount_percent?: number | null;
+  campaign_min_qty?: number | null;
 }
 
 type Row = SupplierEntry & { products: Product[] };
@@ -53,10 +57,14 @@ export default function SorumluTedarikciler() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Product | null>(null);
 
-  // Seçenekler kaydedilince listedeki ürünü yerinde güncelle
+  const [campaignOf, setCampaignOf] = useState<Product | null>(null);
+
+  // Kaydedilince listedeki ürünü yerinde güncelle
+  function patchProduct(id: string | undefined, patch: Partial<Product>) {
+    setRows((prev) => prev?.map((r) => ({ ...r, products: r.products.map((p) => (p.id === id ? { ...p, ...patch } : p)) })) ?? null);
+  }
   function optionsSaved(options: OptionGroup[] | null) {
-    const id = editing?.id;
-    setRows((prev) => prev?.map((r) => ({ ...r, products: r.products.map((p) => (p.id === id ? { ...p, customization_options: options } : p)) })) ?? null);
+    patchProduct(editing?.id, { customization_options: options });
     setEditing(null);
   }
 
@@ -199,12 +207,26 @@ export default function SorumluTedarikciler() {
                                   {off ? 'Satışta değil' : 'Tükendi'}
                                 </ThemedText>
                               )}
-                              <Pressable style={[styles.optBtn, { borderColor: theme.tint }]} onPress={() => setEditing(p)} hitSlop={6}>
-                                <Ionicons name="options-outline" size={12} color={theme.tint} />
-                                <ThemedText style={[styles.optText, { color: theme.tint }]}>
-                                  {p.customization_options?.length ? `Seçenekler (${p.customization_options.length})` : 'Seçenek ekle'}
-                                </ThemedText>
-                              </Pressable>
+                              <View style={styles.chips}>
+                                <Pressable style={[styles.optBtn, { borderColor: theme.tint }]} onPress={() => setEditing(p)} hitSlop={4}>
+                                  <Ionicons name="options-outline" size={12} color={theme.tint} />
+                                  <ThemedText style={[styles.optText, { color: theme.tint }]}>
+                                    {p.customization_options?.length ? `Seçenekler (${p.customization_options.length})` : 'Seçenek ekle'}
+                                  </ThemedText>
+                                </Pressable>
+                                <Pressable
+                                  style={[styles.optBtn, { borderColor: theme.tint }, !!p.campaign_discount_percent && { backgroundColor: theme.tint }]}
+                                  onPress={() => setCampaignOf(p)}
+                                  hitSlop={4}
+                                >
+                                  <Ionicons name="pricetag-outline" size={12} color={p.campaign_discount_percent ? '#fff' : theme.tint} />
+                                  <ThemedText style={[styles.optText, { color: p.campaign_discount_percent ? '#fff' : theme.tint }]}>
+                                    {p.campaign_discount_percent && p.campaign_min_qty
+                                      ? `${p.campaign_min_qty}+ %${p.campaign_discount_percent}`
+                                      : 'Kampanya'}
+                                  </ThemedText>
+                                </Pressable>
+                              </View>
                             </View>
                             <ThemedText type="small" themeColor="textSecondary" style={styles.numCol}>{tl(p.supplier_price)}</ThemedText>
                             <ThemedText type="smallBold" style={styles.numCol}>{tl(sell(p))}</ThemedText>
@@ -224,6 +246,11 @@ export default function SorumluTedarikciler() {
         {rows && rows.length > 0 && visible.length === 0 && <ThemedText themeColor="textSecondary">"{query}" bulunamadı.</ThemedText>}
       </ScrollView>
       <OptionsEditor product={editing} onClose={() => setEditing(null)} onSaved={optionsSaved} />
+      <CampaignEditor
+        product={campaignOf}
+        onClose={() => setCampaignOf(null)}
+        onSaved={(v) => { patchProduct(campaignOf?.id, v); setCampaignOf(null); }}
+      />
     </Screen>
   );
 }
@@ -245,6 +272,7 @@ const styles = StyleSheet.create({
   nameCol: { flex: 1, minWidth: 0 },
   numCol: { width: 54, textAlign: 'right' },
   tag: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
-  optBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 7, marginTop: 3 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 },
+  optBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 7 },
   optText: { fontSize: 11, lineHeight: 14, fontWeight: '700' },
 });

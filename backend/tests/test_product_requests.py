@@ -88,31 +88,47 @@ def test_supplier_sees_own_pending_values_and_can_revert(client, make_user, db):
     assert "pending_approval" not in db.products.find_one({"id": pid})
 
 
-def test_supplier_cannot_set_options_campaign_goes_to_approval(client, make_user, db):
-    """Seçenekler sadece sorumlu / yönetici işi: tedarikçinin gönderdiği yok
-    sayılır. Kampanya ise onaya düşer (%90 üst sınır)."""
+def test_supplier_cannot_set_options_or_campaign(client, make_user, db):
+    """Seçenek ve kampanya sadece sorumlu / yönetici işi: tedarikçinin
+    gönderdiği yok sayılır (yeni üründe de), talebe de düşmez."""
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     opts = [{"title": "Boyut", "choices": [{"label": "Orta", "price_delta": 5}, {"label": "İstemiyorum", "price_delta": 0}]}]
-    pid = _seed_product(db, sg, customization_options=opts)
+    pid = _seed_product(db, sg, customization_options=opts, campaign_discount_percent=10, campaign_min_qty=3)
     _, sup = _supplier(make_user, sg)
-    sor = sorumlu_for(db, make_user, sg)
     r = client.put(f"/api/admin/products/{pid}", headers=sup, json={
         "name": "Test Domates", "category": "Domates",
         "customization_options": [{"title": "Hack", "choices": [{"label": "Pahalı", "price_delta": 999}]}],
-        "campaign_discount_percent": 150, "campaign_min_qty": 3,
+        "campaign_discount_percent": 50, "campaign_min_qty": 1,
     })
     assert r.status_code == 200, r.text
-    ch = db.products.find_one({"id": pid})["pending_approval"]["changes"]
-    assert "customization_options" not in ch
-    assert ch["campaign_discount_percent"] == 90 and ch["campaign_min_qty"] == 3
-    assert client.post(f"{REQ}/{pid}/approve", headers=sor).status_code == 200
     doc = db.products.find_one({"id": pid})
-    assert doc["customization_options"] == opts and doc["campaign_discount_percent"] == 90
+    assert "pending_approval" not in doc
+    assert doc["customization_options"] == opts
+    assert doc["campaign_discount_percent"] == 10 and doc["campaign_min_qty"] == 3
 
-    # yeni üründe de seçenek gönderemez
-    r = client.post("/api/admin/products", headers=sup, json={**BASE, "supplier_price": 40, "customization_options": opts})
+    r = client.post("/api/admin/products", headers=sup, json={
+        **BASE, "supplier_price": 40, "customization_options": opts, "campaign_discount_percent": 20, "campaign_min_qty": 2})
     assert r.status_code == 200, r.text
-    assert not db.products.find_one({"id": r.json()["id"]}).get("customization_options")
+    new = db.products.find_one({"id": r.json()["id"]})
+    assert not new.get("customization_options") and not new.get("campaign_discount_percent") and not new.get("campaign_min_qty")
+
+
+def test_sorumlu_sets_campaign(client, make_user, db):
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    sor = sorumlu_for(db, make_user, sg)
+    other = sorumlu_for(db, make_user, f"Baska{uuid.uuid4().hex[:6]}")
+    _, sup = _supplier(make_user, sg)
+    url = f"/api/pazar-sorumlusu/products/{pid}/campaign"
+    assert client.put(url, headers=other, json={"campaign_discount_percent": 10, "campaign_min_qty": 3}).status_code == 403
+    assert client.put(url, headers=sup, json={"campaign_discount_percent": 10, "campaign_min_qty": 3}).status_code in (401, 403)
+    assert client.put(url, headers=sor, json={"campaign_discount_percent": 10, "campaign_min_qty": 0}).status_code == 400
+    r = client.put(url, headers=sor, json={"campaign_discount_percent": 150, "campaign_min_qty": 3})
+    assert r.status_code == 200, r.text
+    doc = db.products.find_one({"id": pid})
+    assert doc["campaign_discount_percent"] == 90 and doc["campaign_min_qty"] == 3
+    assert client.put(url, headers=sor, json={"campaign_discount_percent": 0, "campaign_min_qty": 0}).status_code == 200
+    assert db.products.find_one({"id": pid})["campaign_discount_percent"] == 0
 
 def test_sorumlu_edits_options_directly(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"

@@ -48,6 +48,20 @@ export function lineUnitPrice(line: CartLine) {
   return (line.product.gel_al_price ?? 0) + optionsDelta(line.selectedOptions);
 }
 
+/** "Çok al az öde" indirimi: miktar eşiği aşılınca ürün fiyatına % (seçenek
+ *  ücretine değil). Sunucudaki hesabın aynısı (backend/services/orders.py). */
+export function lineCampaignDiscount(line: CartLine) {
+  const pct = Math.min(90, line.product.campaign_discount_percent ?? 0);
+  const min = line.product.campaign_min_qty ?? 0;
+  if (pct <= 0 || min <= 0 || line.qty < min) return 0;
+  return Math.round((line.product.gel_al_price ?? 0) * line.qty * pct) / 100;
+}
+
+/** Satır tutarı (kampanya indirimi düşülmüş). */
+export function lineTotal(line: CartLine) {
+  return Math.round((line.qty * lineUnitPrice(line) - lineCampaignDiscount(line)) * 100) / 100;
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('gel_al');
@@ -108,7 +122,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalQty = useMemo(() => lines.reduce((sum, l) => sum + l.qty, 0), [lines]);
   const totalPrice = useMemo(
-    () => lines.reduce((sum, l) => sum + l.qty * lineUnitPrice(l), 0),
+    () => lines.reduce((sum, l) => sum + lineTotal(l), 0),
     [lines]
   );
 

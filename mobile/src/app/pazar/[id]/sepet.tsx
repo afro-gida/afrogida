@@ -10,7 +10,7 @@ import { ProductOptionsModal } from '@/components/product-options-modal';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
-import { useCart } from '@/lib/cart-context';
+import { lineCampaignDiscount, lineTotal, useCart } from '@/lib/cart-context';
 import { useMarkets } from '@/lib/markets-context';
 import { createOrder, type PaymentMethod } from '@/lib/orders';
 import { savePendingPayment } from '@/lib/pending-payment';
@@ -192,7 +192,9 @@ export default function CartScreen() {
     return base + delta;
   };
 
-  const subtotal = useMemo(() => lines.reduce((sum, l) => sum + l.qty * priceFor(l), 0), [lines, deliveryType]);
+  // Kampanya ("çok al az öde") indirimi satır tutarında düşülü (sunucuyla aynı)
+  const subtotal = useMemo(() => lines.reduce((sum, l) => sum + lineTotal(l), 0), [lines, deliveryType]);
+  const campaignTotal = useMemo(() => lines.reduce((sum, l) => sum + lineCampaignDiscount(l), 0), [lines]);
   const deliveryFee =
     deliveryType === 'eve_servis' && settings.delivery_fee && !(settings.free_delivery_min_amount && subtotal >= settings.free_delivery_min_amount)
       ? settings.delivery_fee
@@ -592,6 +594,9 @@ export default function CartScreen() {
             <View style={[styles.card, styles.shadow, { backgroundColor: cardBg }]}>
               <SectionTitle icon="receipt-text-outline" title="Özet" />
               <MoneyRow label="Ara toplam" value={`${formatMoney(subtotal)} ₺`} />
+              {campaignTotal > 0 && (
+                <MoneyRow label="Kampanya indirimi (dahil)" value={`−${formatMoney(campaignTotal)} ₺`} accent />
+              )}
               <View style={styles.rowBetween}>
                 <ThemedText themeColor="textSecondary" style={styles.moneyLabel}>
                   {deliveryType === 'eve_servis' ? 'Teslimat saati' : 'Gel-Al saati'}
@@ -842,6 +847,7 @@ function CartLineRow({
   const unit = formatUnit(line.product.unit).toLowerCase();
   const showImage = line.product.image_url && !imageFailed;
   const editable = !!line.product.customization_options?.length;
+  const campaign = lineCampaignDiscount(line);
 
   return (
     <View style={[styles.lineRow, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: withAlpha(theme.text, 0.18) }]}>
@@ -863,9 +869,18 @@ function CartLineRow({
         <ThemedText themeColor="textSecondary" style={styles.lineUnit}>
           {formatMoney(unitPrice)} ₺ / {unit}
         </ThemedText>
+        {campaign > 0 ? (
+          <ThemedText style={[styles.lineUnit, styles.campaignText, { color: theme.tint }]}>
+            %{line.product.campaign_discount_percent} kampanya · −{formatMoney(campaign)} ₺
+          </ThemedText>
+        ) : !!line.product.campaign_discount_percent && !!line.product.campaign_min_qty ? (
+          <ThemedText themeColor="textSecondary" style={styles.lineUnit}>
+            {line.product.campaign_min_qty} {unit} ve üzeri %{line.product.campaign_discount_percent} indirim
+          </ThemedText>
+        ) : null}
       </Pressable>
       <View style={styles.lineRight}>
-        <ThemedText style={styles.lineTotal}>{formatMoney(line.qty * unitPrice)} ₺</ThemedText>
+        <ThemedText style={styles.lineTotal}>{formatMoney(lineTotal(line))} ₺</ThemedText>
         <View style={[styles.stepper, { backgroundColor: withAlpha(theme.tint, 0.12) }]}>
           <Pressable onPress={() => onQty(line.qty - step)} hitSlop={6} style={styles.stepperBtn} accessibilityLabel={`${line.product.name} azalt`}>
             <MaterialCommunityIcons name={line.qty <= step ? 'trash-can-outline' : 'minus'} size={16} color={theme.tint} />
@@ -1003,6 +1018,7 @@ const styles = StyleSheet.create({
   lineName: { fontSize: 14, lineHeight: 18, fontWeight: '800' },
   lineOpts: { fontSize: 12, lineHeight: 15, fontWeight: '700' },
   lineUnit: { fontSize: 12, lineHeight: 15 },
+  campaignText: { fontWeight: '800' },
   lineRight: { alignItems: 'flex-end', gap: 6 },
   lineTotal: { fontSize: 15, lineHeight: 19, fontWeight: '900' },
   stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: 999, height: 30 },

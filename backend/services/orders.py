@@ -368,7 +368,15 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
         sel_options, options_fee_unit, cust_note = _resolve_selected_options(product, raw)
         options_fee_unit_d = money_d(options_fee_unit)
         options_fee = money_d(options_fee_unit_d * qty)
-        line_total = money_d(server_price * qty + options_fee)
+        # "Çok al az öde": miktar eşiği geçilince ürün fiyatına % indirim
+        # (seçenek ücretine değil). İndirim TEDARİKÇİNİN alacağından düşer,
+        # platform kârı sabit kalır (services/suppliers.py).
+        camp_pct = min(D(product.get("campaign_discount_percent") or 0, "0"), Decimal("90"))
+        camp_min = D(product.get("campaign_min_qty") or 0, "0")
+        campaign_discount = Decimal("0")
+        if camp_pct > 0 and camp_min > 0 and qty >= camp_min:
+            campaign_discount = money_d(server_price * qty * camp_pct / Decimal("100"))
+        line_total = money_d(server_price * qty + options_fee - campaign_discount)
         subtotal += line_total
         items.append({
             "id": product_id,
@@ -380,6 +388,8 @@ async def _prepare_order_payload(data: dict, current_user: dict, request=None) -
             "selected_options": sel_options,
             "options_fee_unit": float(options_fee_unit_d),
             "options_fee": float(options_fee),
+            "campaign_percent": float(camp_pct) if campaign_discount > 0 else 0,
+            "campaign_discount": float(campaign_discount),
             "customization_note": cust_note,
             "total_price": float(line_total),
             "line_total": float(line_total),
