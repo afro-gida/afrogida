@@ -151,7 +151,36 @@ _SUPPLIER_REQUEST_FIELDS = (
     "name", "category", "subcategory", "unit", "image_url", "description",
     "supplier_price", "selectable", "spicy_type", "customization_options",
     "customization_note_enabled", "customization_note_label",
+    "campaign_discount_percent", "campaign_min_qty",
 )
+
+
+def _clean_supplier_fields(data: dict) -> None:
+    """Tedarikçinin gönderdiği seçenek / kampanya alanlarını sınırla (onaya
+    gitse de bozuk veri müşteri ekranını kırmasın)."""
+    if "campaign_discount_percent" in data:
+        data["campaign_discount_percent"] = min(90.0, max(0.0, float(data.get("campaign_discount_percent") or 0)))
+    if "campaign_min_qty" in data:
+        data["campaign_min_qty"] = min(1000.0, max(0.0, float(data.get("campaign_min_qty") or 0)))
+    if "customization_options" in data:
+        groups = []
+        for g in (data.get("customization_options") or [])[:5]:
+            if not isinstance(g, dict) or not str(g.get("title") or "").strip():
+                raise HTTPException(status_code=400, detail="Seçenek grubunun adı boş olamaz")
+            choices = []
+            for c in (g.get("choices") or [])[:12]:
+                label = str((c or {}).get("label") or "").strip()[:40] if isinstance(c, dict) else ""
+                if not label:
+                    raise HTTPException(status_code=400, detail="Seçenek adı boş olamaz")
+                try:
+                    delta = float(c.get("price_delta") or 0)
+                except (TypeError, ValueError):
+                    delta = 0.0
+                choices.append({"label": label, "price_delta": min(1000.0, max(0.0, delta))})
+            if not choices:
+                raise HTTPException(status_code=400, detail="Her seçenek grubunda en az bir seçenek olmalı")
+            groups.append({"title": str(g["title"]).strip()[:40], "choices": choices})
+        data["customization_options"] = groups or None
 _PRICE_DERIVED_FIELDS = (
     "price", "sale_price", "gel_al_price", "eve_servis_price",
     "profit_margin_amount", "price_updated_at", "price_updated_by",
@@ -254,6 +283,7 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
             raise HTTPException(status_code=403, detail="Hesabınıza tedarikçi atanmamış")
         await _afro_require_supplier_contract(staff)
         data["supplier_group"] = sg
+        _clean_supplier_fields(data)
         # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatını
         # (satış = alış + kâr kademesi) sunucu hesaplar — gönderdiği fiyatlar yok sayılır.
         data["gel_al_price"] = 0
@@ -334,14 +364,17 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             raise HTTPException(status_code=403, detail="Bu ürünü düzenleme yetkiniz yok")
         await _afro_require_supplier_contract(staff)
         updates["supplier_group"] = sg
+        # sadece gönderilen alanlar denetlenir (dokunulmayan eski veri aynen kalır)
+        _sent_clean = {k: updates[k] for k in ("campaign_discount_percent", "campaign_min_qty", "customization_options") if k in sent}
+        _clean_supplier_fields(_sent_clean)
+        updates.update(_sent_clean)
         
         # TEDARİKÇİ KISITLARI (Faz 1):
         # - Sadece supplier_price + temel bilgiler (name, description, image, stock, unit) güncelleyebilir
         # - sale_price, profit_margin_amount, campaign, quality gibi admin alanlarını DEĞİŞTİREMEZ
         # - supplier_price değiştirirse sale_price otomatik hesaplanır (= supplier_price + profit_margin_amount)
         protected_from_supplier = [
-            "profit_margin_amount", "sale_price", "price_updated_by",
-            "campaign_discount_percent", "campaign_min_qty", "quality",
+            "profit_margin_amount", "sale_price", "price_updated_by", "quality",
             "hidden", "active", "active_gel_al", "active_eve_servis",
             "supplier_price_locked_until", "price_updated_at",
             *_SUPPLIER_READONLY_PRICE_FIELDS,

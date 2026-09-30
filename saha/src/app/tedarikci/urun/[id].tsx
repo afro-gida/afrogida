@@ -30,6 +30,8 @@ type Product = {
 };
 
 type CatalogConfig = { categories: string[]; subcategories: Record<string, string[]> };
+type Choice = { label: string; price_delta: number };
+type OptionGroup = { title: string; choices: Choice[] };
 
 
 /**
@@ -51,6 +53,9 @@ export default function UrunDuzenle() {
   const [inStock, setInStock] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
+  const [groups, setGroups] = useState<OptionGroup[]>([]);
+  const [campaignPct, setCampaignPct] = useState('');
+  const [campaignMin, setCampaignMin] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -76,6 +81,12 @@ export default function UrunDuzenle() {
         setInStock(p.in_stock);
         setImageUrl(p.image_url ?? null);
         setDescription(p.description ?? '');
+        setGroups(((p.customization_options as OptionGroup[] | null) ?? []).map((g) => ({
+          title: g.title ?? '',
+          choices: (g.choices ?? []).map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
+        })));
+        setCampaignPct(p.campaign_discount_percent ? String(p.campaign_discount_percent) : '');
+        setCampaignMin(p.campaign_min_qty ? String(p.campaign_min_qty) : '');
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Yüklenemedi'))
       .finally(() => setLoading(false));
@@ -111,6 +122,12 @@ export default function UrunDuzenle() {
     if (!Number.isFinite(num) || num < 0) return setError('Fiyatı rakamla gir (ör. 45)');
     const priceChanged = num !== Number(orig?.supplier_price ?? 0);
     if (priceChanged && num % PRICE_STEP !== 0) return setError('Fiyat 5 TL\'nin katı olmalı (5, 10, 15, 20 …)');
+    const cleanGroups = groups.map((g) => ({ title: g.title.trim(), choices: g.choices.map((c) => ({ ...c, label: c.label.trim() })) }));
+    if (cleanGroups.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label))) {
+      return setError('Seçeneklerde boş grup adı veya boş seçenek var');
+    }
+    const pct = Math.min(90, Number(campaignPct) || 0);
+    const minQty = Number(campaignMin.replace(',', '.')) || 0;
     setSaving(true);
     setError('');
     // Mevcut ürünün tüm alanları + değişiklikler (resim/seçenekler vb. korunur)
@@ -124,6 +141,9 @@ export default function UrunDuzenle() {
       in_stock: inStock,
       image_url: imageUrl,
       description: description.trim() || null,
+      customization_options: cleanGroups.length ? cleanGroups : null,
+      campaign_discount_percent: pct,
+      campaign_min_qty: minQty,
     };
     // Sunucunun tuttuğu alanlar geri gönderilmez (aktiflik yöneticide)
     for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at']) delete (payload as Record<string, unknown>)[k];
@@ -253,6 +273,79 @@ export default function UrunDuzenle() {
           <ThemedText type="small" themeColor="textSecondary">Açıklama (isteğe bağlı)</ThemedText>
           <TextInput value={description} onChangeText={setDescription} multiline placeholder="Örn: Günlük taze, köy domatesi" placeholderTextColor={theme.textSecondary} style={[inputStyle, { minHeight: 70, textAlignVertical: 'top' }]} />
 
+          {/* Kampanya: çok al az öde */}
+          <ThemedText type="smallBold" style={styles.sectionTitle}>Kampanya (çok al az öde)</ThemedText>
+          <View style={styles.pair}>
+            <View style={styles.flex}>
+              <ThemedText type="small" themeColor="textSecondary">İndirim (%)</ThemedText>
+              <TextInput value={campaignPct} onChangeText={(v) => setCampaignPct(v.replace(/[^\d]/g, '').slice(0, 2))} keyboardType="number-pad" placeholder="0" placeholderTextColor={theme.textSecondary} style={inputStyle} />
+            </View>
+            <View style={styles.flex}>
+              <ThemedText type="small" themeColor="textSecondary">En az miktar ({unit.toLowerCase()})</ThemedText>
+              <TextInput value={campaignMin} onChangeText={(v) => setCampaignMin(v.replace(/[^\d.,]/g, ''))} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={theme.textSecondary} style={inputStyle} />
+            </View>
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">İkisi de doluysa kampanya açılır. Örn: 3 kg ve üzeri %10 indirim.</ThemedText>
+
+          {/* Seçenekler: Boyut, Şekil … */}
+          <View style={styles.sectionRow}>
+            <ThemedText type="smallBold" style={[styles.sectionTitle, styles.flex]}>Seçenekler (Boyut, Şekil …)</ThemedText>
+            <Pressable
+              style={[styles.smallBtn, { borderColor: theme.tint }]}
+              onPress={() => setGroups([...groups, { title: '', choices: [{ label: 'İstemiyorum', price_delta: 0 }, { label: '', price_delta: 0 }] }])}
+            >
+              <Ionicons name="add" size={16} color={theme.tint} />
+              <ThemedText type="small" themeColor="tint">Grup ekle</ThemedText>
+            </Pressable>
+          </View>
+          {groups.length === 0 && (
+            <ThemedText type="small" themeColor="textSecondary">Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapsın istiyorsan grup ekle. İlk seçenek varsayılandır.</ThemedText>
+          )}
+          {groups.map((g, gi) => {
+            const setGroup = (ng: OptionGroup) => setGroups(groups.map((x, i) => (i === gi ? ng : x)));
+            return (
+              <View key={gi} style={[styles.group, { borderColor: theme.border }]}>
+                <View style={styles.pair}>
+                  <TextInput value={g.title} onChangeText={(v) => setGroup({ ...g, title: v })} placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[inputStyle, styles.flex]} />
+                  <Pressable style={[styles.iconBtn, { backgroundColor: theme.danger }]} onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil">
+                    <Ionicons name="trash-outline" size={17} color="#fff" />
+                  </Pressable>
+                </View>
+                <View style={styles.pair}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>Seçenek</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.deltaCol}>Ek fiyat ₺</ThemedText>
+                  <View style={{ width: 38 }} />
+                </View>
+                {g.choices.map((c, ci) => (
+                  <View key={ci} style={styles.pair}>
+                    <TextInput
+                      value={c.label}
+                      onChangeText={(v) => setGroup({ ...g, choices: g.choices.map((y, j) => (j === ci ? { ...y, label: v } : y)) })}
+                      placeholder="Örn: Büyük"
+                      placeholderTextColor={theme.textSecondary}
+                      style={[inputStyle, styles.flex]}
+                    />
+                    <TextInput
+                      value={String(c.price_delta || '')}
+                      onChangeText={(v) => setGroup({ ...g, choices: g.choices.map((y, j) => (j === ci ? { ...y, price_delta: Number(v.replace(/[^\d]/g, '')) || 0 } : y)) })}
+                      keyboardType="number-pad"
+                      placeholder="0"
+                      placeholderTextColor={theme.textSecondary}
+                      style={[inputStyle, styles.deltaCol, { textAlign: 'center' }]}
+                    />
+                    <Pressable style={[styles.iconBtn, { backgroundColor: theme.inputBg }]} onPress={() => setGroup({ ...g, choices: g.choices.filter((_, j) => j !== ci) })} accessibilityLabel="Seçeneği sil">
+                      <Ionicons name="close" size={18} color={theme.danger} />
+                    </Pressable>
+                  </View>
+                ))}
+                <Pressable style={styles.addChoice} onPress={() => setGroup({ ...g, choices: [...g.choices, { label: '', price_delta: 0 }] })}>
+                  <Ionicons name="add" size={16} color={theme.tint} />
+                  <ThemedText type="small" themeColor="tint">Seçenek ekle</ThemedText>
+                </Pressable>
+              </View>
+            );
+          })}
+
           <Pressable style={[styles.stockRow, { backgroundColor: theme.authCard }]} onPress={() => setInStock((v) => !v)}>
             <ThemedText type="smallBold" style={{ flex: 1 }}>Stokta</ThemedText>
             <ThemedText type="smallBold" themeColor={inStock ? 'tint' : 'danger'}>{inStock ? 'Var' : 'Tükendi'}</ThemedText>
@@ -287,6 +380,14 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepInput: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700' },
+  sectionTitle: { marginTop: Spacing.two },
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  pair: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10 },
+  group: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, gap: 8 },
+  deltaCol: { width: 84 },
+  iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  addChoice: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4 },
   notice: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: Spacing.two },
   stockRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: Spacing.three, marginTop: Spacing.one },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },

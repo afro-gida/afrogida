@@ -88,6 +88,33 @@ def test_supplier_sees_own_pending_values_and_can_revert(client, make_user, db):
     assert "pending_approval" not in db.products.find_one({"id": pid})
 
 
+def test_supplier_options_and_campaign_go_to_approval(client, make_user, db):
+    sg = f"TestSup{uuid.uuid4().hex[:6]}"
+    pid = _seed_product(db, sg)
+    _, sup = _supplier(make_user, sg)
+    sor = sorumlu_for(db, make_user, sg)
+    opts = [{"title": " Boyut ", "choices": [{"label": "İstemiyorum", "price_delta": 0}, {"label": "Büyük", "price_delta": 10}]}]
+    r = client.put(f"/api/admin/products/{pid}", headers=sup, json={
+        "name": "Test Domates", "category": "Domates",
+        "customization_options": opts, "campaign_discount_percent": 150, "campaign_min_qty": 3,
+    })
+    assert r.status_code == 200, r.text
+    ch = db.products.find_one({"id": pid})["pending_approval"]["changes"]
+    assert ch["customization_options"][0]["title"] == "Boyut"
+    assert ch["campaign_discount_percent"] == 90 and ch["campaign_min_qty"] == 3  # %90 üst sınır
+    assert client.post(f"{REQ}/{pid}/approve", headers=sor).status_code == 200
+    doc = db.products.find_one({"id": pid})
+    assert doc["customization_options"][0]["choices"][1] == {"label": "Büyük", "price_delta": 10}
+    assert doc["campaign_discount_percent"] == 90
+
+    # boş seçenek adı reddedilir
+    r = client.put(f"/api/admin/products/{pid}", headers=sup, json={
+        "name": "Test Domates", "category": "Domates",
+        "customization_options": [{"title": "Şekil", "choices": [{"label": " "}]}],
+    })
+    assert r.status_code == 400
+
+
 def test_supplier_cannot_reactivate_or_approve(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     pid = _seed_product(db, sg, active=False)
