@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { api, ApiError } from '@/lib/api';
 import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
+import { OptionsEditor, type OptionGroup } from '@/components/options-editor';
 
 type RequestProduct = {
   id: string;
@@ -68,6 +69,7 @@ export default function UrunTalepleri() {
   const [supplier, setSupplier] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string; customization_options: OptionGroup[] | null } | null>(null);
 
   const load = useCallback(() => {
     setError('');
@@ -151,6 +153,8 @@ export default function UrunTalepleri() {
           const changes = pa.changes ?? {};
           const newImage = 'image_url' in changes ? (changes.image_url as string | null) : undefined;
           const fields = Object.keys(FIELD_LABELS).filter((f) => f in changes);
+          // Geçerli seçenekler: talepte değiştiyse talepteki, yoksa üründeki
+          const options = ('customization_options' in changes ? changes.customization_options : p.customization_options) as OptionGroup[] | null | undefined;
           return (
             <View key={p.id} style={[styles.card, { backgroundColor: theme.authCard }]}>
               <View style={styles.rowCenter}>
@@ -200,6 +204,17 @@ export default function UrunTalepleri() {
                 </>
               )}
 
+              <Pressable
+                style={[styles.optBtn, { borderColor: theme.tint }]}
+                onPress={() => setEditing({ id: p.id, name: p.name, customization_options: options ?? null })}
+              >
+                <Ionicons name="options-outline" size={16} color={theme.tint} />
+                <ThemedText type="smallBold" themeColor="tint" style={{ flex: 1 }}>
+                  {options?.length ? `Seçenekler (${options.map((g) => g.title).join(', ')})` : 'Seçenek ekle'}
+                </ThemedText>
+                <Ionicons name="create-outline" size={16} color={theme.tint} />
+              </Pressable>
+
               <View style={styles.actions}>
                 <Pressable style={[styles.btn, { backgroundColor: theme.tint }]} disabled={!!busy} onPress={() => decide(p, true)}>
                   {busy === p.id ? <ActivityIndicator color="#fff" /> : (
@@ -218,6 +233,8 @@ export default function UrunTalepleri() {
           );
         })}
       </ScrollView>
+      {/* Seçenekler hemen kaydedilir; talepteki seçenek değişikliği düşer (liste tazelenir) */}
+      <OptionsEditor product={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
     </Screen>
   );
 }
@@ -233,4 +250,5 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   btn: { flex: 1, flexDirection: 'row', gap: 6, borderRadius: 999, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
   outline: { borderWidth: 1.5 },
+  optBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10 },
 });
