@@ -657,6 +657,19 @@ async def _log_order_agreement(order: dict, data: dict, current_user: dict, requ
         doc_code = (next(iter(versions.keys()), None) if versions else None) or doc_type or "mesafeli_satis"
         doc_version = str(next(iter(versions.values()), "") or "") if versions else ""
         doc_name = _AFRO_DOC_NAME_TR.get(doc_code) or _AFRO_DOC_NAME_TR.get(doc_type) or "Mesafeli Satış Sözleşmesi"
+        pdf_url = ""
+        # Sepet sadece türü yollar (pickup / home_delivery): o an YÜRÜRLÜKTEKİ
+        # sürüm kaydedilir ki hangi metnin onaylandığı sonradan bilinsin.
+        if not versions:
+            _code = {"pickup": "pickupTerms", "home_delivery": "homeDeliveryTerms"}.get(doc_type)
+            if _code:
+                doc_code = _code
+                _active = await db.legal_documents.find_one(
+                    {"document_code": _code, "is_active": True, "status": "published"},
+                    {"_id": 0, "version": 1, "pdf_url": 1, "name": 1}, sort=[("published_at", -1)])
+                doc_version = (_active or {}).get("version") or "varsayılan"
+                pdf_url = (_active or {}).get("pdf_url") or ""
+                doc_name = (_active or {}).get("name") or doc_name
         ts = now_utc().isoformat()
         ip = "unknown"; ua = "unknown"
         if request is not None:
@@ -671,6 +684,7 @@ async def _log_order_agreement(order: dict, data: dict, current_user: dict, requ
             "document_version": doc_version,
             "document_type": doc_code,
             "document_hash": data.get("agreement_hash", ""),
+            "pdf_url": pdf_url,
             "versions": versions if versions else {doc_code: doc_version},
             "timestamp": ts,
             "accepted_at": ts,

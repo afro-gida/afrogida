@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
+import { openLegal } from '@/lib/legal';
 
 // Sunucudaki core/text.py::normalize_email ile aynı kural.
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
@@ -153,13 +154,13 @@ export default function RegisterScreen() {
       <View style={[styles.consents, { backgroundColor: withAlpha(theme.text, 0.04) }]}>
         <ThemedText themeColor="textSecondary" style={styles.kvkk}>
           Kişisel verilerin hakkında{' '}
-          <ThemedText style={[styles.kvkk, styles.link, { color: theme.tint }]}>KVKK Aydınlatma Metni</ThemedText>
+          <ThemedText style={[styles.kvkk, styles.link, { color: theme.tint }]} onPress={() => openLegal('kvkk')} accessibilityRole="link">KVKK Aydınlatma Metni</ThemedText>
           'ni inceleyebilirsin.
         </ThemedText>
         <CheckboxRow checked={termsOk} onToggle={() => setTermsOk((v) => !v)} required>
-          <ThemedText type="small" style={[styles.link, { color: theme.tint }]}>Gizlilik Politikası</ThemedText>
+          <ThemedText type="small" style={[styles.link, { color: theme.tint }]} onPress={() => openLegal('privacy')} accessibilityRole="link">Gizlilik Politikası</ThemedText>
           'nı ve{' '}
-          <ThemedText type="small" style={[styles.link, { color: theme.tint }]}>Üyelik Sözleşmesi</ThemedText>
+          <ThemedText type="small" style={[styles.link, { color: theme.tint }]} onPress={() => openLegal('membership')} accessibilityRole="link">Üyelik Sözleşmesi</ThemedText>
           'ni okudum, onaylıyorum.
         </CheckboxRow>
         <CheckboxRow checked={notifyOk} onToggle={() => setNotifyOk((v) => !v)}>

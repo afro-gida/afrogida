@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/form-card';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { SHEET_BG, surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
+import { openPdf } from '@/lib/legal';
 
 /**
  * Giriş sonrası, kullanıcının henüz onaylamadığı (veya sürümü güncellenmiş)
@@ -47,13 +48,23 @@ export function ContractGate() {
           </ThemedText>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {pendingContracts.map((c) => (
-              <View key={c.document_code} style={[styles.item, { backgroundColor: withAlpha(theme.text, 0.05) }]}>
+              // Dokununca sözleşmenin PDF'i açılır (okumadan onaylatmayalım)
+              <Pressable
+                key={c.document_code}
+                onPress={() => c.pdf_url && openPdf(c.pdf_url)}
+                disabled={!c.pdf_url}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.item, { backgroundColor: withAlpha(theme.text, pressed ? 0.1 : 0.05) }]}
+              >
                 <MaterialCommunityIcons name="file-document-outline" size={20} color={theme.tint} />
-                <ThemedText style={styles.itemName}>{c.name}</ThemedText>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={styles.itemName}>{c.name}</ThemedText>
+                  {!!c.pdf_url && <ThemedText style={[styles.versionText, { color: theme.tint }]}>Okumak için dokun</ThemedText>}
+                </View>
                 <View style={[styles.versionPill, { backgroundColor: withAlpha(theme.tint, 0.14) }]}>
                   <ThemedText style={[styles.versionText, { color: theme.tint }]}>v{c.version}</ThemedText>
                 </View>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
           <PrimaryButton label="Hepsini Onayla ve Devam Et" arrow={false} onPress={handleAcceptAll} loading={submitting} />

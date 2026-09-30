@@ -119,6 +119,151 @@ async def afro_update_legal_doc(doc_id: str, data: dict, current_admin: dict = D
     return await db.legal_documents.find_one({"id": doc_id}, {"_id": 0})
 
 
+# ---- Sözleşme kataloğu (Yönetim > Sözleşmeler) ----
+# Eski panelin "Gizlilik ve Sözleşmeler" ekranındaki sabit belge listesi.
+# default_pdf: yönetim hiç PDF yüklemediyse kullanılan, sunucudaki /legal/
+# klasöründe duran varsayılan belge (nginx sunar).
+LEGAL_CATALOG = [
+    {"code": "kvkk", "name": "KVKK Aydınlatma Metni", "where": "Kayıt ekranı · üyeler girişte onaylar",
+     "default_pdf": "/legal/afrogida_01_kvkk_gizlilik_v2.pdf"},
+    {"code": "privacy", "name": "Gizlilik Politikası", "where": "Kayıt ekranı · üyeler girişte onaylar",
+     "default_pdf": "/legal/afrogida_01_kvkk_gizlilik_v2.pdf"},
+    {"code": "membership", "name": "Üyelik Sözleşmesi", "where": "Kayıt ekranı · üyeler girişte onaylar",
+     "default_pdf": "/legal/afrogida_02_uyelik_sozlesmesi.pdf"},
+    {"code": "pickupTerms", "name": "Gel-Al Mesafeli Satış Sözleşmesi", "where": "Sepet · Gel-Al siparişinde onaylanır",
+     "default_pdf": "/legal/afrogida_03_gel_al_sozlesmesi.pdf"},
+    {"code": "homeDeliveryTerms", "name": "Eve Servis Mesafeli Satış Sözleşmesi", "where": "Sepet · Eve Servis siparişinde onaylanır",
+     "default_pdf": "/legal/afrogida_04_eve_servis_sozlesmesi_v2.pdf"},
+    {"code": "refundComplaintPolicy", "name": "İade ve Şikayet Politikası", "where": "Üyeler girişte onaylar",
+     "default_pdf": None},
+    {"code": "couponTerms", "name": "Kupon Kullanım Koşulları", "where": "Üyeler girişte onaylar",
+     "default_pdf": None},
+]
+_CATALOG_BY_CODE = {c["code"]: c for c in LEGAL_CATALOG}
+# Sepetten gelen legal_document_type -> belge kodu
+ORDER_DOC_CODE = {"pickup": "pickupTerms", "home_delivery": "homeDeliveryTerms"}
+
+import re as _re  # noqa: E402
+# Yayınlanabilecek PDF adresleri: bizim yüklediğimiz (/admin/upload-pdf) ya da varsayılanlar
+_PDF_URL_RE = _re.compile(r"^/(uploads/contract_[0-9a-f]{32}|legal/[A-Za-z0-9_.-]+)\.pdf$")
+
+
+async def active_legal_doc(code: str) -> Optional[dict]:
+    """Belgenin yürürlükteki (aktif + yayınlanmış) en son sürümü."""
+    return await db.legal_documents.find_one(
+        {"document_code": code, "is_active": True, "status": "published"},
+        {"_id": 0}, sort=[("published_at", -1)],
+    )
+
+
+def _public_doc(entry: dict, doc: Optional[dict]) -> dict:
+    if doc and doc.get("pdf_url"):
+        return {"document_code": entry["code"], "name": entry["name"], "version": doc.get("version"),
+                "pdf_url": doc.get("pdf_url"), "updated_at": doc.get("published_at") or doc.get("updated_at")}
+    return {"document_code": entry["code"], "name": entry["name"], "version": None,
+            "pdf_url": entry["default_pdf"], "updated_at": None}
+
+
+@router.get("/legal-docs")
+async def public_legal_docs():
+    """Müşteri sitesi: her belgenin yürürlükteki PDF'i (kayıt, sepet ve onay
+    ekranındaki sözleşme bağlantıları buradan açılır)."""
+    return [_public_doc(e, await active_legal_doc(e["code"])) for e in LEGAL_CATALOG]
+
+
+@router.get("/admin/legal-catalog")
+async def admin_legal_catalog(current_admin: dict = Depends(get_current_admin)):
+    """Yönetim > Sözleşmeler: belge başına yürürlükteki sürüm, sürüm geçmişi ve
+    (giriş onayı istenen belgelerde) güncel sürümü onaylayan üye sayısı."""
+    member_count = await db.users.count_documents({"role": {"$in": ["musteri", "member"]}})
+    out = []
+    for e in LEGAL_CATALOG:
+        history = await db.legal_documents.find(
+            {"document_code": e["code"]},
+            {"_id": 0, "id": 1, "version": 1, "pdf_url": 1, "is_active": 1, "status": 1,
+             "published_at": 1, "created_at": 1, "change_reason": 1, "published_by": 1},
+        ).sort("published_at", -1).to_list(50)
+        current = next((h for h in history if h.get("is_active") and h.get("status") == "published"), None)
+        gate = LOGIN_GATE_CONTRACTS.get(e["code"])
+        accepted = None
+        if current and gate:
+            accepted = len(await db.legal_agreement_logs.distinct(
+                "user_id", {"document_code": e["code"], "document_version": current.get("version"),
+                            "gate_type": "login", "accepted": True}))
+        out.append({
+            **e,
+            "login_gate": bool(gate),
+            "current": _public_doc(e, current),
+            "using_default": current is None,
+            "history": history,
+            "accepted_count": accepted,
+            "member_count": member_count if gate else None,
+        })
+    return out
+
+
+def _catalog_entry(code: str) -> dict:
+    entry = _CATALOG_BY_CODE.get(code)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Böyle bir belge yok")
+    return entry
+
+
+@router.post("/admin/legal-catalog/{code}/publish")
+async def admin_publish_legal_doc(code: str, data: dict, current_admin: dict = Depends(get_current_admin), request: Request = None):
+    """Belgenin yeni sürümünü yayınla: yüklenen PDF + sürüm (+ değişiklik notu).
+    Önceki sürümler pasife alınır; giriş onayı istenen belgelerde üyeler yeni
+    sürümü bir sonraki girişte tekrar onaylar."""
+    _yonetici_only(current_admin)
+    entry = _catalog_entry(code)
+    pdf_url = str((data or {}).get("pdf_url") or "").strip()
+    version = str((data or {}).get("version") or "").strip()[:30]
+    reason = str((data or {}).get("change_reason") or "").strip()[:300]
+    if not _PDF_URL_RE.match(pdf_url):
+        raise HTTPException(status_code=400, detail="Önce PDF yükleyin")
+    if not version:
+        raise HTTPException(status_code=400, detail="Sürüm gerekli (ör: 2.0 ya da 2026-10)")
+    if await db.legal_documents.find_one({"document_code": code, "version": version}, {"_id": 1}):
+        raise HTTPException(status_code=400, detail=f"{version} sürümü zaten var; yeni bir sürüm numarası girin")
+    now = now_utc()
+    await db.legal_documents.update_many({"document_code": code}, {"$set": {"is_active": False, "active": False, "updated_at": now}})
+    doc = {
+        "id": "doc_" + uuid.uuid4().hex[:12], "document_code": code, "name": entry["name"], "version": version,
+        "pdf_url": pdf_url, "change_reason": reason, "status": "published", "is_active": True, "active": True,
+        "created_at": now, "updated_at": now, "published_at": now, "revision_date": now,
+        "created_by": current_admin.get("user_id"), "published_by": current_admin.get("user_id"),
+    }
+    await db.legal_documents.insert_one(dict(doc))
+    await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name", ""), "action": "legal_document_published", "target_type": "legal", "target_id": doc["id"], "change_details": {"document_code": code, "version": version, "reason": reason}, "admin_note": ""}, request)
+    return {"success": True, "document": {k: v for k, v in doc.items()}}
+
+
+@router.post("/admin/legal-catalog/{code}/activate")
+async def admin_activate_legal_version(code: str, data: dict, current_admin: dict = Depends(get_current_admin), request: Request = None):
+    """Eski bir sürümü yeniden yürürlüğe al (yanlış belge yüklendiyse geri dönüş)."""
+    _yonetici_only(current_admin)
+    _catalog_entry(code)
+    doc_id = str((data or {}).get("doc_id") or "")
+    target = await db.legal_documents.find_one({"id": doc_id, "document_code": code}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Sürüm bulunamadı")
+    now = now_utc()
+    await db.legal_documents.update_many({"document_code": code}, {"$set": {"is_active": False, "active": False, "updated_at": now}})
+    await db.legal_documents.update_one({"id": doc_id}, {"$set": {"is_active": True, "active": True, "status": "published", "published_at": now, "updated_at": now}})
+    await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name", ""), "action": "legal_document_reactivated", "target_type": "legal", "target_id": doc_id, "change_details": {"document_code": code, "version": target.get("version")}, "admin_note": ""}, request)
+    return {"success": True}
+
+
+@router.post("/admin/legal-catalog/{code}/use-default")
+async def admin_legal_use_default(code: str, current_admin: dict = Depends(get_current_admin), request: Request = None):
+    """Yüklenen sürümleri pasife al; varsayılan (sunucudaki) PDF'e dön."""
+    _yonetici_only(current_admin)
+    _catalog_entry(code)
+    await db.legal_documents.update_many({"document_code": code}, {"$set": {"is_active": False, "active": False, "updated_at": now_utc()}})
+    await _insert_log("log_admin", {"admin_id": current_admin["user_id"], "admin_name": current_admin.get("name", ""), "action": "legal_document_default", "target_type": "legal", "target_id": code, "change_details": {"document_code": code}, "admin_note": ""}, request)
+    return {"success": True}
+
+
 # --- Login Gate: Hangi sözleşmelerin login gate'de gösterilecegi ---
 # document_code -> hedef roller
 LOGIN_GATE_CONTRACTS = {

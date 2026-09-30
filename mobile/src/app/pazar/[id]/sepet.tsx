@@ -11,6 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
 import { lineCampaignDiscount, lineTotal, useCart } from '@/lib/cart-context';
+import { openLegal } from '@/lib/legal';
 import { useMarkets } from '@/lib/markets-context';
 import { createOrder, type PaymentMethod } from '@/lib/orders';
 import { savePendingPayment } from '@/lib/pending-payment';
@@ -705,7 +706,14 @@ export default function CartScreen() {
             {/* Sözleşme + sipariş */}
             <View style={[styles.card, styles.shadow, { backgroundColor: cardBg }]}>
               <CheckboxRow checked={agreementAccepted} onToggle={() => setAgreementAccepted((v) => !v)}>
-                <ThemedText type="small" themeColor="tint" style={{ fontWeight: '700', textDecorationLine: 'underline' }}>
+                {/* Dokununca yürürlükteki sözleşme PDF'i açılır (Yönetim > Sözleşmeler) */}
+                <ThemedText
+                  type="small"
+                  themeColor="tint"
+                  style={{ fontWeight: '700', textDecorationLine: 'underline' }}
+                  onPress={() => openLegal(deliveryType === 'eve_servis' ? 'homeDeliveryTerms' : 'pickupTerms')}
+                  accessibilityRole="link"
+                >
                   {shopLabel} Mesafeli Satış Sözleşmesi
                 </ThemedText>
                 {"'ni okudum ve kabul ediyorum."}

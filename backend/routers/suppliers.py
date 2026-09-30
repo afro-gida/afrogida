@@ -882,9 +882,13 @@ async def afro_get_supplier_contract():
 async def afro_set_supplier_contract(payload: AfroSupplierContractInput, current_admin: dict = Depends(get_current_admin)):
     _yonetici_only(current_admin)
     url = (payload.url or "").strip()
-    version = (payload.version or "").strip()
+    version = (payload.version or "").strip()[:30]
     if not url or not version:
         raise HTTPException(status_code=400, detail="url ve version zorunludur")
+    # Sadece bizim yüklediğimiz (/admin/upload-pdf) ya da varsayılan PDF'ler
+    import re as _re
+    if not _re.match(r"^/(uploads/contract_[0-9a-f]{32}|legal/[A-Za-z0-9_.-]+)\.pdf$", url):
+        raise HTTPException(status_code=400, detail="Önce PDF yükleyin")
     sc = {"url": url, "version": version, "title": (payload.title or "Tedarikçi Sözleşmesi").strip(),
           "updated_at": now_utc(), "updated_by": current_admin.get("user_id")}
     await _write_catalog_config({"supplier_contract": sc})
@@ -896,6 +900,25 @@ async def afro_set_supplier_contract(payload: AfroSupplierContractInput, current
     except Exception:
         pass
     return await _afro_supplier_contract_cfg()
+
+
+# ---- Admin: tedarikçilerin sözleşme onay durumu (Yönetim > Sözleşmeler) ----
+@router.get("/admin/supplier-contract-status")
+async def afro_admin_supplier_contract_status(current_admin: dict = Depends(get_current_admin)):
+    cfg = await _afro_supplier_contract_cfg()
+    cur = cfg.get("version")
+    rows = await db.users.find(
+        {"role": {"$in": ["esnaf", "supplier"]}},
+        {"_id": 0, "user_id": 1, "name": 1, "supplier_group": 1,
+         "supplier_contract_accepted_version": 1, "supplier_contract_accepted_at": 1},
+    ).sort("name", 1).to_list(1000)
+    suppliers = [{
+        "user_id": r.get("user_id"), "name": r.get("name") or "", "supplier_group": r.get("supplier_group") or "",
+        "accepted": bool(cur and r.get("supplier_contract_accepted_version") == cur),
+        "accepted_version": r.get("supplier_contract_accepted_version"),
+        "accepted_at": r.get("supplier_contract_accepted_at"),
+    } for r in rows]
+    return {"contract": cfg, "suppliers": suppliers}
 
 
 # ---- Tedarikçi: kendi onay durumu ----

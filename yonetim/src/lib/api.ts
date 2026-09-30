@@ -75,6 +75,38 @@ export async function uploadImage(file: Blob, filename = 'urun.jpg'): Promise<st
   return url.startsWith('http') ? url : `https://afrogida.com.tr${url}`;
 }
 
+/** Sözleşme PDF'i seçtirir (web). En fazla 20 MB, sadece PDF (sunucu da denetler). */
+export function pickPdf(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.onchange = () => resolve(input.files?.[0] ?? null);
+    input.click();
+  });
+}
+
+/** PDF yükler (/admin/upload-pdf); "/uploads/contract_….pdf" döner (yayınlarken bu adres gönderilir). */
+export async function uploadPdf(file: Blob, filename = 'sozlesme.pdf'): Promise<string> {
+  const form = new FormData();
+  form.append('file', file, filename);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/admin/upload-pdf`, { method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError(0, 'Sunucuya ulaşılamadı.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, typeof data?.detail === 'string' ? data.detail : `Yükleme hatası (${res.status})`);
+  return String(data?.url || '');
+}
+
+/** "/legal/…pdf" ya da "/uploads/…pdf" -> açılabilir tam adres. */
+export function docUrl(path?: string | null) {
+  if (!path) return '';
+  return path.startsWith('http') ? path : `https://afrogida.com.tr${path}`;
+}
+
 export const api = {
   get: <T>(p: string) => request<T>('GET', p),
   post: <T>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),

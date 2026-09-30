@@ -4113,6 +4113,237 @@
                 "summary": "Admin Update Issue"
             }
         },
+        "/api/admin/legal-catalog": {
+            "get": {
+                "description": "Yönetim > Sözleşmeler: belge başına yürürlükteki sürüm, sürüm geçmişi ve\n(giriş onayı istenen belgelerde) güncel sürümü onaylayan üye sayısı.",
+                "operationId": "admin_legal_catalog_api_admin_legal_catalog_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Legal Catalog"
+            }
+        },
+        "/api/admin/legal-catalog/{code}/activate": {
+            "post": {
+                "description": "Eski bir sürümü yeniden yürürlüğe al (yanlış belge yüklendiyse geri dönüş).",
+                "operationId": "admin_activate_legal_version_api_admin_legal_catalog__code__activate_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "title": "Code",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Activate Legal Version"
+            }
+        },
+        "/api/admin/legal-catalog/{code}/publish": {
+            "post": {
+                "description": "Belgenin yeni sürümünü yayınla: yüklenen PDF + sürüm (+ değişiklik notu).\nÖnceki sürümler pasife alınır; giriş onayı istenen belgelerde üyeler yeni\nsürümü bir sonraki girişte tekrar onaylar.",
+                "operationId": "admin_publish_legal_doc_api_admin_legal_catalog__code__publish_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "title": "Code",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "additionalProperties": true,
+                                "title": "Data",
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Publish Legal Doc"
+            }
+        },
+        "/api/admin/legal-catalog/{code}/use-default": {
+            "post": {
+                "description": "Yüklenen sürümleri pasife al; varsayılan (sunucudaki) PDF'e dön.",
+                "operationId": "admin_legal_use_default_api_admin_legal_catalog__code__use_default_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "code",
+                        "required": true,
+                        "schema": {
+                            "title": "Code",
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Legal Use Default"
+            }
+        },
         "/api/admin/legal-docs": {
             "get": {
                 "operationId": "compat_admin_legal_docs_api_admin_legal_docs_get",
@@ -7169,6 +7400,50 @@
                 "summary": "Afro Set Supplier Contract"
             }
         },
+        "/api/admin/supplier-contract-status": {
+            "get": {
+                "operationId": "afro_admin_supplier_contract_status_api_admin_supplier_contract_status_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Afro Admin Supplier Contract Status"
+            }
+        },
         "/api/admin/supplier-groups": {
             "get": {
                 "description": "Tedarikçi (supplier_group) seçenekleri: SADECE katalog config'deki tedarikçiler.\nEskiden ürünlerde kullanılan + suppliers koleksiyonu da birleştiriliyordu; bu yüzden\nsilinmiş/eski tedarikçiler (Afro Sebze, Meyve, ...) listede görünmeye devam ediyordu.\nArtık yalnızca catalog_config.suppliers döndürülür ki yönetici listeyi tam kontrol etsin.\nSıra, yöneticinin Kategori Ayarları panelinde belirlediği sırayla AYNI kalır (alfabetik\nkarıştırılmaz) - yönetici müşteri tarafında görünecek sırayı burada kontrol edebilsin.",
@@ -9801,6 +10076,23 @@
                     }
                 },
                 "summary": "Courier Toggle Online"
+            }
+        },
+        "/api/legal-docs": {
+            "get": {
+                "description": "Müşteri sitesi: her belgenin yürürlükteki PDF'i (kayıt, sepet ve onay\nekranındaki sözleşme bağlantıları buradan açılır).",
+                "operationId": "public_legal_docs_api_legal_docs_get",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    }
+                },
+                "summary": "Public Legal Docs"
             }
         },
         "/api/markets": {
