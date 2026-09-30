@@ -93,7 +93,7 @@ export function OptionsEditor({
               return (
                 <View key={gi} style={[styles.group, { borderColor: theme.border }]}>
                   <View style={styles.row}>
-                    <TextInput value={g.title} onChangeText={(v) => setGroup({ ...g, title: v })} placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[input, styles.flex]} />
+                    <TextInput value={g.title} onChangeText={(v) => setGroup({ ...g, title: v })} autoCapitalize="words" placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[input, styles.flex]} />
                     <Pressable style={[styles.iconBtn, { backgroundColor: theme.danger }]} onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil">
                       <Ionicons name="trash-outline" size={17} color="#fff" />
                     </Pressable>
@@ -108,7 +108,7 @@ export function OptionsEditor({
                       <TextInput
                         value={c.label}
                         onChangeText={(v) => setGroup({ ...g, choices: g.choices.map((y, j) => (j === ci ? { ...y, label: v } : y)) })}
-                        placeholder="Örn: Büyük"
+                        autoCapitalize="words" placeholder="Örn: Büyük"
                         placeholderTextColor={theme.textSecondary}
                         style={[input, styles.flex]}
                       />

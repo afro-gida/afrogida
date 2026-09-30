@@ -53,3 +53,12 @@ def test_address_and_profile_names_normalized(client, make_user):
     r = client.put("/api/auth/profile", headers=h, json={"name": "muhammet ali güngör"})
     assert r.status_code == 200, r.text
     assert client.get("/api/auth/me", headers=h).json()["name"] == "Muhammet Ali Güngör"
+
+
+def test_tr_title_product_keeps_short_caps():
+    from core.text import tr_title_product
+    assert tr_title_product("dolma bİBer") == "Dolma Biber"
+    assert tr_title_product("  büyük   boy ") == "Büyük Boy"
+    assert tr_title_product("ırmak ince DOĞRANMIŞ") == "Irmak İnce Doğranmış"
+    assert tr_title_product("XL kasa") == "XL Kasa"
+    assert tr_title_product("1 kg") == "1 Kg"

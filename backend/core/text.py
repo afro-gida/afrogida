@@ -19,6 +19,22 @@ def _cap(word: str) -> str:
     return tr_upper(word[:1]) + tr_lower(word[1:]) if word else word
 
 
+def _cap_keep_short_caps(word: str) -> str:
+    # "XL", "S", "KG" gibi kısa büyük harfli kısaltmalar olduğu gibi kalır
+    if word and len(word) <= 3 and word == tr_upper(word) and any(ch.isalpha() for ch in word):
+        return word
+    return _cap(word)
+
+
+def tr_title_product(value) -> str:
+    """Ürün adı ve seçenekler için baş harf düzeltme ("dolma bİBer" ->
+    "Dolma Biber", "büyük boy" -> "Büyük Boy"); "XL" gibi kısaltmalar korunur."""
+    if value is None:
+        return ""
+    s = re.sub(r"\s+", " ", str(value)).strip()
+    return " ".join("-".join(_cap_keep_short_caps(p) for p in w.split("-")) for w in s.split(" "))
+
+
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$")
 
 

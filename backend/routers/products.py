@@ -20,6 +20,7 @@ from services.catalog import _read_catalog_config
 from services.contracts import _afro_require_supplier_contract
 from services.push import send_push_to_all
 from core.pricing import auto_price_fields, validate_price_step
+from core.text import tr_title_product
 
 logger = logging.getLogger("afro.routers.products")
 logging = logger  # eski logging.warning(...) çağrıları için
@@ -149,7 +150,7 @@ _SUPPLIER_INSTANT_FIELDS = ("in_stock",)
 # türeyen müşteri fiyatı alanları (alış değişirse talebe birlikte yazılır).
 _SUPPLIER_REQUEST_FIELDS = (
     "name", "category", "subcategory", "unit", "image_url", "description",
-    "supplier_price", "selectable", "spicy_type", "customization_options",
+    "supplier_price", "selectable", "spicy_type",
     "customization_note_enabled", "customization_note_label",
     "campaign_discount_percent", "campaign_min_qty",
 )
@@ -174,8 +175,9 @@ def with_none_choice_last(groups):
     for g in groups:
         if not isinstance(g, dict):
             continue
-        real = [c for c in (g.get("choices") or []) if isinstance(c, dict) and not _is_none_label(c.get("label"))]
-        out.append({**g, "choices": real + [{"label": NONE_CHOICE, "price_delta": 0}]})
+        real = [{**c, "label": tr_title_product(c.get("label"))}
+                for c in (g.get("choices") or []) if isinstance(c, dict) and not _is_none_label(c.get("label"))]
+        out.append({**g, "title": tr_title_product(g.get("title")), "choices": real + [{"label": NONE_CHOICE, "price_delta": 0}]})
     return out
 
 
@@ -308,6 +310,7 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
             raise HTTPException(status_code=403, detail="Hesabınıza tedarikçi atanmamış")
         await _afro_require_supplier_contract(staff)
         data["supplier_group"] = sg
+        data["customization_options"] = None  # seçenekleri sorumlu / yönetici ekler
         _clean_supplier_fields(data)
         # Tedarikçi sadece kendi fiyatını (supplier_price) girer; müşteri fiyatını
         # (satış = alış + kâr kademesi) sunucu hesaplar — gönderdiği fiyatlar yok sayılır.
@@ -333,6 +336,7 @@ async def create_product(payload: ProductInput, staff=Depends(get_current_staff)
     # sale_price gönderilmemişse müşteri fiyatı (price) ile başlat
     if data.get("sale_price") is None:
         data["sale_price"] = data.get("price")
+    data["name"] = tr_title_product(data.get("name"))
     if data.get("customization_options"):
         data["customization_options"] = with_none_choice_last(data["customization_options"])
     if is_supplier_role(staff):
@@ -392,7 +396,7 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         await _afro_require_supplier_contract(staff)
         updates["supplier_group"] = sg
         # sadece gönderilen alanlar denetlenir (dokunulmayan eski veri aynen kalır)
-        _sent_clean = {k: updates[k] for k in ("campaign_discount_percent", "campaign_min_qty", "customization_options") if k in sent}
+        _sent_clean = {k: updates[k] for k in ("campaign_discount_percent", "campaign_min_qty") if k in sent}
         _clean_supplier_fields(_sent_clean)
         updates.update(_sent_clean)
         
@@ -402,6 +406,8 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
         # - supplier_price değiştirirse sale_price otomatik hesaplanır (= supplier_price + profit_margin_amount)
         protected_from_supplier = [
             "profit_margin_amount", "sale_price", "price_updated_by", "quality",
+            # Seçenekler (Boyut, Şekil …) sadece sorumlu / yönetici işi
+            "customization_options",
             "hidden", "active", "active_gel_al", "active_eve_servis",
             "supplier_price_locked_until", "price_updated_at",
             *_SUPPLIER_READONLY_PRICE_FIELDS,
@@ -492,6 +498,8 @@ async def update_product(product_id: str, payload: ProductInput, staff=Depends(g
             updates["price_updated_by"] = "admin"
     if not updates.get("price"):
         updates["price"] = updates.get("gel_al_price") or 0
+    if "name" in sent:
+        updates["name"] = tr_title_product(updates.get("name"))
     if "customization_options" in sent and updates.get("customization_options"):
         updates["customization_options"] = with_none_choice_last(updates["customization_options"])
 

@@ -165,7 +165,7 @@ export default function ProductEdit() {
     >
       <Section title="Genel">
         <View style={styles.row}>
-          <Field style={styles.grow} label="Ürün adı" value={p.name} onChangeText={(v) => set('name', v)} />
+          <Field style={styles.grow} label="Ürün adı" autoCapitalize="words" value={p.name} onChangeText={(v) => set('name', v)} />
           <View style={styles.grow}>
             <T size={12.5} bold>Birim</T>
             <Chips options={UNITS.map((u) => ({ value: u, label: u }))} value={p.unit} onChange={(v) => set('unit', v)} />
@@ -238,7 +238,7 @@ export default function ProductEdit() {
         {groups.map((g, gi) => (
           <View key={gi} style={[styles.group, { borderColor: t.border }]}>
             <View style={styles.titleRow}>
-              <Field style={styles.flex} label="Grup adı" placeholder="Boyut" value={g.title} onChangeText={(v) => setGroups(groups.map((x, i) => (i === gi ? { ...x, title: v } : x)))} />
+              <Field style={styles.flex} label="Grup adı" autoCapitalize="words" placeholder="Boyut" value={g.title} onChangeText={(v) => setGroups(groups.map((x, i) => (i === gi ? { ...x, title: v } : x)))} />
               <Pressable onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil" style={[styles.iconBtn, { backgroundColor: t.danger }]}>
                 <Ionicons name="trash-outline" size={17} color="#fff" />
               </Pressable>
@@ -253,7 +253,7 @@ export default function ProductEdit() {
               <View key={ci} style={styles.choiceRow}>
                 <TextInput
                   value={c.label}
-                  placeholder="Örn: Büyük"
+                  autoCapitalize="words" placeholder="Örn: Büyük"
                   placeholderTextColor={t.muted}
                   onChangeText={(v) => setGroups(groups.map((x, i) => (i === gi ? { ...x, choices: x.choices.map((y, j) => (j === ci ? { ...y, label: v } : y)) } : x)))}
                   style={[styles.cell, styles.flex, { backgroundColor: t.input, borderColor: t.border, color: t.text }]}

@@ -30,11 +30,6 @@ type Product = {
 };
 
 type CatalogConfig = { categories: string[]; subcategories: Record<string, string[]> };
-type Choice = { label: string; price_delta: number };
-type OptionGroup = { title: string; choices: Choice[] };
-/** Her grubun en altında sabit, 0 TL, silinemeyen seçenek (sunucu da zorlar). */
-const NONE_CHOICE = 'İstemiyorum';
-const isNone = (label: string) => ['istemiyorum', 'seçmiyorum', 'farketmez', 'fark etmez'].includes(label.trim().toLocaleLowerCase('tr-TR'));
 
 
 /**
@@ -56,7 +51,6 @@ export default function UrunDuzenle() {
   const [inStock, setInStock] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [description, setDescription] = useState('');
-  const [groups, setGroups] = useState<OptionGroup[]>([]);
   const [campaignPct, setCampaignPct] = useState('');
   const [campaignMin, setCampaignMin] = useState('');
   const [loading, setLoading] = useState(true);
@@ -84,12 +78,6 @@ export default function UrunDuzenle() {
         setInStock(p.in_stock);
         setImageUrl(p.image_url ?? null);
         setDescription(p.description ?? '');
-        setGroups(((p.customization_options as OptionGroup[] | null) ?? []).map((g) => ({
-          title: g.title ?? '',
-          choices: (g.choices ?? [])
-            .filter((c) => !isNone(c.label ?? ''))
-            .map((c) => ({ label: c.label ?? '', price_delta: Number(c.price_delta) || 0 })),
-        })));
         setCampaignPct(p.campaign_discount_percent ? String(p.campaign_discount_percent) : '');
         setCampaignMin(p.campaign_min_qty ? String(p.campaign_min_qty) : '');
       })
@@ -127,11 +115,6 @@ export default function UrunDuzenle() {
     if (!Number.isFinite(num) || num < 0) return setError('Fiyatı rakamla gir (ör. 45)');
     const priceChanged = num !== Number(orig?.supplier_price ?? 0);
     if (priceChanged && num % PRICE_STEP !== 0) return setError('Fiyat 5 TL\'nin katı olmalı (5, 10, 15, 20 …)');
-    const cleanGroups = groups.map((g) => ({ title: g.title.trim(), choices: g.choices.map((c) => ({ ...c, label: c.label.trim() })) }));
-    if (cleanGroups.some((g) => !g.title || g.choices.length === 0 || g.choices.some((c) => !c.label || isNone(c.label)))) {
-      return setError('Seçeneklerde boş grup adı, boş seçenek ya da "İstemiyorum" dışında seçeneği olmayan grup var');
-    }
-    for (const g of cleanGroups) g.choices.push({ label: NONE_CHOICE, price_delta: 0 });
     const pct = Math.min(90, Number(campaignPct) || 0);
     const minQty = Number(campaignMin.replace(',', '.')) || 0;
     setSaving(true);
@@ -147,12 +130,12 @@ export default function UrunDuzenle() {
       in_stock: inStock,
       image_url: imageUrl,
       description: description.trim() || null,
-      customization_options: cleanGroups.length ? cleanGroups : null,
       campaign_discount_percent: pct,
       campaign_min_qty: minQty,
     };
     // Sunucunun tuttuğu alanlar geri gönderilmez (aktiflik yöneticide)
-    for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at']) delete (payload as Record<string, unknown>)[k];
+    // Seçenekler sorumlu / yönetici işi: tedarikçi göndermez
+    for (const k of ['id', 'active', 'pending_approval', 'created_at', 'updated_at', 'customization_options']) delete (payload as Record<string, unknown>)[k];
     try {
       const saved = isNew
         ? await api.post<Product>('/admin/products', payload)
@@ -227,7 +210,7 @@ export default function UrunDuzenle() {
           </View>
 
           <ThemedText type="small" themeColor="textSecondary">Ürün Adı</ThemedText>
-          <TextInput value={name} onChangeText={setName} placeholder="Örn: Kırmızı Köy Domatesi" placeholderTextColor={theme.textSecondary} style={inputStyle} />
+          <TextInput value={name} onChangeText={setName} autoCapitalize="words" placeholder="Örn: Kırmızı Köy Domatesi" placeholderTextColor={theme.textSecondary} style={inputStyle} />
 
           <ThemedText type="small" themeColor="textSecondary">Ana Kategori</ThemedText>
           <View style={styles.chipRow}>
@@ -293,77 +276,6 @@ export default function UrunDuzenle() {
           </View>
           <ThemedText type="small" themeColor="textSecondary">İkisi de doluysa kampanya açılır. Örn: 3 kg ve üzeri %10 indirim.</ThemedText>
 
-          {/* Seçenekler: Boyut, Şekil … */}
-          <View style={styles.sectionRow}>
-            <ThemedText type="smallBold" style={[styles.sectionTitle, styles.flex]}>Seçenekler (Boyut, Şekil …)</ThemedText>
-            <Pressable
-              style={[styles.smallBtn, { borderColor: theme.tint }]}
-              onPress={() => setGroups([...groups, { title: '', choices: [{ label: '', price_delta: 0 }] }])}
-            >
-              <Ionicons name="add" size={16} color={theme.tint} />
-              <ThemedText type="small" themeColor="tint">Grup ekle</ThemedText>
-            </Pressable>
-          </View>
-          {groups.length === 0 && (
-            <ThemedText type="small" themeColor="textSecondary">Müşteri ürünü seçerken boyut, kesim gibi bir seçim yapsın istiyorsan grup ekle. "İstemiyorum" (0 ₺) her grubun en altında sabittir ve varsayılandır.</ThemedText>
-          )}
-          {groups.map((g, gi) => {
-            const setGroup = (ng: OptionGroup) => setGroups(groups.map((x, i) => (i === gi ? ng : x)));
-            return (
-              <View key={gi} style={[styles.group, { borderColor: theme.border }]}>
-                <View style={styles.pair}>
-                  <TextInput value={g.title} onChangeText={(v) => setGroup({ ...g, title: v })} placeholder="Grup adı (örn: Boyut)" placeholderTextColor={theme.textSecondary} style={[inputStyle, styles.flex]} />
-                  <Pressable style={[styles.iconBtn, { backgroundColor: theme.danger }]} onPress={() => setGroups(groups.filter((_, i) => i !== gi))} accessibilityLabel="Grubu sil">
-                    <Ionicons name="trash-outline" size={17} color="#fff" />
-                  </Pressable>
-                </View>
-                <View style={styles.pair}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>Seçenek</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.deltaCol}>Ek fiyat ₺</ThemedText>
-                  <View style={{ width: 38 }} />
-                </View>
-                {g.choices.map((c, ci) => (
-                  <View key={ci} style={styles.pair}>
-                    <TextInput
-                      value={c.label}
-                      onChangeText={(v) => setGroup({ ...g, choices: g.choices.map((y, j) => (j === ci ? { ...y, label: v } : y)) })}
-                      placeholder="Örn: Büyük"
-                      placeholderTextColor={theme.textSecondary}
-                      style={[inputStyle, styles.flex]}
-                    />
-                    <TextInput
-                      value={String(c.price_delta || '')}
-                      onChangeText={(v) => setGroup({ ...g, choices: g.choices.map((y, j) => (j === ci ? { ...y, price_delta: Number(v.replace(/[^\d]/g, '')) || 0 } : y)) })}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                      placeholderTextColor={theme.textSecondary}
-                      style={[inputStyle, styles.deltaCol, { textAlign: 'center' }]}
-                    />
-                    <Pressable style={[styles.iconBtn, { backgroundColor: theme.inputBg }]} onPress={() => setGroup({ ...g, choices: g.choices.filter((_, j) => j !== ci) })} accessibilityLabel="Seçeneği sil">
-                      <Ionicons name="close" size={18} color={theme.danger} />
-                    </Pressable>
-                  </View>
-                ))}
-                {/* Sabit, kilitli: hep en altta, 0 TL, silinemez */}
-                <View style={styles.pair}>
-                  <View style={[styles.input, styles.flex, styles.locked, { borderColor: theme.border, backgroundColor: theme.authCard }]}>
-                    <ThemedText type="small" themeColor="textSecondary">{NONE_CHOICE}</ThemedText>
-                  </View>
-                  <View style={[styles.input, styles.deltaCol, styles.locked, { borderColor: theme.border, backgroundColor: theme.authCard, alignItems: 'center' }]}>
-                    <ThemedText type="small" themeColor="textSecondary">0</ThemedText>
-                  </View>
-                  <View style={[styles.iconBtn, { opacity: 0.6 }]}>
-                    <Ionicons name="lock-closed" size={16} color={theme.textSecondary} />
-                  </View>
-                </View>
-                <Pressable style={styles.addChoice} onPress={() => setGroup({ ...g, choices: [...g.choices, { label: '', price_delta: 0 }] })}>
-                  <Ionicons name="add" size={16} color={theme.tint} />
-                  <ThemedText type="small" themeColor="tint">Seçenek ekle</ThemedText>
-                </Pressable>
-              </View>
-            );
-          })}
-
           <Pressable style={[styles.stockRow, { backgroundColor: theme.authCard }]} onPress={() => setInStock((v) => !v)}>
             <ThemedText type="smallBold" style={{ flex: 1 }}>Stokta</ThemedText>
             <ThemedText type="smallBold" themeColor={inStock ? 'tint' : 'danger'}>{inStock ? 'Var' : 'Tükendi'}</ThemedText>
@@ -399,14 +311,7 @@ const styles = StyleSheet.create({
   stepBtn: { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepInput: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700' },
   sectionTitle: { marginTop: Spacing.two },
-  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   pair: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10 },
-  group: { borderWidth: 1, borderRadius: 12, padding: Spacing.two, gap: 8 },
-  deltaCol: { width: 84 },
-  locked: { justifyContent: 'center', minHeight: 40, borderStyle: 'dashed' },
-  iconBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  addChoice: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 4 },
   notice: { flexDirection: 'row', gap: 8, alignItems: 'center', borderRadius: 12, padding: Spacing.two },
   stockRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: Spacing.three, marginTop: Spacing.one },
   submitBtn: { borderRadius: 999, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
