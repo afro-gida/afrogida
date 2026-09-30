@@ -27,20 +27,34 @@ const MARKET_LOGO_LIGHT = require('@/assets/brand/market-logo-light.png');
 
 type TimeSlot = { start: string; end: string };
 
-/** "11:00-19:00" gibi bir çalışma saati aralığını 1 saatlik dilimlere böler
- *  (Yemeksepeti/Getir tarzı "Planla" listesi için — kullanıcı talimatı). */
-function generateTimeSlots(range: string | undefined, stepMinutes = 60): TimeSlot[] {
+/** Türkiye saatiyle gün içindeki dakika (cihaz saat dilimi farklı olsa da
+ *  sunucunun kullandığı saatle aynı: backend/services/orders.py). */
+function istanbulMinutes(d = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return get('hour') * 60 + get('minute');
+}
+
+const toHHMM = (mins: number) => {
+  const m = ((mins % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
+
+/** "11:00-19:00" aralığı + şimdiki saat -> şu an açık mı ve bugün kalan
+ *  1 saatlik dilimler (başlamamış olanlar). Gece yarısını geçen aralık da olur. */
+function scheduleFor(range: string | undefined, nowMin: number, stepMinutes = 60): { openNow: boolean; slots: TimeSlot[] } {
   const m = (range ?? '').match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-  if (!m) return [];
-  const toMinutes = (h: string, mm: string) => Number(h) * 60 + Number(mm);
-  const toHHMM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-  const startM = toMinutes(m[1], m[2]);
-  const endM = toMinutes(m[3], m[4]);
+  if (!m) return { openNow: true, slots: [] }; // saat tanımsız: sunucu da kısıtlamıyor
+  const startM = Number(m[1]) * 60 + Number(m[2]);
+  let endM = Number(m[3]) * 60 + Number(m[4]);
+  if (endM <= startM) endM += 1440;
+  const now = nowMin < startM && nowMin + 1440 <= endM ? nowMin + 1440 : nowMin;
+  const openNow = now >= startM && now <= endM;
   const slots: TimeSlot[] = [];
   for (let t = startM; t + stepMinutes <= endM; t += stepMinutes) {
-    slots.push({ start: toHHMM(t), end: toHHMM(t + stepMinutes) });
+    if (t > now) slots.push({ start: toHHMM(t), end: toHHMM(t + stepMinutes) });
   }
-  return slots;
+  return { openNow, slots };
 }
 
 function formatAddressLine(a: Address) {
@@ -151,7 +165,17 @@ export default function CartScreen() {
   }, [eveServisAvailable, deliveryType]);
 
   const hoursRange = deliveryType === 'eve_servis' ? settings.delivery_order_hours : settings.pickup_order_hours;
-  const timeSlots = useMemo(() => generateTimeSlots(hoursRange ?? '11:00-19:00'), [hoursRange]);
+  // Saat listesi gerçek saate bağlı: her dakika tazelenir, geçen dilimler düşer.
+  const [nowMin, setNowMin] = useState(() => istanbulMinutes());
+  useEffect(() => {
+    const t = setInterval(() => setNowMin(istanbulMinutes()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const { openNow, slots: timeSlots } = useMemo(() => scheduleFor(hoursRange, nowMin), [hoursRange, nowMin]);
+  // Seçili dilim geçtiyse "Şimdi"ye dön
+  useEffect(() => {
+    if (selectedSlot && !timeSlots.some((s) => s.start === selectedSlot.start)) setSelectedSlot(null);
+  }, [timeSlots, selectedSlot]);
 
   // Teslimat türü değişince o türe ait saat aralığı farklı olabileceğinden
   // seçili dilimi sıfırlıyoruz — "Şimdi"ye dönüyor.
@@ -579,12 +603,18 @@ export default function CartScreen() {
                 >
                   <Ionicons name="time-outline" size={13} color={theme.tint} />
                   <ThemedText style={[styles.timePillText, { color: theme.tint }]}>
-                    {selectedSlot ? `${selectedSlot.start}-${selectedSlot.end}` : 'Şimdi'}
+                    {selectedSlot ? `${selectedSlot.start}-${selectedSlot.end}` : openNow ? 'Şimdi' : 'Kapalı'}
                   </ThemedText>
                   <Ionicons name={scheduleOpen ? 'chevron-up' : 'chevron-down'} size={13} color={theme.tint} />
                 </Pressable>
               </View>
-              {scheduleOpen && (
+              {!openNow && (
+                <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>
+                  {deliveryType === 'eve_servis' ? 'Eve Servis' : 'Gel-Al'} şu an kapalı · sipariş saatleri {hoursRange}
+                </ThemedText>
+              )}
+              {/* Sunucu sipariş anında açık olmayı şart koşuyor: kapalıyken liste yok */}
+              {scheduleOpen && openNow && (
                 <View style={styles.chipsWrap}>
                   {[null, ...timeSlots].map((s) => {
                     const active = s ? selectedSlot?.start === s.start : !selectedSlot;
