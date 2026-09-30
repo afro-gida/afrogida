@@ -14,6 +14,7 @@ import { formatMoney } from '@/lib/format';
 import { formatQty, formatUnit } from '@/lib/units';
 import { Spacing, withAlpha } from '@/constants/theme';
 import type { Order, OrderStatus } from '@/lib/types';
+import { isNoneLabel } from '@/components/product-options-modal';
 
 // Sipariş bitmediyse ekran açıkken durumu bu aralıkla yeniler.
 const POLL_MS = 20_000;
@@ -352,9 +353,10 @@ function Summary({ order, cardBg }: { order: Order; cardBg: string }) {
           </View>
           <View style={styles.flex}>
             <ThemedText style={styles.itemName} numberOfLines={2}>{it.name}</ThemedText>
-            {!!it.selected_options?.length && (
+            {/* "İstemiyorum" (seçim yapılmadı) gösterilmez */}
+            {!!it.selected_options?.some((o) => !isNoneLabel(o.label)) && (
               <ThemedText themeColor="textSecondary" style={styles.itemOpts} numberOfLines={2}>
-                {it.selected_options.map((o) => `${o.title}: ${o.label}`).join(' · ')}
+                {it.selected_options.filter((o) => !isNoneLabel(o.label)).map((o) => `${o.title}: ${o.label}`).join(' · ')}
               </ThemedText>
             )}
           </View>

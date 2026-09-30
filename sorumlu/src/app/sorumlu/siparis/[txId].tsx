@@ -14,6 +14,7 @@ import { formatMoney as money } from '@/lib/format';
 import { Spacing } from '@/constants/theme';
 import type { ThemeColor } from '@/constants/theme';
 import type { SorumluOrder } from '../siparisler';
+import { isNoneChoice } from '@/lib/option-presets';
 
 interface Courier {
   user_id: string;
@@ -179,7 +180,7 @@ export default function SorumluSiparisDetay() {
   function shareSupplierList(supplier: string, items: SorumluOrder['items']) {
     if (!order) return;
     const lines = items.map((it) => {
-      const opts = (it.selected_options ?? []).map((o) => `${o.title}: ${o.label}`).join(', ');
+      const opts = (it.selected_options ?? []).filter((o) => !isNoneChoice(o.label)).map((o) => `${o.title}: ${o.label}`).join(', ');
       return `• ${it.qty} ${it.unit} ${it.name}${opts ? ` (${opts})` : ''}`;
     });
     const text = `Afro Gıda · Sipariş #${order.tx_id.slice(-6).toUpperCase()}\n${supplier} listesi\n\n${lines.join('\n')}`;
@@ -451,7 +452,7 @@ export default function SorumluSiparisDetay() {
                       )}
                       <View style={{ flex: 1 }}>
                         <ThemedText type="small">{item.qty} {item.unit} · {item.name}</ThemedText>
-                        {item.selected_options.map((o, i) => (
+                        {item.selected_options.filter((o) => !isNoneChoice(o.label)).map((o, i) => (
                           <ThemedText key={i} type="small" themeColor="tint">{o.title}: {o.label}</ThemedText>
                         ))}
                         {!!item.note && <ThemedText type="small" themeColor="textSecondary">Not: {item.note}</ThemedText>}

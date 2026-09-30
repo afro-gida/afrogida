@@ -6,7 +6,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { CheckboxRow } from '@/components/checkbox-row';
-import { ProductOptionsModal } from '@/components/product-options-modal';
+import { isNoneLabel, ProductOptionsModal } from '@/components/product-options-modal';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/auth-context';
@@ -848,6 +848,7 @@ function CartLineRow({
   const showImage = line.product.image_url && !imageFailed;
   const editable = !!line.product.customization_options?.length;
   const campaign = lineCampaignDiscount(line);
+  const chosen = (line.selectedOptions ?? []).filter((o) => !isNoneLabel(o.label)).map((o) => o.label);
 
   return (
     <View style={[styles.lineRow, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: withAlpha(theme.text, 0.18) }]}>
@@ -860,10 +861,11 @@ function CartLineRow({
       </View>
       <Pressable style={styles.lineInfo} disabled={!editable} onPress={onEdit}>
         <ThemedText style={styles.lineName} numberOfLines={2}>{line.product.name}</ThemedText>
-        {!!line.selectedOptions?.length && (
+        {/* "İstemiyorum" (seçim yapılmadı) listelenmez; sadece gerçek seçimler */}
+        {(chosen.length > 0 || editable) && (
           <ThemedText style={[styles.lineOpts, { color: theme.tint }]} numberOfLines={1}>
-            {line.selectedOptions.map((o) => o.label).join(', ')}
-            {editable ? '  ·  Düzenle' : ''}
+            {chosen.length ? chosen.join(', ') : 'Seçenek seç'}
+            {editable && chosen.length ? '  ·  Düzenle' : ''}
           </ThemedText>
         )}
         <ThemedText themeColor="textSecondary" style={styles.lineUnit}>

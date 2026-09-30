@@ -20,3 +20,9 @@ export function presetFor(title: string) {
   const t = norm(title);
   return t ? OPTION_PRESETS.find((p) => norm(p.title) === t) : undefined;
 }
+
+/** "Seçim yapılmadı" seçeneği mi? (İstemiyorum / eski yazım Seçmiyorum) —
+ *  sipariş ve sepet listelerinde gösterilmez. */
+export function isNoneChoice(label: string | null | undefined) {
+  return ['istemiyorum', 'seçmiyorum'].includes((label ?? '').trim().toLocaleLowerCase('tr-TR'));
+}

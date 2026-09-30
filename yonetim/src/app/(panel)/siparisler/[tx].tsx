@@ -6,6 +6,7 @@ import { Badge, Button, ErrorBox, Field, Loading, Notice, Page, Section, T, conf
 import { api, errMsg } from '@/lib/api';
 import { FINAL_STATUSES, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderTotal, statusTone, type Order, type OrderItem } from '@/lib/orders';
 import { useTheme } from '@/lib/theme';
+import { isNoneChoice } from '@/lib/option-presets';
 
 function itemQty(i: OrderItem) {
   return Number(i.qty ?? i.quantity ?? 0);
@@ -108,7 +109,7 @@ export default function OrderDetail() {
 
       <Section title={`Ürünler (${o.items?.length ?? 0})`}>
         {(o.items ?? []).map((i, idx) => {
-          const opts = (i.selected_options ?? []).map((s) => `${s.title}: ${s.label}`).join(', ');
+          const opts = (i.selected_options ?? []).filter((s) => !isNoneChoice(s.label)).map((s) => `${s.title}: ${s.label}`).join(', ');
           return (
             <View key={idx} style={[styles.item, { borderBottomColor: t.border }]}>
               <View style={{ flex: 1 }}>
