@@ -13,6 +13,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: '/pazarlar', label: 'Pazarlar', icon: 'storefront-outline' },
   { href: '/urunler', label: 'Ürünler', icon: 'nutrition-outline' },  { href: '/personel', label: 'Personel', icon: 'people-circle-outline' },
   { href: '/uyeler', label: 'Üyeler', icon: 'people-outline' },
+  { href: '/kuponlar', label: 'Kuponlar', icon: 'pricetags-outline' },
   { href: '/destek', label: 'Destek', icon: 'help-buoy-outline' },
 ];
 

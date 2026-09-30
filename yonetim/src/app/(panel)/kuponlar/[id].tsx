@@ -1,0 +1,251 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import {
+  Badge, Button, Chips, DateField, ErrorBox, Field, ListRow, Loading, Notice, NumField, Page, Section, T, Toggle,
+  confirmAsync, dateTime, trDate,
+} from '@/components/ui';
+import { api, errMsg } from '@/lib/api';
+import { couponDiscountText, type Coupon, type CouponDetail } from '@/lib/types';
+
+type Kind = 'amount' | 'percent';
+type Member = { user_id: string; name?: string; phone?: string };
+
+const EMPTY: Omit<Coupon, 'id'> = {
+  code: '', title: '', discount_percent: 10, discount_amount: null, min_amount: 0, active: true, valid_until: null,
+};
+
+/** Okunması kolay rastgele kod (0/O, 1/I karışmasın). */
+function randomCode() {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return 'AFRO' + Array.from({ length: 5 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
+}
+
+/**
+ * Kupon düzenle + ver. Kullanım hakkı ve son kullanma tarihi kupon VERİLİRKEN
+ * kişi başına belirlenir; kupondaki tarih ise herkes için üst sınırdır.
+ */
+export default function CouponEdit() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const isNew = id === 'yeni';
+  const router = useRouter();
+  const [c, setC] = useState<Omit<Coupon, 'id'> | null>(isNew ? { ...EMPTY, code: randomCode() } : null);
+  const [kind, setKind] = useState<Kind>('amount');
+  const [detail, setDetail] = useState<CouponDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  // Kişiye ver
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Member[]>([]);
+  const [member, setMember] = useState<Member | null>(null);
+  const [oneLimit, setOneLimit] = useState(1);
+  const [oneUntil, setOneUntil] = useState<string | null>(null);
+  // Herkese ver
+  const [allLimit, setAllLimit] = useState(1);
+  const [allUntil, setAllUntil] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (isNew) return;
+    setError(null);
+    try {
+      const d = await api.get<CouponDetail>(`/admin/coupons/${id}/details`);
+      setDetail(d);
+      setC(d.coupon);
+      setKind(d.coupon.discount_amount ? 'amount' : 'percent');
+    } catch (e) {
+      setError(errMsg(e));
+    }
+  }, [id, isNew]);
+  useEffect(() => { load(); }, [load]);
+
+  // Üye arama (yazmayı bırakınca)
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return setResults([]);
+    const t = setTimeout(() => {
+      api.get<Member[]>(`/admin/members?search=${encodeURIComponent(q)}`).then((r) => setResults(r.slice(0, 8))).catch(() => setResults([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  if (!c) return <Page title="Kupon">{error ? <ErrorBox text={error} /> : <Loading />}</Page>;
+  const set = <K extends keyof Coupon>(k: K, v: Coupon[K]) => { setDone(null); setC((x) => (x ? { ...x, [k]: v } : x)); };
+
+  async function run(key: string, fn: () => Promise<string | void>) {
+    setBusy(key);
+    setError(null);
+    setDone(null);
+    try {
+      const msg = await fn();
+      if (msg) setDone(msg);
+    } catch (e) {
+      setError(errMsg(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const save = () => run('save', async () => {
+    if (!c) return;
+    const body = {
+      ...c,
+      code: c.code.trim(),
+      title: c.title.trim(),
+      discount_amount: kind === 'amount' ? Number(c.discount_amount || 0) : null,
+      discount_percent: kind === 'percent' ? Math.round(Number(c.discount_percent || 0)) : 0,
+    };
+    for (const k of ['assignments', 'assigned_user_ids', 'created_at', 'used', 'used_at', 'auto_issued', 'per_user_limit']) delete (body as any)[k];
+    if (isNew) {
+      const created = await api.post<Coupon>('/admin/coupons', body);
+      router.replace(`/kuponlar/${created.id}`);
+      return;
+    }
+    await api.put(`/admin/coupons/${id}`, body);
+    await load();
+    return 'Kupon kaydedildi.';
+  });
+
+  const remove = async () => {
+    if (!(await confirmAsync(`"${c.code}" kuponu silinsin mi? Verilen herkesten de kalkar.`))) return;
+    run('del', async () => {
+      await api.del(`/admin/coupons/${id}`);
+      router.navigate('/kuponlar');
+    });
+  };
+
+  const giveOne = () => run('one', async () => {
+    if (!member) throw new Error('Önce üye seç');
+    const r = await api.post<{ message: string }>('/admin/coupons/assign-member', {
+      coupon_id: id, user_id: member.user_id, limit: oneLimit, valid_until: oneUntil,
+    });
+    setMember(null);
+    setQuery('');
+    await load();
+    return r.message;
+  });
+
+  const giveAll = async () => {
+    if (!(await confirmAsync(`Kupon TÜM üyelere ${allLimit} kullanım hakkıyla verilsin mi?${allUntil ? ` Son gün: ${trDate(allUntil)}.` : ''}`))) return;
+    run('all', async () => {
+      const r = await api.post<{ message: string }>('/admin/coupons/assign-all', { coupon_id: id, limit: allLimit, valid_until: allUntil });
+      await load();
+      return r.message;
+    });
+  };
+
+  const takeBack = async (uid: string, name: string) => {
+    if (!(await confirmAsync(`${name} adlı üyeden kupon geri alınsın mı?`))) return;
+    run(`un-${uid}`, async () => {
+      await api.post('/admin/coupons/unassign-member', { coupon_id: id, user_id: uid });
+      await load();
+      return 'Kupon üyeden geri alındı.';
+    });
+  };
+
+  const takeBackAll = async () => {
+    if (!(await confirmAsync('Kupon verilen HERKESTEN geri alınsın mı?'))) return;
+    run('unall', async () => {
+      await api.post('/admin/coupons/unassign-all', { coupon_id: id });
+      await load();
+      return 'Kupon herkesten geri alındı.';
+    });
+  };
+
+  return (
+    <Page
+      title={isNew ? 'Yeni kupon' : c.code}
+      subtitle={isNew ? undefined : `${c.title} · ${couponDiscountText(c)}`}
+      right={<Button small kind="secondary" icon="arrow-back" label="Kuponlar" onPress={() => router.navigate('/kuponlar')} />}
+    >
+      <Section title="Kupon">
+        <View style={styles.pair}>
+          <Field style={styles.half} label="Kupon kodu" autoCapitalize="characters" value={c.code} onChangeText={(v) => set('code', v.toUpperCase().replace(/\s/g, ''))} />
+          <View style={styles.codeBtn}>
+            <Button small kind="secondary" icon="shuffle" label="Rastgele" onPress={() => set('code', randomCode())} />
+          </View>
+        </View>
+        <Field label="Başlık (müşteri görür)" value={c.title} onChangeText={(v) => set('title', v)} placeholder="Örn: Hoş geldin indirimi" />
+        <T size={12.5} bold>İndirim türü</T>
+        <Chips<Kind> options={[{ value: 'amount', label: 'Tutar (₺)' }, { value: 'percent', label: 'Yüzde (%)' }]} value={kind} onChange={(k) => { setDone(null); setKind(k); }} />
+        <View style={styles.pair}>
+          {kind === 'amount' ? (
+            <NumField style={styles.half} label="İndirim" suffix="₺" value={c.discount_amount ?? 0} onChange={(v) => set('discount_amount', v)} />
+          ) : (
+            <NumField style={styles.half} label="İndirim" suffix="%" value={c.discount_percent} onChange={(v) => set('discount_percent', Math.min(100, Math.round(v)))} />
+          )}
+          <NumField style={styles.half} label="En az sepet tutarı" suffix="₺" value={c.min_amount} onChange={(v) => set('min_amount', v)} hint="0 = sınır yok" />
+        </View>
+        <DateField label="Kuponun son günü (herkes için)" value={c.valid_until} onChange={(v) => set('valid_until', v)} />
+        <Toggle label="Aktif" hint="Kapatınca kimse kullanamaz (verilenler dahil)" value={c.active} onChange={(v) => set('active', v)} />
+        <View style={styles.actions}>
+          <Button label={isNew ? 'Kuponu oluştur' : 'Kaydet'} icon="save-outline" onPress={save} loading={busy === 'save'} />
+          {!isNew && <Button kind="danger" icon="trash-outline" label="Sil" onPress={remove} loading={busy === 'del'} />}
+        </View>
+      </Section>
+
+      {error && <ErrorBox text={error} />}
+      {done && <Notice text={done} />}
+
+      {!isNew && detail && (
+        <>
+          <Section title="Üyeye ver">
+            <Field label="Üye ara" value={query} onChangeText={(v) => { setQuery(v); setMember(null); }} placeholder="Ad, telefon ya da e-posta" />
+            {!member && results.map((m) => (
+              <ListRow key={m.user_id} title={m.name || 'İsimsiz'} subtitle={m.phone} onPress={() => { setMember(m); setResults([]); }} />
+            ))}
+            {member && (
+              <>
+                <Notice text={`Seçili üye: ${member.name || 'İsimsiz'}${member.phone ? ` (${member.phone})` : ''}`} />
+                <NumField label="Kullanım hakkı" value={oneLimit} onChange={(v) => setOneLimit(Math.max(1, Math.round(v)))} hint="Bu üye kuponu kaç kez kullanabilir" />
+                <DateField label="Bu üye için son gün" value={oneUntil} onChange={setOneUntil} />
+                <View style={styles.actions}>
+                  <Button icon="gift-outline" label="Üyeye ver" onPress={giveOne} loading={busy === 'one'} />
+                </View>
+              </>
+            )}
+          </Section>
+
+          <Section title="Tüm üyelere ver">
+            <T muted size={12.5}>Şu an kayıtlı bütün müşteri üyelere verilir. Daha önce verilenlerin kullanım sayısı korunur.</T>
+            <NumField label="Kişi başı kullanım hakkı" value={allLimit} onChange={(v) => setAllLimit(Math.max(1, Math.round(v)))} />
+            <DateField label="Son gün" value={allUntil} onChange={setAllUntil} />
+            <View style={styles.actions}>
+              <Button icon="people-outline" label="Tüm üyelere ver" onPress={giveAll} loading={busy === 'all'} />
+            </View>
+          </Section>
+
+          <Section
+            title={`Verilenler (${detail.assigned_count}) · ${detail.total_uses} kullanım`}
+            right={detail.assigned_count ? <Button small kind="ghost" label="Herkesten geri al" onPress={takeBackAll} loading={busy === 'unall'} /> : undefined}
+          >
+            {detail.assigned_users.length === 0 && <T muted>Henüz kimseye verilmedi.</T>}
+            {detail.assigned_users.map((u) => (
+              <View key={u.user_id} style={styles.userRow}>
+                <View style={{ flex: 1 }}>
+                  <T bold>{u.user_name}{u.phone ? ` · ${u.phone}` : ''}</T>
+                  <T muted size={12.5}>
+                    {u.used_count}/{u.limit} kullanıldı · son gün {trDate(u.valid_until)}
+                    {u.last_used_at ? ` · son kullanım ${dateTime(u.last_used_at)}` : ''}
+                  </T>
+                </View>
+                {u.expired ? <Badge label="Süresi doldu" tone="danger" /> : u.remaining > 0 ? <Badge label={`${u.remaining} hak`} tone="ok" /> : <Badge label="Bitti" />}
+                <Button small kind="ghost" label="Geri al" onPress={() => takeBack(u.user_id, u.user_name)} loading={busy === `un-${u.user_id}`} />
+              </View>
+            ))}
+          </Section>
+        </>
+      )}
+    </Page>
+  );
+}
+
+const styles = StyleSheet.create({
+  pair: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  half: { flex: 1, minWidth: 0 },
+  codeBtn: { paddingTop: 22 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+});

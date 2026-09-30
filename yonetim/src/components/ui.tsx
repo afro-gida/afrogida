@@ -126,6 +126,62 @@ export function NumField({ label, value, onChange, hint, suffix, style }: {
   );
 }
 
+/** Bugün (Türkiye) "YYYY-AA-GG". */
+export function todayIso(offsetDays = 0) {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+}
+
+/** "2026-10-31" -> "31.10.2026" (boşsa "Süresiz"). */
+export function trDate(s?: string | null) {
+  if (!s) return 'Süresiz';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
+}
+
+/** Son kullanma tarihi: web'de takvim; yanında 7/30/90 gün ve Süresiz kısayolu.
+ *  Değer "YYYY-AA-GG" ya da null (süresiz). O günün sonuna kadar geçerli. */
+export function DateField({ label, value, onChange, hint }: {
+  label: string; value: string | null | undefined; onChange: (v: string | null) => void; hint?: string;
+}) {
+  const t = useTheme();
+  const quick = [7, 30, 90];
+  const inputStyle = { backgroundColor: t.input, borderColor: t.border, color: t.text };
+  return (
+    <View style={styles.field}>
+      <T size={12.5} bold muted>{label}</T>
+      <View style={[styles.chips, { alignItems: 'center' }]}>
+        {Platform.OS === 'web' ? (
+          <input
+            type="date"
+            value={value ?? ''}
+            min={todayIso()}
+            onChange={(e: any) => onChange(e.target.value || null)}
+            style={{ ...inputStyle, borderWidth: 1, borderStyle: 'solid', borderRadius: 8, padding: '7px 10px', fontSize: 14, fontFamily: 'inherit' }}
+          />
+        ) : (
+          <TextInput
+            value={value ?? ''}
+            onChangeText={(s) => onChange(s.trim() || null)}
+            placeholder="YYYY-AA-GG"
+            placeholderTextColor={t.muted}
+            style={[styles.input, inputStyle, { minWidth: 130 }]}
+          />
+        )}
+        {quick.map((d) => (
+          <Pressable key={d} onPress={() => onChange(todayIso(d))} style={[styles.chip, { borderColor: t.border }]}>
+            <Text style={{ color: t.text, fontSize: 13, fontWeight: '600' }}>{d} gün</Text>
+          </Pressable>
+        ))}
+        <Pressable onPress={() => onChange(null)} style={[styles.chip, { borderColor: value ? t.border : t.tint, backgroundColor: value ? 'transparent' : t.tint }]}>
+          <Text style={{ color: value ? t.text : t.tintText, fontSize: 13, fontWeight: '600' }}>Süresiz</Text>
+        </Pressable>
+      </View>
+      <T size={12} muted>{value ? `${trDate(value)} günü sonuna kadar geçerli` : 'Süre sınırı yok'}{hint ? ` · ${hint}` : ''}</T>
+    </View>
+  );
+}
+
 export function Toggle({ label, value, onChange, hint }: { label: string; value: boolean; onChange: (v: boolean) => void; hint?: string }) {
   const t = useTheme();
   return (

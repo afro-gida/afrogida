@@ -115,3 +115,52 @@ export type CatalogConfig = {
 export function salePrice(p: Product) {
   return Number(p.price || p.sale_price || p.gel_al_price || 0);
 }
+
+/** Kupona tanımlı üye (kişiye özel kullanım hakkı + son kullanma). */
+export type CouponAssignment = {
+  user_id: string;
+  limit: number;
+  used_count?: number;
+  last_used_at?: string | null;
+  valid_until?: string | null;
+};
+
+export type Coupon = {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  discount_percent: number;
+  /** Doluysa sabit TL indirim (yüzdeden önceliklidir). */
+  discount_amount?: number | null;
+  min_amount: number;
+  members_only?: boolean;
+  per_user_limit?: number;
+  active: boolean;
+  /** "YYYY-AA-GG" — o günün sonuna kadar geçerli; boş = süresiz. */
+  valid_until?: string | null;
+  assigned_user_ids?: string[];
+  assignments?: CouponAssignment[];
+  created_at?: string;
+};
+
+export type CouponDetail = {
+  coupon: Coupon;
+  assigned_count: number;
+  total_uses: number;
+  assigned_users: {
+    user_id: string;
+    user_name: string;
+    phone?: string | null;
+    limit: number;
+    used_count: number;
+    remaining: number;
+    last_used_at?: string | null;
+    valid_until?: string | null;
+    expired?: boolean;
+  }[];
+  usage_logs: { user_id?: string; used_at?: string; discount_amount?: number | null }[];
+};
+
+export const couponDiscountText = (c: Pick<Coupon, 'discount_amount' | 'discount_percent'>) =>
+  c.discount_amount ? `${c.discount_amount.toLocaleString('tr-TR')} ₺ indirim` : `%${c.discount_percent} indirim`;
