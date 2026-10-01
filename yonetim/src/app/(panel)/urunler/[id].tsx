@@ -7,7 +7,7 @@ import { Button, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Sectio
 import { api, errMsg, uploadImage } from '@/lib/api';
 import { pickImage, shrinkImage } from '@/lib/image';
 import { salePrice, type CatalogConfig, type OptionGroup, type Product } from '@/lib/types';
-import { profitFor } from '@/lib/pricing';
+import { profitFor, useActiveTiers } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
 import { OPTION_PRESETS, presetFor } from '@/lib/option-presets';
 
@@ -55,6 +55,8 @@ export default function ProductEdit() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Aktif kâr profili (Yönetim > Kâr Profilleri) — satış fiyatı önizlemesi
+  const activeTiers = useActiveTiers();
 
   useEffect(() => {
     api.get<CatalogConfig>('/admin/catalog-config').then(setCfg).catch(() => {});
@@ -83,7 +85,7 @@ export default function ProductEdit() {
   const suppliers = cfg.suppliers?.length ? cfg.suppliers : [...new Set([p.supplier_group || ''].filter(Boolean))];
   const supp = Number(p.supplier_price || 0);
   // Kâr modeli otomatik: satış = alış + kademe kârı (asıl hesap sunucuda)
-  const autoProfit = profitFor(supp);
+  const autoProfit = profitFor(supp, activeTiers);
   const groups: OptionGroup[] = (p.customization_options as OptionGroup[]) ?? [];
   const setGroups = (g: OptionGroup[]) => set('customization_options', g);
 

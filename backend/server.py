@@ -60,6 +60,7 @@ from routers.admin_members import router as _admin_members_router
 from routers.admin_staff import router as _admin_staff_router
 from routers.uploads import router as _uploads_router
 from routers.pazar_sorumlusu import router as _pazar_sorumlusu_router
+from routers.pricing import router as _pricing_router
 app.include_router(api_router)
 app.include_router(_push_router)
 app.include_router(_auth_router)
@@ -80,6 +81,7 @@ app.include_router(_admin_members_router)
 app.include_router(_admin_staff_router)
 app.include_router(_uploads_router)
 app.include_router(_pazar_sorumlusu_router)
+app.include_router(_pricing_router)
 
 
 

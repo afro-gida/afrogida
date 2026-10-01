@@ -133,7 +133,8 @@ Sıra: önce müşteri tarafındaki eksikler tamamlanır, ardından afrogida.com
 | 250 – 349,99 TL | +150 TL |
 | 350 TL ve üstü | +200 TL |
 
-- **Üst sınır yok** (2026-10-01): 350 TL ve üstü her alış fiyatına +200 TL. Tablo şimdilik kodda; admin panelinden düzenleme sonraki adım.
+- **Üst sınır yok** (2026-10-01): 350 TL ve üstü her alış fiyatına +200 TL.
+- **Kâr profilleri** (2026-10-01): tablo artık Yönetim > Kâr Profilleri'nden düzenlenir. Düşük / Orta / Yüksek kazanç profilleri var, biri aktif. Yukarıdaki tablo "Orta" profilin başlangıç değeridir. "Uygula" profili aktif yapıp mevcut ürünleri yeniden fiyatlar (önce önizleme gösterilir).
 - Alış fiyatı olmayan eski ürünlerde satış fiyatı elle kalır (geçiş dönemi).
 
 ### IBAN değişikliği (Claude önerisi)

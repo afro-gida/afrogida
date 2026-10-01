@@ -19,7 +19,7 @@ from models import Product, ProductInput, Campaign, CampaignInput
 from services.catalog import _read_catalog_config
 from services.contracts import _afro_require_supplier_contract
 from services.push import send_push_to_all
-from core.pricing import auto_price_fields, validate_price_step
+from core.pricing import auto_price_fields, refresh_active_tiers, validate_price_step
 from core.text import tr_title_product
 
 logger = logging.getLogger("afro.routers.products")
@@ -301,6 +301,7 @@ DUAL_PRICE_FIELDS = ("supplier_price", "sale_price", "profit_margin_amount",
 
 @router.post("/admin/products", response_model=Product)
 async def create_product(payload: ProductInput, staff=Depends(get_current_staff), request: Request = None):
+    await refresh_active_tiers()  # aktif kâr profili (Yönetim > Kâr Profilleri)
     data = payload.dict()
     # Tedarikçi (esnaf/supplier) sadece kendi tedarikçisine ürün ekleyebilir
     if is_supplier_role(staff):
@@ -376,6 +377,7 @@ async def reset_product_campaigns(admin=Depends(get_current_admin), request: Req
 
 @router.put("/admin/products/{product_id}", response_model=Product)
 async def update_product(product_id: str, payload: ProductInput, staff=Depends(get_current_staff), request: Request = None):
+    await refresh_active_tiers()  # aktif kâr profili (Yönetim > Kâr Profilleri)
     existing = await db.products.find_one({"id": product_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
