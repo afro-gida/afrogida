@@ -91,7 +91,8 @@ export function addressFieldsFromGeocode(results: GeocodeResult[]): Partial<Addr
   // numarası yanlışlıkla forma dolmasın.
   const first = results[0]?.address_components ?? [];
   const street = tidy(first.find((x) => x.types.includes('route'))?.long_name ?? '');
-  const buildingNo = tidy(first.find((x) => x.types.includes('street_number'))?.long_name ?? '');
+  // Google bazen numarayı "No:277" diye verir -> başındaki "No:" atılır (yoksa "No:No:277" görünüyordu).
+  const buildingNo = tidy(first.find((x) => x.types.includes('street_number'))?.long_name ?? '').replace(/^no\s*[:.]?\s*/i, '');
 
   const out: Partial<AddressInput> = {};
   const neighborhood = stripNeighborhood(pick(['administrative_area_level_4', 'neighborhood', 'sublocality_level_1', 'sublocality']));
