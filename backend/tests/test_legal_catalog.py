@@ -2,7 +2,27 @@
 müşteriye açık belge listesi ve siparişte onaylanan sürümün kaydı."""
 import uuid
 
-PDF = lambda: f"/uploads/contract_{uuid.uuid4().hex}.pdf"  # noqa: E731
+import pytest
+
+from core.config import ROOT_DIR
+
+_made = []
+
+
+def PDF():  # noqa: N802
+    """Diskte gerçekten duran (yüklenmiş gibi) test PDF'i."""
+    name = f"contract_{uuid.uuid4().hex}.pdf"
+    (ROOT_DIR / "uploads").mkdir(exist_ok=True)
+    (ROOT_DIR / "uploads" / name).write_bytes(b"%PDF-1.4 test")
+    _made.append(name)
+    return f"/uploads/{name}"
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _cleanup_pdfs():
+    yield
+    for name in _made:
+        (ROOT_DIR / "uploads" / name).unlink(missing_ok=True)
 
 
 def _public(client):
@@ -40,6 +60,25 @@ def test_public_docs_default_then_published(client, make_user, db):
     assert _public(client)["membership"]["pdf_url"] == first
     assert client.post("/api/admin/legal-catalog/membership/use-default", headers=admin).status_code == 200
     assert _public(client)["membership"]["pdf_url"].startswith("/legal/")
+
+
+def test_missing_pdf_file_falls_back_to_default(client, make_user, db):
+    """Eski siteden kalan kayıt: yürürlükte ama dosyası diskte yok -> müşteriye
+    varsayılan PDF, yönetimde missing_file uyarısı."""
+    db.legal_documents.update_many({"document_code": "pickupTerms"}, {"$set": {"is_active": False}})
+    db.legal_documents.insert_one({"id": "doc_eski", "document_code": "pickupTerms", "version": "eski",
+                                   "pdf_url": "/uploads/yok-boyle-bir-dosya.pdf", "is_active": True,
+                                   "status": "published", "published_at": "2099-01-01"})
+    assert _public(client)["pickupTerms"]["pdf_url"] == "/legal/afrogida_03_gel_al_sozlesmesi.pdf"
+    _, admin = make_user(role="yonetici")
+    cat = {c["code"]: c for c in client.get("/api/admin/legal-catalog", headers=admin).json()}
+    assert cat["pickupTerms"]["missing_file"] is True
+    # diskte olmayan dosya yayınlanamaz; yeni yüklenen (diskte olan) kullanılır
+    bad = f"/uploads/contract_{uuid.uuid4().hex}.pdf"
+    assert client.post("/api/admin/legal-catalog/pickupTerms/publish", json={"pdf_url": bad, "version": "x"}, headers=admin).status_code == 400
+    good = PDF()
+    assert client.post("/api/admin/legal-catalog/pickupTerms/publish", json={"pdf_url": good, "version": "yeni"}, headers=admin).status_code == 200
+    assert _public(client)["pickupTerms"]["pdf_url"] == good
 
 
 def test_legal_catalog_admin_only(client, make_user):

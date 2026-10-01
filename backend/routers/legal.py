@@ -156,8 +156,19 @@ async def active_legal_doc(code: str) -> Optional[dict]:
     )
 
 
+def pdf_file_exists(url: Optional[str]) -> bool:
+    """/uploads/… PDF'i diskte var mı? Eski siteden kalan kayıtlar artık
+    olmayan dosyaları gösteriyordu (müşteri bağlantısı 404 açıyordu)."""
+    if not url:
+        return False
+    if url.startswith("/uploads/"):
+        name = url.rsplit("/", 1)[-1]
+        return "/" not in name and ".." not in name and (ROOT_DIR / "uploads" / name).is_file()
+    return True  # /legal/ varsayılanları nginx'ten, http(s) dış adresler olduğu gibi
+
+
 def _public_doc(entry: dict, doc: Optional[dict]) -> dict:
-    if doc and doc.get("pdf_url"):
+    if doc and doc.get("pdf_url") and pdf_file_exists(doc.get("pdf_url")):
         return {"document_code": entry["code"], "name": entry["name"], "version": doc.get("version"),
                 "pdf_url": doc.get("pdf_url"), "updated_at": doc.get("published_at") or doc.get("updated_at")}
     return {"document_code": entry["code"], "name": entry["name"], "version": None,
@@ -195,6 +206,8 @@ async def admin_legal_catalog(current_admin: dict = Depends(get_current_admin)):
             "login_gate": bool(gate),
             "current": _public_doc(e, current),
             "using_default": current is None,
+            # Yürürlükteki kaydın dosyası yoksa müşteriye varsayılan PDF gider; yenisi yüklenmeli
+            "missing_file": bool(current) and not pdf_file_exists((current or {}).get("pdf_url")),
             "history": history,
             "accepted_count": accepted,
             "member_count": member_count if gate else None,
@@ -221,6 +234,8 @@ async def admin_publish_legal_doc(code: str, data: dict, current_admin: dict = D
     reason = str((data or {}).get("change_reason") or "").strip()[:300]
     if not _PDF_URL_RE.match(pdf_url):
         raise HTTPException(status_code=400, detail="Önce PDF yükleyin")
+    if not pdf_file_exists(pdf_url):
+        raise HTTPException(status_code=400, detail="PDF dosyası bulunamadı, tekrar yükleyin")
     if not version:
         raise HTTPException(status_code=400, detail="Sürüm gerekli (ör: 2.0 ya da 2026-10)")
     if await db.legal_documents.find_one({"document_code": code, "version": version}, {"_id": 1}):
@@ -333,11 +348,14 @@ async def afro_contracts_pending(current_user: dict = Depends(get_current_user))
         accepted_ver = accepted_map.get(code)
 
         if accepted_ver != current_ver:
+            entry = _CATALOG_BY_CODE.get(code) or {}
+            url = doc.get("pdf_url")
             pending.append({
                 "document_code": code,
                 "name": doc.get("name"),
                 "version": current_ver,
-                "pdf_url": doc.get("pdf_url"),
+                # dosyası kayıpsa varsayılan PDF (okunabilsin)
+                "pdf_url": url if pdf_file_exists(url) else entry.get("default_pdf"),
             })
 
     return {"pending_contracts": pending}

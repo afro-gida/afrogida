@@ -11,7 +11,7 @@ type DocVersion = {
 type CatalogDoc = {
   code: string; name: string; where: string; default_pdf: string | null; login_gate: boolean;
   current: { version: string | null; pdf_url: string | null; updated_at?: string | null };
-  using_default: boolean; history: DocVersion[]; accepted_count: number | null; member_count: number | null;
+  using_default: boolean; missing_file?: boolean; history: DocVersion[]; accepted_count: number | null; member_count: number | null;
 };
 type SupplierStatus = {
   contract: { url?: string; version?: string; title?: string };
@@ -153,10 +153,18 @@ export default function Contracts() {
                 <T bold size={16}>{d.name}</T>
                 <T muted size={12.5}>{d.where}</T>
               </View>
-              {d.using_default
-                ? <Badge label={d.default_pdf ? 'Varsayılan PDF' : 'PDF yok'} tone={d.default_pdf ? 'muted' : 'danger'} />
-                : <Badge label={`Sürüm ${d.current.version}`} tone="ok" />}
+              {d.missing_file
+                ? <Badge label="PDF dosyası yok" tone="danger" />
+                : d.using_default
+                  ? <Badge label={d.default_pdf ? 'Varsayılan PDF' : 'PDF yok'} tone={d.default_pdf ? 'muted' : 'danger'} />
+                  : <Badge label={`Sürüm ${d.current.version}`} tone="ok" />}
             </View>
+            {d.missing_file && (
+              <T size={12.5} color="#dc2626">
+                Yürürlükteki kaydın ({active?.version ?? '-'}) PDF dosyası sunucuda yok (eski siteden kalma).
+                {d.current.pdf_url ? ' Müşteriye şimdilik varsayılan PDF gösteriliyor.' : ' Müşteri bu belgeyi açamıyor.'} Yeni sürüm yükle.
+              </T>
+            )}
             <T muted size={12.5}>
               {d.using_default ? 'Henüz yeni sürüm yüklenmedi.' : `Yayın: ${dateTime(active?.published_at)}${active?.change_reason ? ` · ${active.change_reason}` : ''}`}
               {gateText ? ` · ${gateText}` : ''}
