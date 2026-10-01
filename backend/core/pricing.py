@@ -1,13 +1,12 @@
 """Kademeli kâr tablosu: satış fiyatı = alış (tedarikçi) fiyatı + sabit kâr.
 
 Kullanıcı kararı (2026-09-29): kâr alış fiyatına göre OTOMATİK eklenir;
-satış fiyatı elle girilmez. Tabloda karşılığı olmayan fiyat (500 TL üstü)
-otomatik fiyatlanmaz — kayıt reddedilir, yönetici tabloya kademe ekler
-(bkz. docs/YENI-MIMARI-KARARLAR.md "Satış fiyatı hesaplama").
+satış fiyatı elle girilmez. 350 TL ve üstü her alış fiyatına +200 (üst sınır
+yok, 2026-10-01). Bkz. docs/YENI-MIMARI-KARARLAR.md "Satış fiyatı hesaplama".
 """
 from typing import Optional
 
-# (üst sınır — bu değerin ALTINDAKİ alış fiyatları, kâr TL). Son kademe 500,00 dahil.
+# (üst sınır — bu değerin ALTINDAKİ alış fiyatları, kâr TL). Son kademe 350 ve üstü.
 PROFIT_TIERS = [
     (20.0, 15.0),    #   0,00 –  19,99
     (40.0, 25.0),    #  20,00 –  39,99
@@ -18,7 +17,8 @@ PROFIT_TIERS = [
     (250.0, 110.0),  # 180,00 – 249,99
     (350.0, 150.0),  # 250,00 – 349,99
 ]
-LAST_TIER_MAX = 500.0     # 350,00 – 500,00
+# 350,00 ve üstü: +200 (2026-10-01: üst sınır kaldırıldı, eskiden 500 TL üstü reddediliyordu)
+LAST_TIER_MAX = float("inf")
 LAST_TIER_PROFIT = 200.0
 
 
@@ -58,13 +58,12 @@ def validate_price_step(supplier_price) -> None:
 
 
 def auto_price_fields(supplier_price) -> dict:
-    """Alış fiyatından tüm müşteri fiyatı alanlarını üretir. Kademe yoksa
-    NoProfitTier fırlatır (500 TL üstü)."""
+    """Alış fiyatından tüm müşteri fiyatı alanlarını üretir. Alış fiyatı
+    yoksa / 0 ise NoProfitTier fırlatır."""
     profit = profit_for(supplier_price)
     if profit is None:
         raise NoProfitTier(
-            f"{float(supplier_price or 0):.2f} TL alış fiyatı için kâr kademesi yok "
-            f"(tablo 0–{LAST_TIER_MAX:.0f} TL). Yönetici tabloya kademe eklemeli."
+            f"{float(supplier_price or 0):.2f} TL alış fiyatı için kâr hesaplanamadı. Alış fiyatını girin."
         )
     supp = round(float(supplier_price), 2)
     sale = round(supp + profit, 2)

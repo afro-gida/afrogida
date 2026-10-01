@@ -131,9 +131,9 @@ Sıra: önce müşteri tarafındaki eksikler tamamlanır, ardından afrogida.com
 | 130 – 179,99 TL | +90 TL |
 | 180 – 249,99 TL | +110 TL |
 | 250 – 349,99 TL | +150 TL |
-| 350 – 500,00 TL | +200 TL |
+| 350 TL ve üstü | +200 TL |
 
-- **Tabloda karşılığı olmayan fiyat** (500 TL üstü): kayıt reddedilir ("kademe yok"). Tablo şimdilik kodda; admin panelinden düzenleme sonraki adım.
+- **Üst sınır yok** (2026-10-01): 350 TL ve üstü her alış fiyatına +200 TL. Tablo şimdilik kodda; admin panelinden düzenleme sonraki adım.
 - Alış fiyatı olmayan eski ürünlerde satış fiyatı elle kalır (geçiş dönemi).
 
 ### IBAN değişikliği (Claude önerisi)

@@ -19,7 +19,7 @@ mongosh --quiet test_database --eval '
 const APPLY = '"$APPLY"';
 // backend/core/pricing.py PROFIT_TIERS ile AYNI: [ust sinir (haric), kar]
 const TIERS = [[20,15],[40,25],[60,35],[90,50],[130,70],[180,90],[250,110],[350,150]];
-const LAST_MAX = 500, LAST_PROFIT = 200;
+const LAST_MAX = Infinity, LAST_PROFIT = 200;  // 350 ve ustu +200 (ust sinir yok)
 function profitFor(p) {
   p = Math.round(Number(p || 0) * 100) / 100;
   if (p <= 0) return null;
@@ -34,7 +34,7 @@ function fields(p) {
 let changed = 0, same = 0, skipped = 0;
 db.products.find({ supplier_price: { $gt: 0 } }).forEach(pr => {
   const f = fields(pr.supplier_price);
-  if (!f) { skipped++; print("ATLANDI (500 TL ustu): " + pr.name + " alis " + pr.supplier_price); return; }
+  if (!f) { skipped++; print("ATLANDI (alis fiyati yok): " + pr.name + " alis " + pr.supplier_price); return; }
   const set = {};
   if (pr.profit_margin_amount !== f.profit_margin_amount || pr.price !== f.price || pr.sale_price !== f.sale_price) Object.assign(set, f);
   // Onay bekleyen fiyat degisikligi de yeni tabloyla

@@ -149,7 +149,7 @@ from core.pricing import profit_for  # noqa: E402
 @pytest.mark.parametrize("supp,profit", [
     (0.01, 15), (19.99, 15), (20, 25), (39.99, 25), (40, 35), (59.99, 35), (60, 50), (89.99, 50),
     (90, 70), (129.99, 70), (130, 90), (179.99, 90), (180, 110), (249.99, 110), (250, 150),
-    (349.99, 150), (350, 200), (500, 200), (500.01, None), (0, None),
+    (349.99, 150), (350, 200), (500, 200), (500.01, 200), (2500, 200), (0, None),
 ])
 def test_profit_tiers(supp, profit):
     assert profit_for(supp) == profit
@@ -173,7 +173,7 @@ def test_supplier_price_must_be_multiple_of_5(client, make_user, db):
     assert r.status_code == 400
 
 
-def test_admin_price_is_automatic_and_out_of_table_rejected(client, make_user, db):
+def test_admin_price_is_automatic_no_upper_limit(client, make_user, db):
     sg = f"TestSup{uuid.uuid4().hex[:6]}"
     pid = _seed_product(db, sg)
     _, admin = make_user(role="yonetici")
@@ -184,7 +184,7 @@ def test_admin_price_is_automatic_and_out_of_table_rejected(client, make_user, d
     assert r.status_code == 200, r.text
     doc = db.products.find_one({"id": pid})
     assert (doc["sale_price"], doc["price"], doc["profit_margin_amount"]) == (225, 225, 90)
-    # tablo dışı (500 TL üstü) reddedilir, fiyat değişmez
+    # üst sınır yok: 350 ve üstü +200 (650 -> 850)
     r = client.put(f"/api/admin/products/{pid}", headers=admin, json={**base, "supplier_price": 650})
-    assert r.status_code == 400 and "kademesi yok" in r.json()["detail"]
-    assert db.products.find_one({"id": pid})["price"] == 225
+    assert r.status_code == 200, r.text
+    assert db.products.find_one({"id": pid})["price"] == 850

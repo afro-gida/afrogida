@@ -7,7 +7,7 @@ import { Button, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Sectio
 import { api, errMsg, uploadImage } from '@/lib/api';
 import { pickImage, shrinkImage } from '@/lib/image';
 import { salePrice, type CatalogConfig, type OptionGroup, type Product } from '@/lib/types';
-import { LAST_TIER_MAX, profitFor } from '@/lib/pricing';
+import { profitFor } from '@/lib/pricing';
 import { useTheme } from '@/lib/theme';
 import { OPTION_PRESETS, presetFor } from '@/lib/option-presets';
 
@@ -97,7 +97,7 @@ export default function ProductEdit() {
       return setError('Alış fiyatı 5 TL\'nin katı olmalı (5, 10, 15, 20 …).');
     }
     if (autoProfit == null) {
-      return setError(supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış fiyatı için kâr kademesi yok.` : 'Alış fiyatını girin.');
+      return setError('Alış fiyatını girin.');
     }
     for (const g of groups) {
       if (!g.title.trim() || g.choices.length === 0 || g.choices.some((c) => !c.label.trim() || isNone(c.label))) {
@@ -211,7 +211,7 @@ export default function ProductEdit() {
               <T bold size={20} color={t.tint}>{money(supp + autoProfit)}</T>
             ) : (
               <T size={12.5} color={t.danger}>
-                {supp > LAST_TIER_MAX ? `${LAST_TIER_MAX} ₺ üstü alış için kâr kademesi yok` : 'Alış fiyatını girin'}
+                {'Alış fiyatını girin'}
               </T>
             )}
           </View>

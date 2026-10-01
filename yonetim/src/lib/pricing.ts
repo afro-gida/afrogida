@@ -12,7 +12,7 @@ const TIERS: [number, number][] = [
   [250, 110], // 180,00 – 249,99
   [350, 150], // 250,00 – 349,99
 ];
-export const LAST_TIER_MAX = 500; // 350,00 – 500,00
+export const LAST_TIER_MAX = Infinity; // 350,00 ve üstü (üst sınır yok)
 const LAST_TIER_PROFIT = 200;
 
 export function profitFor(supplierPrice: number): number | null {
@@ -23,6 +23,6 @@ export function profitFor(supplierPrice: number): number | null {
 }
 
 export const PROFIT_TABLE_TEXT = [
-  '0–19,99 → +15', '20–39,99 → +25', '40–59,99 → +30', '60–89,99 → +40', '90–129,99 → +60',
-  '130–179,99 → +80', '180–249,99 → +110', '250–349,99 → +150', '350–500 → +200',
+  '0–19,99 → +15', '20–39,99 → +25', '40–59,99 → +35', '60–89,99 → +50', '90–129,99 → +70',
+  '130–179,99 → +90', '180–249,99 → +110', '250–349,99 → +150', '350 ve üstü → +200',
 ];
