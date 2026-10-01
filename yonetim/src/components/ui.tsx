@@ -139,45 +139,72 @@ export function trDate(s?: string | null) {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
 }
 
-/** Son kullanma tarihi: web'de takvim; yanında 7/30/90 gün ve Süresiz kısayolu.
- *  Değer "YYYY-AA-GG" ya da null (süresiz). O günün sonuna kadar geçerli. */
-export function DateField({ label, value, onChange, hint }: {
+/** Bugünden "YYYY-AA-GG"ye kaç gün kaldı (bugün = 0; geçmiş negatif). */
+export function daysLeft(s?: string | null) {
+  if (!s) return null;
+  const a = Date.parse(`${todayIso()}T00:00:00Z`);
+  const b = Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(b) ? null : Math.round((b - a) / 86400000);
+}
+
+/** SKT gösterimi: "31.10.2026 (30 gün)" · "(bugün son gün)" · "(süresi doldu)" · "Süresiz". */
+export function sktText(s?: string | null) {
+  if (!s) return 'Süresiz';
+  const n = daysLeft(s);
+  const extra = n == null ? '' : n < 0 ? ' (süresi doldu)' : n === 0 ? ' (bugün son gün)' : ` (${n} gün)`;
+  return `${trDate(s)}${extra}`;
+}
+
+/** Kaç gün geçerli? — gün yazılır, SKT kendiliğinden hesaplanır ve yanında
+ *  gösterilir. 0 / boş = süresiz. Değer dışarıya "YYYY-AA-GG" ya da null
+ *  olarak verilir (o günün sonuna kadar geçerli). */
+export function DaysField({ label, value, onChange, hint }: {
   label: string; value: string | null | undefined; onChange: (v: string | null) => void; hint?: string;
 }) {
   const t = useTheme();
-  const quick = [7, 30, 90];
-  const inputStyle = { backgroundColor: t.input, borderColor: t.border, color: t.text };
+  const fromValue = () => {
+    const n = daysLeft(value);
+    return n != null && n > 0 ? String(n) : '';
+  };
+  const [text, setText] = useState(fromValue);
+  // Dışarıdan değer değişirse (ör. kupon yüklendi) kutuyu güncelle
+  useEffect(() => {
+    const n = Number(text) || 0;
+    if ((n > 0 ? todayIso(n) : null) !== (value ?? null)) setText(fromValue());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  const set = (s: string) => {
+    const clean = s.replace(/[^\d]/g, '').slice(0, 4);
+    setText(clean);
+    const n = Number(clean) || 0;
+    onChange(n > 0 ? todayIso(n) : null);
+  };
   return (
     <View style={styles.field}>
       <T size={12.5} bold muted>{label}</T>
       <View style={[styles.chips, { alignItems: 'center' }]}>
-        {Platform.OS === 'web' ? (
-          <input
-            type="date"
-            value={value ?? ''}
-            min={todayIso()}
-            onChange={(e: any) => onChange(e.target.value || null)}
-            style={{ ...inputStyle, borderWidth: 1, borderStyle: 'solid', borderRadius: 8, padding: '7px 10px', fontSize: 14, fontFamily: 'inherit' }}
-          />
-        ) : (
-          <TextInput
-            value={value ?? ''}
-            onChangeText={(s) => onChange(s.trim() || null)}
-            placeholder="YYYY-AA-GG"
-            placeholderTextColor={t.muted}
-            style={[styles.input, inputStyle, { minWidth: 130 }]}
-          />
-        )}
-        {quick.map((d) => (
-          <Pressable key={d} onPress={() => onChange(todayIso(d))} style={[styles.chip, { borderColor: t.border }]}>
-            <Text style={{ color: t.text, fontSize: 13, fontWeight: '600' }}>{d} gün</Text>
+        <TextInput
+          value={text}
+          onChangeText={set}
+          keyboardType="number-pad"
+          placeholder="Süresiz"
+          placeholderTextColor={t.muted}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.text, width: 90, textAlign: 'center' }]}
+        />
+        <T bold>gün</T>
+        {[7, 30, 90].map((d) => (
+          <Pressable key={d} onPress={() => set(String(d))} style={[styles.chip, { borderColor: text === String(d) ? t.tint : t.border }]}>
+            <Text style={{ color: t.text, fontSize: 13, fontWeight: '600' }}>{d}</Text>
           </Pressable>
         ))}
-        <Pressable onPress={() => onChange(null)} style={[styles.chip, { borderColor: value ? t.border : t.tint, backgroundColor: value ? 'transparent' : t.tint }]}>
+        <Pressable onPress={() => set('')} style={[styles.chip, { borderColor: value ? t.border : t.tint, backgroundColor: value ? 'transparent' : t.tint }]}>
           <Text style={{ color: value ? t.text : t.tintText, fontSize: 13, fontWeight: '600' }}>Süresiz</Text>
         </Pressable>
       </View>
-      <T size={12} muted>{value ? `${trDate(value)} günü sonuna kadar geçerli` : 'Süre sınırı yok'}{hint ? ` · ${hint}` : ''}</T>
+      <T size={12.5} color={value ? t.tint : t.muted} bold={!!value}>
+        {value ? `SKT: ${sktText(value)}` : 'Süre sınırı yok'}
+      </T>
+      {!!hint && <T size={12} muted>{hint}</T>}
     </View>
   );
 }

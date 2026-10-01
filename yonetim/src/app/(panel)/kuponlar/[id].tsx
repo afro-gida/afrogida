@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import {
-  Badge, Button, Chips, DateField, ErrorBox, Field, ListRow, Loading, Notice, NumField, Page, Section, T, Toggle,
-  confirmAsync, dateTime, todayIso, trDate,
+  Badge, Button, Chips, DaysField, ErrorBox, Field, ListRow, Loading, Notice, NumField, Page, Section, T, Toggle,
+  confirmAsync, dateTime, sktText, todayIso,
 } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon, type CouponDetail } from '@/lib/types';
@@ -135,7 +135,7 @@ export default function CouponEdit() {
   });
 
   const giveAll = async () => {
-    if (!(await confirmAsync(`Kupon TÜM üyelere ${allLimit} kullanım hakkıyla verilsin mi?${allUntil ? ` Son gün: ${trDate(allUntil)}.` : ''}`))) return;
+    if (!(await confirmAsync(`Kupon TÜM üyelere ${allLimit} kullanım hakkıyla verilsin mi?${allUntil ? ` SKT: ${sktText(allUntil)}.` : ''}`))) return;
     run('all', async () => {
       const r = await api.post<{ message: string }>('/admin/coupons/assign-all', { coupon_id: id, limit: allLimit, valid_until: allUntil });
       await load();
@@ -185,7 +185,7 @@ export default function CouponEdit() {
           )}
           <NumField style={styles.half} label="En az sepet tutarı" suffix="₺" value={c.min_amount} onChange={(v) => set('min_amount', v)} hint="0 = sınır yok" />
         </View>
-        <DateField label="Kuponun son günü (herkes için)" value={c.valid_until} onChange={(v) => set('valid_until', v)} />
+        <DaysField label="Kupon kaç gün geçerli? (herkes için)" value={c.valid_until} onChange={(v) => set('valid_until', v)} />
         <Toggle label="Aktif" hint="Kapatınca kimse kullanamaz (verilenler dahil)" value={c.active} onChange={(v) => set('active', v)} />
         <View style={styles.actions}>
           <Button label={isNew ? 'Kuponu oluştur' : 'Kaydet'} icon="save-outline" onPress={save} loading={busy === 'save'} />
@@ -207,7 +207,7 @@ export default function CouponEdit() {
               <>
                 <Notice text={`Seçili üye: ${member.name || 'İsimsiz'}${member.phone ? ` (${member.phone})` : ''}`} />
                 <NumField label="Kullanım hakkı" value={oneLimit} onChange={(v) => setOneLimit(Math.max(1, Math.round(v)))} hint="Bu üye kuponu kaç kez kullanabilir" />
-                <DateField label="Bu üye için son gün" value={oneUntil} onChange={setOneUntil} />
+                <DaysField label="Bu üye için kaç gün geçerli?" value={oneUntil} onChange={setOneUntil} />
                 <View style={styles.actions}>
                   <Button icon="gift-outline" label="Üyeye ver" onPress={giveOne} loading={busy === 'one'} />
                 </View>
@@ -218,7 +218,7 @@ export default function CouponEdit() {
           <Section title="Tüm üyelere ver">
             <T muted size={12.5}>Şu an kayıtlı bütün müşteri üyelere verilir. Daha önce verilenlerin kullanım sayısı korunur.</T>
             <NumField label="Kişi başı kullanım hakkı" value={allLimit} onChange={(v) => setAllLimit(Math.max(1, Math.round(v)))} />
-            <DateField label="Son gün" value={allUntil} onChange={setAllUntil} />
+            <DaysField label="Kaç gün geçerli?" value={allUntil} onChange={setAllUntil} />
             <View style={styles.actions}>
               <Button icon="people-outline" label="Tüm üyelere ver" onPress={giveAll} loading={busy === 'all'} />
             </View>
@@ -239,7 +239,7 @@ export default function CouponEdit() {
                 <View style={{ flex: 1 }}>
                   <T bold>{u.user_name}{u.phone ? ` · ${u.phone}` : ''}</T>
                   <T muted size={12.5}>
-                    {u.used_count}/{u.limit} kullanıldı · son gün {trDate(until)}
+                    {u.used_count}/{u.limit} kullanıldı · SKT {sktText(until)}
                     {u.last_used_at ? ` · son kullanım ${dateTime(u.last_used_at)}` : ''}
                   </T>
                 </View>

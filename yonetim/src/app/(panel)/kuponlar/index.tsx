@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, Chips, ErrorBox, Loading, Notice, NumField, Page, Section, Select, T, trDate } from '@/components/ui';
+import { Badge, Button, Card, Chips, ErrorBox, Loading, Notice, NumField, Page, Section, Select, T, sktText } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon } from '@/lib/types';
 
@@ -122,7 +122,7 @@ export default function Coupons() {
                   </View>
                   <T>{c.title}</T>
                   <T bold>{couponDiscountText(c)}{c.min_amount ? ` · en az ${c.min_amount.toLocaleString('tr-TR')} ₺` : ''}</T>
-                  <T muted size={12.5}>Son gün: {trDate(c.valid_until)}</T>
+                  <T muted size={12.5}>SKT: {sktText(c.valid_until)}</T>
                   <T muted size={12.5}>{given ? `${given} kişiye verildi · ${uses} kullanım` : 'Henüz kimseye verilmedi'}</T>
                   <Button small kind="ghost" label="Aç" onPress={() => router.navigate(`/kuponlar/${c.id}`)} />
                 </Card>

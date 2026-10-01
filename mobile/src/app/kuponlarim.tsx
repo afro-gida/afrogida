@@ -16,10 +16,15 @@ import { formatMoney } from '@/lib/format';
 import { CARD_BG, SCRIM, surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
 
+/** "2026-10-31" -> "31 Ekim 2026 (30 gün)" — kupon o günün sonuna kadar geçerli. */
 function formatValidUntil(iso: string) {
-  const d = new Date(iso);
+  const day = iso.slice(0, 10);
+  const d = new Date(`${day}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const label = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+  const left = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
+  return `${label} (${left <= 0 ? 'bugün son gün' : `${left} gün`})`;
 }
 
 export default function MyCouponsScreen() {
@@ -132,7 +137,7 @@ function CouponTicket({
         {!!coupon.valid_until && (
           <View style={styles.metaRow}>
             <MaterialCommunityIcons name="clock-outline" size={14} color={theme.textSecondary} />
-            <ThemedText themeColor="textSecondary" style={styles.meta}>Son gün: {formatValidUntil(coupon.valid_until)}</ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.meta}>Son kullanma: {formatValidUntil(coupon.valid_until)}</ThemedText>
           </View>
         )}
         <Pressable
