@@ -118,17 +118,17 @@ Sıra: önce müşteri tarafındaki eksikler tamamlanır, ardından afrogida.com
 
 ### Satış fiyatı hesaplama — kademeli kâr tablosu
 - Satış fiyatı = tedarikçi fiyatı + **fiyat aralığına göre sabit kâr tutarı**. Tedarikçi fiyatı onaylandığında satış fiyatı otomatik hesaplanır ve yürürlüğe girer.
-- **Güncel tablo (karar 2026-09-29, sistemde uygulandı — `backend/core/pricing.py`):**
+- **Güncel tablo (karar 2026-09-29, 4 kademe 2026-10-01'de güncellendi; sistemde uygulandı — `backend/core/pricing.py`):**
   satış fiyatı elle girilmez, alış fiyatı değişince (yönetici veya tedarikçi) otomatik hesaplanır.
 
 | Alış (tedarikçi) fiyatı | Platform kârı |
 |---|---|
 | 0 – 19,99 TL | +15 TL |
 | 20 – 39,99 TL | +25 TL |
-| 40 – 59,99 TL | +30 TL |
-| 60 – 89,99 TL | +40 TL |
-| 90 – 129,99 TL | +60 TL |
-| 130 – 179,99 TL | +80 TL |
+| 40 – 59,99 TL | +35 TL |
+| 60 – 89,99 TL | +50 TL |
+| 90 – 129,99 TL | +70 TL |
+| 130 – 179,99 TL | +90 TL |
 | 180 – 249,99 TL | +110 TL |
 | 250 – 349,99 TL | +150 TL |
 | 350 – 500,00 TL | +200 TL |
