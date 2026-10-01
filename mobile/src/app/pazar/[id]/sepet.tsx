@@ -17,6 +17,7 @@ import { createOrder, type PaymentMethod } from '@/lib/orders';
 import { savePendingPayment } from '@/lib/pending-payment';
 import { fetchSettings, withMarketSettings, type StoreSettings } from '@/lib/settings';
 import { fetchAddresses, addressServesMarket, type Address } from '@/lib/addresses';
+import { checkAtAddress } from '@/lib/location-check';
 import { fetchCoupons, validateCoupon, type Coupon, type CouponValidation } from '@/lib/coupons';
 import { qtyStep, formatQty, formatUnit } from '@/lib/units';
 import { formatMoney } from '@/lib/format';
@@ -118,6 +119,8 @@ export default function CartScreen() {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Konum kontrolü: müşteri adresin mahallesinde değilse açılan soru kutusu.
+  const [locationPrompt, setLocationPrompt] = useState<{ here: string } | null>(null);
 
   // Sözleşme onayı ve teslimat tercihleri, teslimat türü değişince sıfırlanır.
   useEffect(() => {
@@ -276,7 +279,7 @@ export default function CartScreen() {
       agreementAccepted &&
       (deliveryType !== 'eve_servis' || (!!selectedAddress && addressServesMarket(selectedAddress, market?.delivery_neighborhoods))));
 
-  async function handleCheckout() {
+  async function handleCheckout(addressConfirmed = false) {
     if (!user) {
       router.push('/giris');
       return;
@@ -301,6 +304,16 @@ export default function CartScreen() {
     }
     setError(null);
     setSubmitting(true);
+    // Eve Servis: müşteri şu an adresin mahallesinde değilse "farklı bir adrese
+    // mi sipariş veriyorsunuz?" diye sorulur (konum yoksa sorulmaz, engellemez).
+    if (deliveryType === 'eve_servis' && selectedAddress && !addressConfirmed && Platform.OS === 'web') {
+      const check = await checkAtAddress(selectedAddress);
+      if (check.result === 'different') {
+        setSubmitting(false);
+        setLocationPrompt({ here: check.here });
+        return;
+      }
+    }
     let address: string | undefined;
     if (deliveryType === 'eve_servis' && selectedAddress) {
       const prefLines = [
@@ -731,7 +744,7 @@ export default function CartScreen() {
                 canSubmit && styles.ctaShadow,
                 { backgroundColor: canSubmit ? theme.tint : withAlpha(theme.tint, 0.35), opacity: pressed ? 0.9 : 1 },
               ]}
-              onPress={handleCheckout}
+              onPress={() => handleCheckout()}
               disabled={!canSubmit}
             >
               {submitting ? (
@@ -760,6 +773,42 @@ export default function CartScreen() {
           </ScrollView>
         )}
       </View>
+
+      <Modal visible={!!locationPrompt} transparent animationType="fade" onRequestClose={() => setLocationPrompt(null)}>
+        <View style={styles.promptBackdrop}>
+          <View style={[styles.promptCard, styles.cardShadow, { backgroundColor: cardBg }]}>
+            <View style={[styles.promptIcon, { backgroundColor: withAlpha(theme.tint, 0.15) }]}>
+              <MaterialCommunityIcons name="map-marker-question-outline" size={30} color={theme.tint} />
+            </View>
+            <ThemedText style={styles.promptTitle}>Sipariş verdiğiniz adreste değilsiniz</ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.promptText}>
+              {locationPrompt?.here ? `Şu an ${locationPrompt.here} Mah. civarındasınız. ` : 'Konumunuz sipariş adresinden uzakta görünüyor. '}
+              Farklı bir adrese mi sipariş veriyorsunuz?
+            </ThemedText>
+            {selectedAddress && (
+              <View style={[styles.promptAddr, { backgroundColor: withAlpha(theme.tint, 0.1) }]}>
+                <Ionicons name="home-outline" size={16} color={theme.tint} />
+                <ThemedText style={styles.promptAddrText}>{formatAddressLine(selectedAddress)}</ThemedText>
+              </View>
+            )}
+            <Pressable
+              style={({ pressed }) => [styles.promptBtn, { backgroundColor: theme.tint, opacity: pressed ? 0.9 : 1 }]}
+              onPress={() => {
+                setLocationPrompt(null);
+                handleCheckout(true);
+              }}
+            >
+              <ThemedText style={styles.promptBtnText}>Evet, bu adrese gönder</ThemedText>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.promptBtn, styles.promptBtnOutline, { borderColor: theme.tint, opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => setLocationPrompt(null)}
+            >
+              <ThemedText style={[styles.promptBtnText, { color: theme.tint }]}>Hayır, adresi değiştireyim</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <CouponPickerModal
         visible={couponModalOpen}
@@ -1080,6 +1129,18 @@ const styles = StyleSheet.create({
     borderRadius: 999, height: 58, paddingLeft: Spacing.four, paddingRight: 8,
   },
   ctaShadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 6 },
+  // Konum soru kutusu
+  promptBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
+  promptCard: { width: '100%', maxWidth: 380, borderRadius: 26, padding: Spacing.four, alignItems: 'center', gap: Spacing.two },
+  cardShadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
+  promptIcon: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  promptTitle: { fontSize: 18, lineHeight: 23, fontWeight: '900', textAlign: 'center' },
+  promptText: { fontSize: 14, lineHeight: 19, textAlign: 'center' },
+  promptAddr: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, borderRadius: 14, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, alignSelf: 'stretch' },
+  promptAddrText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
+  promptBtn: { alignSelf: 'stretch', height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  promptBtnOutline: { borderWidth: 1.5, backgroundColor: 'transparent' },
+  promptBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
   ctaText: { color: '#fff', fontSize: 15.5, lineHeight: 19, fontWeight: '900' },
   ctaTotal: {
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.22)',
