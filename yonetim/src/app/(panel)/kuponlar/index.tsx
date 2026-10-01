@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Badge, Button, Card, Chips, ErrorBox, Loading, Notice, NumField, Page, Section, Select, T, sktText } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon } from '@/lib/types';
+import { CouponGive } from '@/components/coupon-give';
 
 type NewMember = { coupon_id: string | null; limit: number; days: number };
 type Filter = 'active' | 'passive' | 'all';
@@ -96,6 +97,9 @@ export default function Coupons() {
           </View>
         </Section>
       )}
+
+      {/* Kupon ver: yeni üye kuponunun altında (kupon seç -> üyeye / herkese) */}
+      {coupons && <CouponGive coupons={activeOptions} onGiven={load} />}
 
       {coupons && (
         <>
