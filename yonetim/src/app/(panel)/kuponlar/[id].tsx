@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import {
   Badge, Button, Chips, DateField, ErrorBox, Field, ListRow, Loading, Notice, NumField, Page, Section, T, Toggle,
-  confirmAsync, dateTime, trDate,
+  confirmAsync, dateTime, todayIso, trDate,
 } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon, type CouponDetail } from '@/lib/types';
@@ -15,6 +15,13 @@ type Member = { user_id: string; name?: string; phone?: string };
 const EMPTY: Omit<Coupon, 'id'> = {
   code: '', title: '', discount_percent: 10, discount_amount: null, min_amount: 0, active: true, valid_until: null,
 };
+
+/** İki "YYYY-AA-GG" tarihinden erken olanı (boş = sınırsız). */
+function earliest(a?: string | null, b?: string | null) {
+  if (!a) return b ?? null;
+  if (!b) return a;
+  return a.slice(0, 10) <= b.slice(0, 10) ? a : b;
+}
 
 /** Okunması kolay rastgele kod (0/O, 1/I karışmasın). */
 function randomCode() {
@@ -222,19 +229,25 @@ export default function CouponEdit() {
             right={detail.assigned_count ? <Button small kind="ghost" label="Herkesten geri al" onPress={takeBackAll} loading={busy === 'unall'} /> : undefined}
           >
             {detail.assigned_users.length === 0 && <T muted>Henüz kimseye verilmedi.</T>}
-            {detail.assigned_users.map((u) => (
+            {detail.assigned_users.map((u) => {
+              // Geçerli son gün: kişiye özel tarih ile kuponun tarihinden ERKEN olanı
+              // (kişiye tarih verilmemişse kuponun tarihi geçerli — "Süresiz" değil)
+              const until = earliest(u.valid_until, detail.coupon.valid_until);
+              const isExpired = !!until && until.slice(0, 10) < todayIso();
+              return (
               <View key={u.user_id} style={styles.userRow}>
                 <View style={{ flex: 1 }}>
                   <T bold>{u.user_name}{u.phone ? ` · ${u.phone}` : ''}</T>
                   <T muted size={12.5}>
-                    {u.used_count}/{u.limit} kullanıldı · son gün {trDate(u.valid_until)}
+                    {u.used_count}/{u.limit} kullanıldı · son gün {trDate(until)}
                     {u.last_used_at ? ` · son kullanım ${dateTime(u.last_used_at)}` : ''}
                   </T>
                 </View>
-                {u.expired ? <Badge label="Süresi doldu" tone="danger" /> : u.remaining > 0 ? <Badge label={`${u.remaining} hak`} tone="ok" /> : <Badge label="Bitti" />}
+                {isExpired ? <Badge label="Süresi doldu" tone="danger" /> : u.remaining > 0 ? <Badge label={`${u.remaining} hak`} tone="ok" /> : <Badge label="Bitti" />}
                 <Button small kind="ghost" label="Geri al" onPress={() => takeBack(u.user_id, u.user_name)} loading={busy === `un-${u.user_id}`} />
               </View>
-            ))}
+              );
+            })}
           </Section>
         </>
       )}
