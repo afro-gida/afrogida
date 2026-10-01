@@ -90,6 +90,28 @@ def test_assign_all_only_customers(client, make_user, db):
     assert a["limit"] == 3 and a["valid_until"] == _day(10)
 
 
+def test_regive_adds_fresh_rights(client, make_user, db):
+    """Kuponu zaten kullanmış üyeye tekrar verince YENİ hak eklenir (eskiden 1/1
+    kalıyordu, "2 üyeye verildi" deyip biri kullanamıyordu)."""
+    used_uid, used_h = make_user()
+    fresh_uid, _ = make_user()
+    _, admin = make_user(role="yonetici")
+    c = _mk_coupon(db, assignments=[{"user_id": used_uid, "limit": 1, "used_count": 1}], assigned_user_ids=[used_uid])
+    assert _validate(client, used_h, c["code"], 100).status_code == 400  # hakkı bitmiş
+    r = client.post("/api/admin/coupons/assign-all", json={"coupon_id": c["id"], "limit": 1}, headers=admin)
+    assert r.status_code == 200 and r.json()["renewed_count"] == 1 and "yenilendi" in r.json()["message"]
+    doc = db.coupons.find_one({"id": c["id"]})
+    a = next(x for x in doc["assignments"] if x["user_id"] == used_uid)
+    assert (a["limit"], a["used_count"]) == (2, 1)
+    assert next(x for x in doc["assignments"] if x["user_id"] == fresh_uid)["limit"] == 1
+    assert _validate(client, used_h, c["code"], 100).status_code == 200  # yeniden kullanabilir
+    # tek üyeye tekrar verme de hak ekler
+    r = client.post("/api/admin/coupons/assign-member", json={"coupon_id": c["id"], "user_id": used_uid, "limit": 2}, headers=admin)
+    assert "eklendi" in r.json()["message"]
+    a = next(x for x in db.coupons.find_one({"id": c["id"]})["assignments"] if x["user_id"] == used_uid)
+    assert a["limit"] == 3
+
+
 def test_unassigned_code_per_user_limit(client, make_user, db):
     uid, h = make_user()
     c = _mk_coupon(db, per_user_limit=1)

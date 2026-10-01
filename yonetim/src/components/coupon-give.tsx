@@ -93,7 +93,7 @@ export function CouponGive({ coupons, onGiven }: { coupons: Coupon[]; onGiven: (
               <ListRow key={m.user_id} title={m.name || 'İsimsiz'} subtitle={m.phone} onPress={() => { setMember(m); setResults([]); }} />
             ))}
             {member && <Notice text={`Seçili üye: ${member.name || 'İsimsiz'}${member.phone ? ` (${member.phone})` : ''}`} />}
-            <NumField label="Kullanım hakkı" value={oneLimit} onChange={(v) => setOneLimit(Math.max(1, Math.round(v)))} hint="Bu üye kuponu kaç kez kullanabilir" />
+            <NumField label="Kullanım hakkı" value={oneLimit} onChange={(v) => setOneLimit(Math.max(1, Math.round(v)))} hint="Kaç kez kullanabilir · daha önce aldıysa bu kadar hak eklenir" />
             <DaysField label="Kaç gün geçerli?" value={oneUntil} onChange={setOneUntil} />
             <View style={styles.actions}>
               <Button icon="gift-outline" label="Üyeye ver" onPress={giveOne} loading={busy === 'one'} disabled={!member} />
@@ -102,7 +102,7 @@ export function CouponGive({ coupons, onGiven }: { coupons: Coupon[]; onGiven: (
 
           <View style={[styles.col, styles.box]}>
             <T bold>Tüm üyelere ver</T>
-            <T muted size={12.5}>Şu an kayıtlı bütün müşteri üyelere verilir. Daha önce verilenlerin kullanım sayısı korunur.</T>
+            <T muted size={12.5}>Şu an kayıtlı bütün müşteri üyelere verilir. Kuponu daha önce almış olanlara bu kadar yeni hak eklenir.</T>
             <NumField label="Kişi başı kullanım hakkı" value={allLimit} onChange={(v) => setAllLimit(Math.max(1, Math.round(v)))} />
             <DaysField label="Kaç gün geçerli?" value={allUntil} onChange={setAllUntil} />
             <View style={styles.actions}>

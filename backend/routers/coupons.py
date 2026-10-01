@@ -211,22 +211,29 @@ async def admin_assign_coupon_all(data: dict, admin=Depends(get_current_admin), 
     members = await db.users.find(
         {"role": {"$in": ["musteri", "member"]}}, {"_id": 0, "user_id": 1}
     ).to_list(20000)
-    # Mevcut kullanım sayaçlarını koru
+    # Daha önce almış olana YENİ hak eklenir (kullanım sayacı korunur, hak =
+    # kullanılan + verilen). Eskiden hak sadece "limit"e eşitleniyordu: kuponu
+    # zaten kullanmış üye tekrar verilince 1/1 kalıyor, hiç hak almıyordu.
     prev = {a.get("user_id"): a for a in (coupon.get("assignments") or [])}
     assignments = []
+    renewed = 0
     for m in members:
         uid = m.get("user_id")
         if not uid:
             continue
-        old = prev.get(uid) or {}
+        old = prev.pop(uid, None) or {}
+        used = int(old.get("used_count") or 0)
+        renewed += 1 if old else 0
         assignments.append({
             "user_id": uid,
-            "limit": limit,
-            "used_count": int(old.get("used_count") or 0),
+            "limit": used + limit,
+            "used_count": used,
             "last_used_at": old.get("last_used_at"),
             "valid_until": valid_until,
             "assigned_at": now_utc(),
         })
+    # Müşteri olmayan / silinmiş eski kayıtlar korunur (kullanım geçmişi kaybolmasın)
+    assignments.extend(prev.values())
     user_ids = [a["user_id"] for a in assignments]
     await db.coupons.update_one(
         {"id": coupon_id},
@@ -244,8 +251,11 @@ async def admin_assign_coupon_all(data: dict, admin=Depends(get_current_admin), 
         "admin_note": "",
     }, request)
     await check_admin_coupon_burst(admin, request)
-    return {"success": True, "count": len(user_ids),
-            "message": f"Kupon {len(user_ids)} üyeye {limit} kullanım hakkıyla tanımlandı"}
+    given = len(members) - renewed
+    msg = f"Kupon {len(members)} üyeye {limit} kullanım hakkıyla verildi"
+    if renewed:
+        msg += f" ({given} üyeye yeni, {renewed} üyenin hakkı yenilendi)"
+    return {"success": True, "count": len(members), "new_count": given, "renewed_count": renewed, "message": msg}
 
 
 @router.post("/admin/coupons/assign-member")
@@ -270,9 +280,10 @@ async def admin_assign_coupon_member(data: dict, admin=Depends(get_current_admin
     found = False
     for a in assignments:
         if a.get("user_id") == user_id:
-            # Tekrar verme: hak ve tarih güncellenir, kullanım sayacı korunur
-            a["limit"] = limit
+            # Tekrar verme: YENİ hak eklenir (hak = kullanılan + verilen), SKT yenilenir
+            a["limit"] = int(a.get("used_count") or 0) + limit
             a["valid_until"] = valid_until
+            a["assigned_at"] = now_utc()
             found = True
             break
     if not found:
@@ -294,8 +305,10 @@ async def admin_assign_coupon_member(data: dict, admin=Depends(get_current_admin
         "admin_note": "",
     }, request)
     await check_admin_coupon_burst(admin, request)
+    name = member.get("name", "üye")
     return {"success": True,
-            "message": f"Kupon {member.get('name', 'üye')} adlı üyeye {limit} kullanım hakkıyla tanımlandı"}
+            "message": (f"{name} adlı üyeye {limit} yeni kullanım hakkı eklendi" if found
+                        else f"Kupon {name} adlı üyeye {limit} kullanım hakkıyla verildi")}
 
 
 @router.post("/admin/coupons/unassign-member")
