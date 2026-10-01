@@ -2,13 +2,23 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, Chips, ErrorBox, Loading, Notice, NumField, Page, Section, Select, T, sktText } from '@/components/ui';
+import { Badge, Button, Card, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Section, Select, T, confirmAsync, sktText } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon } from '@/lib/types';
 import { CouponGive } from '@/components/coupon-give';
 
 type NewMember = { coupon_id: string | null; limit: number; days: number };
 type Filter = 'active' | 'passive' | 'all';
+type GivenFilter = 'usable' | 'used' | 'expired' | 'all';
+/** Üyeye verilmiş tek kupon (GET /admin/coupon-assignments). */
+type Given = {
+  coupon_id: string; code: string; title: string; discount_amount?: number | null; discount_percent: number;
+  coupon_active: boolean; user_id: string; user_name: string; phone?: string | null;
+  limit: number; used_count: number; remaining: number; valid_until?: string | null; expired: boolean;
+};
+
+const givenState = (g: Given): 'usable' | 'used' | 'expired' =>
+  g.expired ? 'expired' : g.remaining <= 0 ? 'used' : 'usable';
 
 const NONE = '__none__';
 
@@ -31,16 +41,22 @@ export default function Coupons() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [given, setGiven] = useState<Given[] | null>(null);
+  const [givenFilter, setGivenFilter] = useState<GivenFilter>('usable');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [c, n] = await Promise.all([
+      const [c, n, g] = await Promise.all([
         api.get<Coupon[]>('/admin/coupons'),
         api.get<NewMember>('/admin/coupons-new-member'),
+        // Bu liste yüklenemezse (ör. sunucu henüz güncellenmedi) sayfanın geri kalanı çalışsın
+        api.get<Given[]>('/admin/coupon-assignments').catch(() => [] as Given[]),
       ]);
       setCoupons(c);
       setNm(n);
+      setGiven(g);
     } catch (e) {
       setError(errMsg(e));
     }
@@ -62,10 +78,27 @@ export default function Coupons() {
     }
   }
 
-  const shown = (coupons ?? []).filter((c) =>
+  async function takeBack(g: Given) {
+    if (!(await confirmAsync(`${g.user_name} adlı üyeden "${g.code}" kuponu geri alınsın mı?`))) return;
+    try {
+      await api.post('/admin/coupons/unassign-member', { coupon_id: g.coupon_id, user_id: g.user_id });
+      await load();
+    } catch (e) {
+      setError(errMsg(e));
+    }
+  }
+
+  // Tanımlanmamış = kimseye verilmemiş kuponlar
+  const unassigned = (coupons ?? []).filter((c) => !(c.assignments?.length || c.assigned_user_ids?.length));
+  const shown = unassigned.filter((c) =>
     filter === 'all' ? true : filter === 'active' ? c.active && !expired(c) : !c.active || expired(c),
   );
   const activeOptions = (coupons ?? []).filter((c) => c.active && !expired(c));
+  const q = query.trim().toLocaleLowerCase('tr-TR');
+  const givenShown = (given ?? []).filter((g) =>
+    (givenFilter === 'all' || givenState(g) === givenFilter) &&
+    (!q || `${g.user_name} ${g.phone ?? ''} ${g.code} ${g.title}`.toLocaleLowerCase('tr-TR').includes(q)),
+  );
 
   return (
     <Page
@@ -101,41 +134,79 @@ export default function Coupons() {
       {/* Kupon ver: yeni üye kuponunun altında (kupon seç -> üyeye / herkese) */}
       {coupons && <CouponGive coupons={activeOptions} onGiven={load} />}
 
+      {/* 1) Tanımlanmamış kuponlar: üretildi ama kimseye verilmedi */}
       {coupons && (
-        <>
+        <Section title={`Tanımlanmamış kuponlar (${unassigned.length})`}>
+          <T muted size={12.5}>Üretilmiş ama henüz kimseye verilmemiş kuponlar. Yukarıdaki "Kupon ver" ile üyeye ya da herkese verebilirsin.</T>
           <Chips<Filter>
             options={[
               { value: 'active', label: 'Geçerli' },
               { value: 'passive', label: 'Pasif / süresi dolmuş' },
-              { value: 'all', label: `Tümü (${coupons.length})` },
+              { value: 'all', label: 'Tümü' },
             ]}
             value={filter}
             onChange={setFilter}
           />
           {shown.length === 0 && <T muted>Kupon yok.</T>}
           <View style={styles.grid}>
-            {shown.map((c) => {
-              const given = c.assignments?.length ?? c.assigned_user_ids?.length ?? 0;
-              const uses = (c.assignments ?? []).reduce((s, a) => s + (a.used_count || 0), 0);
-              return (
-                <Card key={c.id} style={styles.tile}>
-                  <View style={styles.head}>
-                    <T bold size={16} style={{ flex: 1 }}>{c.code}</T>
-                    {nm?.coupon_id === c.id && <Badge label="Yeni üye" tone="tint" />}
-                    {!c.active ? <Badge label="Pasif" /> : expired(c) ? <Badge label="Süresi doldu" tone="danger" /> : <Badge label="Geçerli" tone="ok" />}
-                  </View>
-                  <T>{c.title}</T>
-                  <T bold>{couponDiscountText(c)}{c.min_amount ? ` · en az ${c.min_amount.toLocaleString('tr-TR')} ₺` : ''}</T>
-                  <T muted size={12.5}>SKT: {sktText(c.valid_until)}</T>
-                  <T muted size={12.5}>{given ? `${given} kişiye verildi · ${uses} kullanım` : 'Henüz kimseye verilmedi'}</T>
-                  <Button small kind="ghost" label="Aç" onPress={() => router.navigate(`/kuponlar/${c.id}`)} />
-                </Card>
-              );
-            })}
+            {shown.map((c) => (
+              <Card key={c.id} style={styles.tile}>
+                <View style={styles.head}>
+                  <T bold size={16} style={{ flex: 1 }}>{c.code}</T>
+                  {nm?.coupon_id === c.id && <Badge label="Yeni üye" tone="tint" />}
+                  {!c.active ? <Badge label="Pasif" /> : expired(c) ? <Badge label="Süresi doldu" tone="danger" /> : <Badge label="Geçerli" tone="ok" />}
+                </View>
+                <T>{c.title}</T>
+                <T bold>{couponDiscountText(c)}{c.min_amount ? ` · en az ${c.min_amount.toLocaleString('tr-TR')} ₺` : ''}</T>
+                <T muted size={12.5}>SKT: {sktText(c.valid_until)}</T>
+                <Button small kind="ghost" label="Düzenle" onPress={() => router.navigate(`/kuponlar/${c.id}`)} />
+              </Card>
+            ))}
           </View>
-        </>
+        </Section>
       )}
-    </Page>
+
+      {/* 2) Verilen kuponlar: kişiye verilmiş her kupon ayrı satır (hak + SKT) */}
+      {given && (
+        <Section title={`Verilen kuponlar (${given.length})`}>
+          <View style={styles.pair}>
+            <Field style={styles.half} label="Ara" value={query} onChangeText={setQuery} placeholder="Üye adı, telefon ya da kupon kodu" />
+          </View>
+          <Chips<GivenFilter>
+            options={[
+              { value: 'usable', label: `Kullanılabilir (${given.filter((g) => givenState(g) === 'usable').length})` },
+              { value: 'used', label: 'Kullanıldı' },
+              { value: 'expired', label: 'Süresi doldu' },
+              { value: 'all', label: 'Tümü' },
+            ]}
+            value={givenFilter}
+            onChange={setGivenFilter}
+          />
+          {givenShown.length === 0 && <T muted>Kayıt yok.</T>}
+          {givenShown.slice(0, 200).map((g) => {
+            const st = givenState(g);
+            return (
+              <View key={`${g.coupon_id}-${g.user_id}`} style={[styles.row, { borderBottomColor: '#9993' }]}>
+                <View style={{ flex: 1, gap: 1 }}>
+                  <T bold>{g.user_name}{g.phone ? ` · ${g.phone}` : ''}</T>
+                  <T size={13}>
+                    <T bold size={13} color="#d97706" style={styles.link}>{g.code}</T>
+                    {` · ${g.title} · ${couponDiscountText(g)}`}
+                  </T>
+                  <T muted size={12.5}>{g.used_count}/{g.limit} kullanıldı · SKT {sktText(g.valid_until)}</T>
+                </View>
+                {st === 'expired' ? <Badge label="Süresi doldu" tone="danger" />
+                  : st === 'used' ? <Badge label="Kullanıldı" />
+                  : !g.coupon_active ? <Badge label="Kupon pasif" tone="warn" />
+                  : <Badge label={`${g.remaining} hak`} tone="ok" />}
+                <Button small kind="ghost" label="Kupon" onPress={() => router.navigate(`/kuponlar/${g.coupon_id}`)} />
+                <Button small kind="ghost" label="Geri al" onPress={() => takeBack(g)} />
+              </View>
+            );
+          })}
+          {givenShown.length > 200 && <T muted size={12.5}>İlk 200 kayıt gösteriliyor; aramayla daralt.</T>}
+        </Section>
+      )}    </Page>
   );
 }
 
@@ -146,4 +217,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { flexGrow: 1, flexBasis: '46%', maxWidth: '50%', minWidth: 150, gap: 3 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  link: { textDecorationLine: 'underline' },
 });

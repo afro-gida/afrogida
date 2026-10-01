@@ -435,6 +435,39 @@ async def delete_coupon(coupon_id: str, admin=Depends(get_current_admin), reques
     return {"success": True}
 
 
+# ---- Verilen kuponlar (Kuponlar sayfası: kime hangi kupon, hak, SKT) ----
+@router.get("/admin/coupon-assignments")
+async def admin_coupon_assignments(admin=Depends(get_current_admin)):
+    """Üyelere verilmiş her kupon ayrı satır: üye, kupon, kullanım/hak ve
+    geçerli SKT (kişiye özel tarih ile kuponun tarihinden erken olanı)."""
+    coupons = await db.coupons.find(
+        {"auto_issued": {"$ne": True}, "assignments.0": {"$exists": True}}, {"_id": 0},
+    ).to_list(1000)
+    uids = list({a.get("user_id") for c in coupons for a in (c.get("assignments") or []) if a.get("user_id")})
+    users = {u["user_id"]: u for u in await db.users.find(
+        {"user_id": {"$in": uids}}, {"_id": 0, "user_id": 1, "name": 1, "phone": 1}).to_list(len(uids) + 1)}
+    rows = []
+    for c in coupons:
+        for a in c.get("assignments") or []:
+            uid = a.get("user_id")
+            dates = [d for d in (a.get("valid_until"), c.get("valid_until")) if d]
+            until = min(dates, key=lambda d: str(d)[:10]) if dates else None
+            lim = _norm_limit(a.get("limit"), 1)
+            used = int(a.get("used_count") or 0)
+            u = users.get(uid) or {}
+            rows.append({
+                "coupon_id": c.get("id"), "code": c.get("code"), "title": c.get("title"),
+                "discount_amount": c.get("discount_amount"), "discount_percent": c.get("discount_percent"),
+                "coupon_active": c.get("active", True),
+                "user_id": uid, "user_name": u.get("name") or "Silinmiş üye", "phone": u.get("phone"),
+                "limit": lim, "used_count": used, "remaining": max(0, lim - used),
+                "valid_until": until, "expired": is_expired(until),
+                "assigned_at": a.get("assigned_at"), "last_used_at": a.get("last_used_at"),
+            })
+    rows.sort(key=lambda r: str(r.get("assigned_at") or ""), reverse=True)
+    return rows
+
+
 # ---- Yeni üyelere otomatik kupon (kayıt olunca verilir; routers/auth.py) ----
 @router.get("/admin/coupons-new-member")
 async def admin_get_new_member_coupon(admin=Depends(get_current_admin)):

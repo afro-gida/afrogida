@@ -126,6 +126,24 @@ def test_new_member_coupon_setting(client, make_user, db):
     assert client.put("/api/admin/coupons-new-member", json={"coupon_id": None}, headers=admin).status_code == 200
 
 
+def test_coupon_assignments_list(client, make_user, db):
+    uid, _ = make_user(name="Kuponlu Ayşe")
+    _, admin = make_user(role="yonetici")
+    c = _mk_coupon(db, valid_until=_day(20))
+    client.post("/api/admin/coupons/assign-member", json={"coupon_id": c["id"], "user_id": uid, "limit": 3, "valid_until": _day(5)}, headers=admin)
+    bos = _mk_coupon(db)  # kimseye verilmemiş: listede yok
+    rows = client.get("/api/admin/coupon-assignments", headers=admin).json()
+    mine = [r for r in rows if r["coupon_id"] == c["id"]]
+    assert len(mine) == 1 and mine[0]["user_name"] == "Kuponlu Ayşe"
+    assert mine[0]["limit"] == 3 and mine[0]["remaining"] == 3
+    assert mine[0]["valid_until"] == _day(5)  # kişiye özel tarih kuponunkinden erken
+    assert all(r["coupon_id"] != bos["id"] for r in rows)
+    # kişiye tarih yoksa kuponun tarihi
+    client.post("/api/admin/coupons/assign-member", json={"coupon_id": c["id"], "user_id": uid, "limit": 3, "valid_until": None}, headers=admin)
+    row = next(r for r in client.get("/api/admin/coupon-assignments", headers=admin).json() if r["coupon_id"] == c["id"])
+    assert row["valid_until"] == _day(20)
+
+
 def test_coupon_admin_endpoints_admin_only(client, make_user):
     _, h = make_user()
     assert client.get("/api/admin/coupons-new-member", headers=h).status_code in (401, 403)

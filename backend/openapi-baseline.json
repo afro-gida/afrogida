@@ -3075,6 +3075,51 @@
                 "summary": "Afro Admin Contract Gate Stats"
             }
         },
+        "/api/admin/coupon-assignments": {
+            "get": {
+                "description": "Üyelere verilmiş her kupon ayrı satır: üye, kupon, kullanım/hak ve\ngeçerli SKT (kişiye özel tarih ile kuponun tarihinden erken olanı).",
+                "operationId": "admin_coupon_assignments_api_admin_coupon_assignments_get",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "authorization",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Authorization"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Admin Coupon Assignments"
+            }
+        },
         "/api/admin/coupons": {
             "get": {
                 "operationId": "admin_list_coupons_api_admin_coupons_get",
