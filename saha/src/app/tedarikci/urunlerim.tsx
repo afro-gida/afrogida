@@ -21,7 +21,7 @@ interface Product {
   image_url?: string | null;
   in_stock: boolean;
   active: boolean;
-  /** Yönetici onayı bekleyen talep: yeni ürün ya da değişiklik */
+  /** Pazar sorumlusunun onayını bekleyen talep: yeni ürün ya da değişiklik */
   pending_approval?: 'new' | 'update' | null;
 }
 

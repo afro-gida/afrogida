@@ -133,7 +133,7 @@ export default function UrunDuzenle() {
         ? await api.post<Product>('/admin/products', payload)
         : await api.put<Product>(`/admin/products/${id}`, payload);
       if (saved?.pending_approval && Platform.OS === 'web') {
-        window.alert(isNew ? 'Ürün yönetici onayına gönderildi. Onaylanınca satışa açılır.' : 'Değişiklik yönetici onayına gönderildi. Onaylanınca geçerli olur. (Stok durumu hemen geçerli.)');
+        window.alert(isNew ? 'Ürün pazar sorumlusunun onayına gönderildi. Onaylanınca satışa açılır.' : 'Değişiklik pazar sorumlusunun onayına gönderildi. Onaylanınca geçerli olur. (Stok durumu hemen geçerli.)');
       }
       router.back();
     } catch (err) {
@@ -168,10 +168,10 @@ export default function UrunDuzenle() {
             <Ionicons name="shield-checkmark-outline" size={18} color="#D97706" />
             <ThemedText type="small" style={{ flex: 1 }}>
               {orig?.pending_approval === 'new'
-                ? 'Bu ürün yönetici onayı bekliyor. Onaylanınca satışa açılır.'
+                ? 'Bu ürün pazar sorumlusunun onayını bekliyor. Onaylanınca satışa açılır.'
                 : orig?.pending_approval === 'update'
-                  ? 'Değişikliğin yönetici onayı bekliyor. Aşağıda gönderdiğin hali görüyorsun.'
-                  : 'Ekleme ve değişiklikler yönetici onayından sonra geçerli olur. Stok durumu hemen değişir.'}
+                  ? 'Değişikliğin pazar sorumlusunun onayını bekliyor. Aşağıda gönderdiğin hali görüyorsun.'
+                  : 'Ekleme ve değişiklikler pazar sorumlusu onaylayınca geçerli olur. Stok durumu hemen değişir.'}
             </ThemedText>
           </View>
           {/* Ürün resmi */}
