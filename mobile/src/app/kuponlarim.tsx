@@ -18,7 +18,9 @@ import { Spacing, withAlpha } from '@/constants/theme';
 
 /** "2026-10-31" -> "31 Ekim 2026 (30 gün)" — kupon o günün sonuna kadar geçerli. */
 function formatValidUntil(iso: string) {
-  const day = iso.slice(0, 10);
+  // Eski kayıtlar "GG.AA.YYYY…" biçiminde olabilir
+  const tr = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(iso);
+  const day = tr ? `${tr[3]}-${tr[2]}-${tr[1]}` : iso.slice(0, 10);
   const d = new Date(`${day}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   const label = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });

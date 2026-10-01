@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import {
   Badge, Button, Chips, DaysField, ErrorBox, Field, Loading, Notice, NumField, Page, Section, T, Toggle,
-  confirmAsync, dateTime, sktText, todayIso,
+  confirmAsync, dateTime, isoDay, sktText, todayIso,
 } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon, type CouponDetail } from '@/lib/types';
@@ -19,7 +19,7 @@ const EMPTY: Omit<Coupon, 'id'> = {
 function earliest(a?: string | null, b?: string | null) {
   if (!a) return b ?? null;
   if (!b) return a;
-  return a.slice(0, 10) <= b.slice(0, 10) ? a : b;
+  return (isoDay(a) ?? '') <= (isoDay(b) ?? '') ? a : b;
 }
 
 /** Okunması kolay rastgele kod (0/O, 1/I karışmasın). */
@@ -166,7 +166,7 @@ export default function CouponEdit() {
               // Geçerli son gün: kişiye özel tarih ile kuponun tarihinden ERKEN olanı
               // (kişiye tarih verilmemişse kuponun tarihi geçerli — "Süresiz" değil)
               const until = earliest(u.valid_until, detail.coupon.valid_until);
-              const isExpired = !!until && until.slice(0, 10) < todayIso();
+              const isExpired = !!until && (isoDay(until) ?? '') < todayIso();
               return (
               <View key={u.user_id} style={styles.userRow}>
                 <View style={{ flex: 1 }}>

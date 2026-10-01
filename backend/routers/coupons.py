@@ -14,7 +14,9 @@ from services.coupon_anomaly import (
     check_high_value_coupon, check_user_coupon_use_burst,
 )
 from services.orders import _evaluate_coupon
-from core.coupon_dates import clean_date, is_expired
+from datetime import datetime, timezone
+
+from core.coupon_dates import clean_date, expiry_of, is_expired
 
 router = APIRouter(prefix="/api")
 
@@ -464,7 +466,8 @@ async def admin_coupon_assignments(admin=Depends(get_current_admin)):
         for a in c.get("assignments") or []:
             uid = a.get("user_id")
             dates = [d for d in (a.get("valid_until"), c.get("valid_until")) if d]
-            until = min(dates, key=lambda d: str(d)[:10]) if dates else None
+            # gerçek tarihe göre (eski "GG.AA.YYYY" kayıtları da doğru sıralansın)
+            until = min(dates, key=lambda d: expiry_of(d) or datetime.max.replace(tzinfo=timezone.utc)) if dates else None
             lim = _norm_limit(a.get("limit"), 1)
             used = int(a.get("used_count") or 0)
             u = users.get(uid) or {}

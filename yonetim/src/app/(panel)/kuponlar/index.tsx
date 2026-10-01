@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Section, Select, T, confirmAsync, sktText } from '@/components/ui';
+import { Badge, Button, Card, Chips, ErrorBox, Field, Loading, Notice, NumField, Page, Section, Select, T, confirmAsync, isoDay, sktText } from '@/components/ui';
 import { api, errMsg } from '@/lib/api';
 import { couponDiscountText, type Coupon } from '@/lib/types';
 import { CouponGive } from '@/components/coupon-give';
@@ -26,7 +26,7 @@ const NONE = '__none__';
 function expired(c: Coupon) {
   if (!c.valid_until) return false;
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
-  return c.valid_until.slice(0, 10) < today;
+  return (isoDay(c.valid_until) ?? '') < today;
 }
 
 /**

@@ -132,10 +132,17 @@ export function todayIso(offsetDays = 0) {
   return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
 }
 
+/** "2026-10-31" (ya da eski kayıtlardaki "31.10.2026…") -> "YYYY-AA-GG". */
+export function isoDay(s?: string | null) {
+  if (!s) return null;
+  const tr = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(s);
+  return tr ? `${tr[3]}-${tr[2]}-${tr[1]}` : s.slice(0, 10);
+}
+
 /** "2026-10-31" -> "31.10.2026" (boşsa "Süresiz"). */
 export function trDate(s?: string | null) {
   if (!s) return 'Süresiz';
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDay(s) ?? '');
   return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
 }
 
@@ -143,7 +150,7 @@ export function trDate(s?: string | null) {
 export function daysLeft(s?: string | null) {
   if (!s) return null;
   const a = Date.parse(`${todayIso()}T00:00:00Z`);
-  const b = Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
+  const b = Date.parse(`${isoDay(s)}T00:00:00Z`);
   return Number.isNaN(b) ? null : Math.round((b - a) / 86400000);
 }
 

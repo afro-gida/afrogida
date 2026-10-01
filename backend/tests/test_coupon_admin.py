@@ -49,6 +49,20 @@ def test_date_only_expiry_valid_until_end_of_day(client, make_user, db):
     assert today["code"] in codes and past["code"] not in codes
 
 
+def test_legacy_tr_date_format_expires(client, make_user, db):
+    """Eski siteden kalma "GG.AA.YYYY…" tarihi tanınır: süresi geçmişse kupon
+    kullanılamaz ve listede görünmez (eskiden süresiz sayılıyordu)."""
+    from core.coupon_dates import expiry_of
+    assert expiry_of("29.08.2026T23:59:59Z").date().isoformat() == "2026-08-29"
+    _, h = make_user()
+    old = _mk_coupon(db, valid_until="29.08.2020T23:59:59Z")
+    assert _validate(client, h, old["code"], 100).status_code == 400
+    assert old["code"] not in [c["code"] for c in client.get("/api/coupons", headers=h).json()]
+    d = datetime.now(IST).date() + timedelta(days=3)
+    ok = _mk_coupon(db, valid_until=d.strftime("%d.%m.%Y"))
+    assert _validate(client, h, ok["code"], 100).status_code == 200
+
+
 def test_assign_member_with_limit_and_expiry(client, make_user, db):
     uid, h = make_user()
     other_uid, other_h = make_user()

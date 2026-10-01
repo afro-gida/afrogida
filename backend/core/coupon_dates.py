@@ -13,6 +13,7 @@ from core.util import now_utc
 
 IST = ZoneInfo("Europe/Istanbul")
 _DATE_ONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_TR_DATE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})")
 
 
 def expiry_of(value) -> Optional[datetime]:
@@ -22,6 +23,11 @@ def expiry_of(value) -> Optional[datetime]:
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
     s = str(value).strip()
+    # Eski siteden kalma "GG.AA.YYYY" (ör. "29.08.2026T23:59:59Z"): tanınmayınca
+    # kupon süresiz sayılıyordu -> süresi geçmiş kupon kullanılabiliyordu.
+    tr = _TR_DATE.match(s)
+    if tr:
+        s = f"{tr.group(3)}-{tr.group(2)}-{tr.group(1)}"
     try:
         if _DATE_ONLY.match(s):
             d = date.fromisoformat(s)
