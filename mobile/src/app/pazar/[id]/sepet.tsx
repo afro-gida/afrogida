@@ -121,6 +121,8 @@ export default function CartScreen() {
   const [error, setError] = useState<string | null>(null);
   // Konum kontrolü: müşteri adresin mahallesinde değilse açılan soru kutusu.
   const [locationPrompt, setLocationPrompt] = useState<{ here: string } | null>(null);
+  // "Farklı bir adrese teslimat istiyorum": işaretliyse konum kontrolü yapılmaz.
+  const [differentAddress, setDifferentAddress] = useState(false);
 
   // Sözleşme onayı ve teslimat tercihleri, teslimat türü değişince sıfırlanır.
   useEffect(() => {
@@ -304,9 +306,10 @@ export default function CartScreen() {
     }
     setError(null);
     setSubmitting(true);
-    // Eve Servis: müşteri şu an adresin mahallesinde değilse "farklı bir adrese
-    // mi sipariş veriyorsunuz?" diye sorulur (konum yoksa sorulmaz, engellemez).
-    if (deliveryType === 'eve_servis' && selectedAddress && !addressConfirmed && Platform.OS === 'web') {
+    // Eve Servis: müşteri "Farklı bir adrese teslimat istiyorum"u işaretlemediyse ve
+    // şu an adresin mahallesinde değilse "farklı bir adrese mi sipariş veriyorsunuz?"
+    // diye sorulur (konum yoksa sorulmaz, engellemez).
+    if (deliveryType === 'eve_servis' && selectedAddress && !addressConfirmed && !differentAddress && Platform.OS === 'web') {
       const check = await checkAtAddress(selectedAddress);
       if (check.result === 'different') {
         setSubmitting(false);
@@ -517,6 +520,13 @@ export default function CartScreen() {
                             {formatAddressLine(selectedAddress)}
                           </ThemedText>
                         </View>
+                      )}
+                      {/* İşaretlenirse sipariş anındaki konum kontrolü sorulmaz
+                          (ör. işteyken eve sipariş veren müşteri). */}
+                      {selectedAddress && Platform.OS === 'web' && (
+                        <CheckboxRow checked={differentAddress} onToggle={() => setDifferentAddress((v) => !v)}>
+                          Farklı bir adrese teslimat istiyorum
+                        </CheckboxRow>
                       )}
                     </>
                   )}
@@ -795,10 +805,11 @@ export default function CartScreen() {
               style={({ pressed }) => [styles.promptBtn, { backgroundColor: theme.tint, opacity: pressed ? 0.9 : 1 }]}
               onPress={() => {
                 setLocationPrompt(null);
+                setDifferentAddress(true);
                 handleCheckout(true);
               }}
             >
-              <ThemedText style={styles.promptBtnText}>Evet, bu adrese gönder</ThemedText>
+              <ThemedText style={styles.promptBtnText}>Evet, farklı adrese teslimat istiyorum</ThemedText>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.promptBtn, styles.promptBtnOutline, { borderColor: theme.tint, opacity: pressed ? 0.85 : 1 }]}
