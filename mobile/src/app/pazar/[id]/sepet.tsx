@@ -120,7 +120,7 @@ export default function CartScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Konum kontrolü: müşteri adresin mahallesinde değilse açılan soru kutusu.
-  const [locationPrompt, setLocationPrompt] = useState<{ here: string } | null>(null);
+  const [locationPrompt, setLocationPrompt] = useState(false);
   // "Farklı bir adrese teslimat istiyorum": işaretliyse konum kontrolü yapılmaz.
   const [differentAddress, setDifferentAddress] = useState(false);
 
@@ -313,7 +313,7 @@ export default function CartScreen() {
       const check = await checkAtAddress(selectedAddress);
       if (check.result === 'different') {
         setSubmitting(false);
-        setLocationPrompt({ here: check.here });
+        setLocationPrompt(true);
         return;
       }
     }
@@ -784,17 +784,14 @@ export default function CartScreen() {
         )}
       </View>
 
-      <Modal visible={!!locationPrompt} transparent animationType="fade" onRequestClose={() => setLocationPrompt(null)}>
+      <Modal visible={locationPrompt} transparent animationType="fade" onRequestClose={() => setLocationPrompt(false)}>
         <View style={styles.promptBackdrop}>
           <View style={[styles.promptCard, styles.cardShadow, { backgroundColor: cardBg }]}>
             <View style={[styles.promptIcon, { backgroundColor: withAlpha(theme.tint, 0.15) }]}>
               <MaterialCommunityIcons name="map-marker-question-outline" size={30} color={theme.tint} />
             </View>
-            <ThemedText style={styles.promptTitle}>Sipariş verdiğiniz adreste değilsiniz</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.promptText}>
-              {locationPrompt?.here ? `Şu an ${locationPrompt.here} Mah. civarındasınız. ` : 'Konumunuz sipariş adresinden uzakta görünüyor. '}
-              Farklı bir adrese mi sipariş veriyorsunuz?
-            </ThemedText>
+            {/* Müşterinin bulunduğu yer söylenmez; sadece soru sorulur. */}
+            <ThemedText style={styles.promptTitle}>Farklı bir adrese mi sipariş vermek istiyorsunuz?</ThemedText>
             {selectedAddress && (
               <View style={[styles.promptAddr, { backgroundColor: withAlpha(theme.tint, 0.1) }]}>
                 <Ionicons name="home-outline" size={16} color={theme.tint} />
@@ -804,7 +801,7 @@ export default function CartScreen() {
             <Pressable
               style={({ pressed }) => [styles.promptBtn, { backgroundColor: theme.tint, opacity: pressed ? 0.9 : 1 }]}
               onPress={() => {
-                setLocationPrompt(null);
+                setLocationPrompt(false);
                 setDifferentAddress(true);
                 handleCheckout(true);
               }}
@@ -813,7 +810,7 @@ export default function CartScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.promptBtn, styles.promptBtnOutline, { borderColor: theme.tint, opacity: pressed ? 0.85 : 1 }]}
-              onPress={() => setLocationPrompt(null)}
+              onPress={() => setLocationPrompt(false)}
             >
               <ThemedText style={[styles.promptBtnText, { color: theme.tint }]}>Hayır, adresi değiştireyim</ThemedText>
             </Pressable>
@@ -1146,7 +1143,6 @@ const styles = StyleSheet.create({
   cardShadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
   promptIcon: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   promptTitle: { fontSize: 18, lineHeight: 23, fontWeight: '900', textAlign: 'center' },
-  promptText: { fontSize: 14, lineHeight: 19, textAlign: 'center' },
   promptAddr: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, borderRadius: 14, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, alignSelf: 'stretch' },
   promptAddrText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   promptBtn: { alignSelf: 'stretch', height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
