@@ -73,11 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(phone: string, password: string, turnstileToken?: string | null) {
-    const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', {
+    const res = await api.post<{ token?: string; user?: AuthUser }>('/auth/login', {
       phone,
       password,
       ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
     });
+    if (!res.token || !res.user) {
+      // Sorumlunun yeni cihaz SMS adımı: bu uygulamada yok
+      throw new ApiError(403, 'Pazar sorumlusu hesabı bu uygulamada kullanılmaz. Lütfen Sorumlu uygulamasını açın: sorumlu.afrogida.com.tr');
+    }
     if (!ALLOWED_ROLES.includes(res.user.role)) {
       // Açılan oturumu sunucuda da kapat
       setAuthToken(res.token);
