@@ -25,7 +25,9 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Robot doğrulaması: her giriş denemesinde yeni doğrulama (token tek kullanımlık)
+  // Robot doğrulaması ilk denemede yok; yanlış denemeden sonra (veya sunucu
+  // 428 ile isterse) kutu açılır. Token tek kullanımlık, her denemede yenilenir.
+  const [needCaptcha, setNeedCaptcha] = useState(false);
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
 
@@ -39,17 +41,25 @@ export default function LoginScreen() {
       setError('Şifreni girmelisin.');
       return;
     }
-    if (TURNSTILE_ON && !captcha) {
+    if (TURNSTILE_ON && needCaptcha && !captcha) {
       setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
       return;
     }
     setSubmitting(true);
     try {
-      await login(phone.trim(), password, captcha);
+      await login(phone.trim(), password, needCaptcha ? captcha : null);
       router.replace('/');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
-      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
+      if (e instanceof ApiError && e.status === 428) {
+        setError('Güvenlik için “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretleyip tekrar Giriş Yap’a bas.');
+      } else {
+        setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
+      }
+      if (TURNSTILE_ON) {
+        setNeedCaptcha(true);
+        setCaptcha(null);
+        setCaptchaKey((k) => k + 1);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -100,9 +110,11 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
-        <View style={{ marginTop: Spacing.two }}>
-          <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
-        </View>
+        {needCaptcha && (
+          <View style={{ marginTop: Spacing.two }}>
+            <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
+          </View>
+        )}
 
         {!!error && (
           <ThemedText themeColor="danger" type="small" style={styles.error}>

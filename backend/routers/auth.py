@@ -34,7 +34,7 @@ from core.security import (
     create_session, _session_query, hash_password, verify_password, security_alarm,
 )
 from core.serializers import _public_user_doc
-from core.turnstile import verify_turnstile
+from core.turnstile import turnstile_enabled, verify_turnstile
 from core.util import now_utc, to_aware, new_id, _clean_text, _norm_limit
 from models import (
     GoogleSessionInput, PhoneLoginInput, RegisterInput, LoginInput, AdminLoginInput,
@@ -439,6 +439,25 @@ async def admin_totp_confirm(payload: dict, current_user: dict = Depends(get_cur
     return {"success": True, "backup_codes": codes}
 
 
+LOGIN_CAPTCHA_STATUS = 428  # istemci bu kodu görünce robot doğrulama kutusunu açar
+LOGIN_CAPTCHA_IP_FAILS = 3
+LOGIN_CAPTCHA_WINDOW = timedelta(minutes=15)
+
+
+async def _register_login_ip_failure(ip: str):
+    # Sadece sayaç (kilit yok): farklı numaralara tek tek deneyen bot da kutuya takılsın
+    await register_failure(f"login_fail_ip:{ip}", max_fail=10**9, lock_minutes=15)
+
+
+async def _login_captcha_needed(phone: str, ip: str) -> bool:
+    cutoff = now_utc() - LOGIN_CAPTCHA_WINDOW
+    for key, need in ((f"login:{phone}", 1), (f"login_fail_ip:{ip}", LOGIN_CAPTCHA_IP_FAILS)):
+        doc = await db.login_lockouts.find_one({"key": key}, {"_id": 0, "fails": 1, "last_fail_at": 1})
+        if doc and int(doc.get("fails") or 0) >= need and doc.get("last_fail_at") and to_aware(doc["last_fail_at"]) > cutoff:
+            return True
+    return False
+
+
 @router.post("/auth/login")
 async def auth_login(payload: LoginInput, request: Request = None):
     phone = payload.phone.strip()
@@ -446,12 +465,20 @@ async def auth_login(payload: LoginInput, request: Request = None):
         raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası girin")
     _ip = _client_ip(request)
     await rate_limit(f"login_ip:{_ip}", 30, 300)
-    # Robot doğrulaması (anahtar tanımlıysa): şifre denemesi ve yeni cihaz SMS'i öncesi
-    await verify_turnstile(payload.turnstile_token, _ip)
+    # Robot doğrulaması (anahtar tanımlıysa) ilk denemede istenmez; bu numaraya
+    # yanlış şifre girildiyse veya bu adresten 15 dk'da 3+ yanlış deneme olduysa
+    # istenir (428 → istemci kutuyu gösterir). Token gelmişse her zaman doğrulanır.
+    captcha_ok = False
+    if payload.turnstile_token:
+        await verify_turnstile(payload.turnstile_token, _ip)
+        captcha_ok = True
+    elif turnstile_enabled() and await _login_captcha_needed(phone, _ip):
+        raise HTTPException(status_code=LOGIN_CAPTCHA_STATUS, detail="Lütfen robot doğrulamasını tamamlayın.")
     await check_lockout(f"login:{phone}")
     existing = await db.users.find_one({"phone": phone}, {"_id": 0})
     if not existing:
         await register_failure(f"login:{phone}", request, max_fail=8, lock_minutes=15)
+        await _register_login_ip_failure(_ip)
         raise HTTPException(status_code=404, detail="Kayıt bulunamadı. Lütfen önce üye olun.")
     if existing.get("login_disabled"):
         raise HTTPException(status_code=403, detail="Hesap devre dışı bırakılmış")
@@ -462,6 +489,7 @@ async def auth_login(payload: LoginInput, request: Request = None):
     if not payload.password or not verify_password(payload.password, stored_hash):
         await _insert_log("log_auth", {"user_id": existing["user_id"], "phone_masked": _mask_phone(phone), "action": "login_failed", "change_details": None}, request)
         await _check_brute_force(phone, request)
+        await _register_login_ip_failure(_ip)
         _is_priv = existing.get("role") in ("admin", "yonetici")
         locked = await register_failure(f"login:{phone}", request, max_fail=5, lock_minutes=15,
                                         alarm_event="login_lockout" if _is_priv else None, user=existing,
@@ -470,6 +498,11 @@ async def auth_login(payload: LoginInput, request: Request = None):
             raise HTTPException(status_code=429, detail="Çok fazla hatalı deneme. Hesap 15 dakika kilitlendi.")
         raise HTTPException(status_code=401, detail="Telefon numarası veya şifre hatalı")
     await clear_failures(f"login:{phone}")
+    _sends_sms = _is_admin_role(existing) or (
+        existing.get("role") in DEVICE_VERIFY_ROLES and not await _device_trusted(existing, request))
+    if _sends_sms and not captcha_ok and turnstile_enabled():
+        # SMS gidecek (yönetici / sorumlunun yeni cihazı): robot doğrulaması her zaman şart
+        raise HTTPException(status_code=LOGIN_CAPTCHA_STATUS, detail="Lütfen robot doğrulamasını tamamlayın.")
     if _is_admin_role(existing):
         return await _start_admin_2fa(existing, request, via="phone")
     if existing.get("role") in DEVICE_VERIFY_ROLES and not await _device_trusted(existing, request):
