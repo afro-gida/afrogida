@@ -25,7 +25,7 @@ type AuthContextValue = {
   token: string | null;
   loading: boolean;
   pendingContracts: PendingContract[];
-  sendOtp: (phone: string, purpose: 'registration' | 'password_reset') => Promise<{ sms_sent: boolean }>;
+  sendOtp: (phone: string, purpose: 'registration' | 'password_reset', turnstileToken?: string | null) => Promise<{ sms_sent: boolean }>;
   register: (data: {
     phone: string;
     email: string;
@@ -87,8 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await checkPendingContracts();
   }
 
-  async function sendOtp(phone: string, purpose: 'registration' | 'password_reset') {
-    return api.post<{ success: boolean; sms_sent: boolean }>('/auth/send-phone-otp', { phone, purpose });
+  async function sendOtp(phone: string, purpose: 'registration' | 'password_reset', turnstileToken?: string | null) {
+    return api.post<{ success: boolean; sms_sent: boolean }>('/auth/send-phone-otp', {
+      phone,
+      purpose,
+      ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+    });
   }
 
   async function register(data: {

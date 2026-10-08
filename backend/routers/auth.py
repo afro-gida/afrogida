@@ -34,6 +34,7 @@ from core.security import (
     create_session, _session_query, hash_password, verify_password, security_alarm,
 )
 from core.serializers import _public_user_doc
+from core.turnstile import verify_turnstile
 from core.util import now_utc, to_aware, new_id, _clean_text, _norm_limit
 from models import (
     GoogleSessionInput, PhoneLoginInput, RegisterInput, LoginInput, AdminLoginInput,
@@ -933,6 +934,8 @@ async def compat_send_phone_otp(data: dict, request: Request = None):
         )
     await rate_limit(f"otp_ip:{_client_ip(request)}", 15, 3600, "Çok fazla SMS isteği. Lütfen daha sonra tekrar deneyin.")
     await rate_limit(f"otp_phone:{phone}", 5, 3600, "Bu numara için çok fazla SMS isteği. 1 saat sonra tekrar deneyin.")
+    # Robot doğrulaması (anahtar tanımlıysa): bot SMS göndertip fatura şişirmesin
+    await verify_turnstile(data.get("turnstile_token"), _client_ip(request))
     if purpose not in ("registration", "password_reset", "login"):
         purpose = "registration"
     # Kayıt akışında zaten üye olan numaraya SMS gönderme; kullanıcıyı erkenden yönlendir

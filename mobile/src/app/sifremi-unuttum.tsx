@@ -5,6 +5,7 @@ import { FormCardScreen, PrimaryButton, Steps } from '@/components/form-card';
 import { FormField, Notice, PasswordField } from '@/components/form-field';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
+import { Turnstile, TURNSTILE_ON } from '@/components/turnstile';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -19,14 +20,18 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Robot doğrulaması: SMS kodu göndermeden önce.
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleSendOtp() {
     setError(null);
     setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
+    if (TURNSTILE_ON && !captcha) return setError('Kod göndermeden önce “Robot değilim” doğrulamasını tamamla.');
     setSendingOtp(true);
     try {
-      const res = await sendOtp(phone.trim(), 'password_reset');
+      const res = await sendOtp(phone.trim(), 'password_reset', captcha);
       setOtpSent(true);
       setInfo(
         res.sms_sent
@@ -37,6 +42,7 @@ export default function ForgotPasswordScreen() {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
       setSendingOtp(false);
+      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
     }
   }
 
@@ -80,7 +86,10 @@ export default function ForgotPasswordScreen() {
       />
 
       {!otpSent ? (
-        <PrimaryButton label="Kod Gönder" onPress={handleSendOtp} loading={sendingOtp} />
+        <>
+          <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
+          <PrimaryButton label="Kod Gönder" onPress={handleSendOtp} loading={sendingOtp} />
+        </>
       ) : (
         <>
           <FormField

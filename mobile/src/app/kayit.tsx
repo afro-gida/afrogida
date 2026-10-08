@@ -13,6 +13,7 @@ import { ApiError } from '@/lib/api';
 import { surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
 import { openLegal } from '@/lib/legal';
+import { Turnstile, TURNSTILE_ON } from '@/components/turnstile';
 
 // Sunucudaki core/text.py::normalize_email ile aynı kural.
 const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
@@ -34,6 +35,10 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // Robot doğrulaması: kod istemeden önce; her SMS'te yeni doğrulama gerekir.
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
+
   const [termsOk, setTermsOk] = useState(false);
   const [notifyOk, setNotifyOk] = useState(false);
 
@@ -45,9 +50,10 @@ export default function RegisterScreen() {
     setError(null);
     setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
+    if (TURNSTILE_ON && !captcha) return setError('Kod istemeden önce “Robot değilim” doğrulamasını tamamla.');
     setSendingOtp(true);
     try {
-      const res = await sendOtp(phone.trim(), 'registration');
+      const res = await sendOtp(phone.trim(), 'registration', captcha);
       setOtpRequested(true);
       setInfo(
         res.sms_sent
@@ -58,6 +64,8 @@ export default function RegisterScreen() {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
       setSendingOtp(false);
+      // Token tek kullanımlık: tekrar gönderim için kutu yenilenir
+      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
     }
   }
 
@@ -122,6 +130,8 @@ export default function RegisterScreen() {
           </Pressable>
         }
       />
+
+      <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
 
       <FormField
         label="E-posta"
