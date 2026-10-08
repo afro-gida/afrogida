@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
  * (sayfada zaten görünür); gizli anahtar sadece sunucuda (TURNSTILE_SECRET_KEY).
  * Anahtar boşsa kutu hiç çıkmaz ve sunucu da doğrulama istemez.
  */
-export const TURNSTILE_SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+export const TURNSTILE_SITE_KEY = process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY ?? '0x4AAAAAAFRccwRy7A6yrpZW';
 export const TURNSTILE_ON = Platform.OS === 'web' && !!TURNSTILE_SITE_KEY;
 
 type TurnstileApi = {
