@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -35,9 +35,10 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // Robot doğrulaması: kod istemeden önce; her SMS'te yeni doğrulama gerekir.
-  const [captcha, setCaptcha] = useState<string | null>(null);
-  const [captchaKey, setCaptchaKey] = useState(0);
+  // Robot doğrulaması: kutu "Kod İste"ye basınca açılır, geçilince kod kendiliğinden
+  // gönderilir ve kutu kapanır. Her SMS için yeni doğrulama (token tek kullanımlık).
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const sendAfterCaptcha = useRef(false);
 
   const [termsOk, setTermsOk] = useState(false);
   const [notifyOk, setNotifyOk] = useState(false);
@@ -46,11 +47,15 @@ export default function RegisterScreen() {
   const emailOk = EMAIL_RE.test(email.trim());
   const canSubmit = name.trim() && phone.trim().length >= 10 && emailOk && otpCode.trim().length === 6 && password.length >= 6 && termsOk;
 
-  async function handleRequestCode() {
+  async function handleRequestCode(captcha?: string) {
     setError(null);
     setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
-    if (TURNSTILE_ON && !captcha) return setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
+    if (TURNSTILE_ON && !captcha) {
+      sendAfterCaptcha.current = true;
+      setShowCaptcha(true);
+      return setInfo('Robot doğrulaması yapılıyor. Kutu onaylanınca kod kendiliğinden gönderilecek.');
+    }
     setSendingOtp(true);
     try {
       const res = await sendOtp(phone.trim(), 'registration', captcha);
@@ -64,8 +69,15 @@ export default function RegisterScreen() {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
       setSendingOtp(false);
-      // Token tek kullanımlık: tekrar gönderim için kutu yenilenir
-      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
+      // Token tek kullanımlık: tekrar gönderimde kutu yeniden açılır
+      setShowCaptcha(false);
+    }
+  }
+
+  function onCaptcha(token: string | null) {
+    if (token && sendAfterCaptcha.current) {
+      sendAfterCaptcha.current = false;
+      handleRequestCode(token);
     }
   }
 
@@ -107,57 +119,66 @@ export default function RegisterScreen() {
     >
       <FormField label="Ad soyad" icon="account-outline" value={name} onChangeText={setName} placeholder="Ad Soyad" autoComplete="off" />
 
-      <FormField
-        label="Telefon numarası"
-        icon="phone-outline"
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="05XX XXX XX XX"
-        keyboardType="phone-pad"
-        autoComplete="off"
-        maxLength={14}
-        right={
-          <Pressable
-            onPress={handleRequestCode}
-            disabled={sendingOtp}
-            style={({ pressed }) => [styles.codeBtn, { backgroundColor: theme.tint, opacity: pressed || sendingOtp ? 0.85 : 1 }]}
-          >
-            {sendingOtp ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <ThemedText style={styles.codeBtnText}>{otpRequested ? 'Tekrar Gönder' : 'Kod İste'}</ThemedText>
-            )}
-          </Pressable>
-        }
-      />
+      {/* Telefon + doğrulama kodu yan yana; "Kod İste" telefon kutusunun içinde */}
+      <View style={styles.phoneRow}>
+        <View style={styles.phoneCol}>
+          <FormField
+            label="Telefon numarası"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="05XX XXX XX XX"
+            keyboardType="phone-pad"
+            autoComplete="off"
+            maxLength={14}
+            right={
+              <Pressable
+                onPress={() => handleRequestCode()}
+                disabled={sendingOtp || showCaptcha}
+                style={({ pressed }) => [styles.codeBtn, { backgroundColor: theme.tint, opacity: pressed || sendingOtp || showCaptcha ? 0.85 : 1 }]}
+              >
+                {sendingOtp ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <ThemedText style={styles.codeBtnText}>{otpRequested ? 'Tekrar' : 'Kod İste'}</ThemedText>
+                )}
+              </Pressable>
+            }
+          />
+        </View>
+        <View style={styles.codeCol}>
+          <FormField
+            label="SMS kodu"
+            value={otpCode}
+            onChangeText={setOtpCode}
+            placeholder="6 haneli"
+            keyboardType="number-pad"
+            maxLength={6}
+            // Tarayıcı kayıtlı telefon/şifreyi buraya doldurmasın; telefonda SMS kodu önerilsin.
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+          />
+        </View>
+      </View>
 
-      <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
+      {showCaptcha && <Turnstile onToken={onCaptcha} />}
 
-      <FormField
-        label="E-posta"
-        icon="email-outline"
-        value={email}
-        onChangeText={setEmail}
-        placeholder="ornek@eposta.com (fatura için)"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="email"
-        maxLength={254}
-      />
-
-      <FormField
-        label="Doğrulama kodu"
-        icon="message-lock-outline"
-        value={otpCode}
-        onChangeText={setOtpCode}
-        placeholder="SMS ile gelen 6 haneli kod"
-        keyboardType="number-pad"
-        maxLength={6}
-        // Tarayıcı kayıtlı telefon/şifreyi buraya doldurmasın; telefonda SMS kodu önerilsin.
-        autoComplete="one-time-code"
-        textContentType="oneTimeCode"
-      />
+      <View>
+        <FormField
+          label="E-posta"
+          icon="email-outline"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="ornek@eposta.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          maxLength={254}
+        />
+        <ThemedText themeColor="textSecondary" style={styles.emailNote}>
+          E-posta adresin sadece e-Arşiv faturanı göndermek için kullanılır, başka hiçbir amaçla kullanılmaz.
+        </ThemedText>
+      </View>
 
       <PasswordField label="Şifre" value={password} onChangeText={setPassword} placeholder="En az 6 karakter" autoComplete="new-password" />
 
@@ -209,7 +230,11 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  codeBtn: { borderRadius: 999, height: 34, paddingHorizontal: Spacing.three, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
+  phoneRow: { flexDirection: 'row', gap: Spacing.two },
+  phoneCol: { flex: 1.85, minWidth: 0 },
+  codeCol: { flex: 1, minWidth: 0 },
+  emailNote: { fontSize: 12, lineHeight: 16, marginTop: 6, paddingHorizontal: 4 },
+  codeBtn: { borderRadius: 999, height: 32, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
   codeBtnText: { color: '#fff', fontSize: 12.5, lineHeight: 16, fontWeight: '900' },
   consents: { borderRadius: 16, padding: Spacing.three - 2, gap: 2 },
   kvkk: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
