@@ -119,7 +119,7 @@ export default function RegisterScreen() {
     >
       <FormField label="Ad soyad" icon="account-outline" value={name} onChangeText={setName} placeholder="Ad Soyad" autoComplete="off" />
 
-      {/* Telefon + doğrulama kodu yan yana; "Kod İste" telefon kutusunun içinde */}
+      {/* Telefon | Kod İste | SMS kodu — tek satırda */}
       <View style={styles.phoneRow}>
         <View style={styles.phoneCol}>
           <FormField
@@ -130,21 +130,19 @@ export default function RegisterScreen() {
             keyboardType="phone-pad"
             autoComplete="off"
             maxLength={14}
-            right={
-              <Pressable
-                onPress={() => handleRequestCode()}
-                disabled={sendingOtp || showCaptcha}
-                style={({ pressed }) => [styles.codeBtn, { backgroundColor: theme.tint, opacity: pressed || sendingOtp || showCaptcha ? 0.85 : 1 }]}
-              >
-                {sendingOtp ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <ThemedText style={styles.codeBtnText}>{otpRequested ? 'Tekrar' : 'Kod İste'}</ThemedText>
-                )}
-              </Pressable>
-            }
           />
         </View>
+        <Pressable
+          onPress={() => handleRequestCode()}
+          disabled={sendingOtp || showCaptcha}
+          style={({ pressed }) => [styles.codeBtn, { backgroundColor: theme.tint, opacity: pressed || sendingOtp || showCaptcha ? 0.85 : 1 }]}
+        >
+          {sendingOtp ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <ThemedText style={styles.codeBtnText}>{otpRequested ? 'Tekrar' : 'Kod İste'}</ThemedText>
+          )}
+        </Pressable>
         <View style={styles.codeCol}>
           <FormField
             label="SMS kodu"
@@ -230,11 +228,12 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  phoneRow: { flexDirection: 'row', gap: Spacing.two },
-  phoneCol: { flex: 1.85, minWidth: 0 },
+  // Buton kutuların alt hizasında (etiketin altında, kutuyla aynı yükseklikte)
+  phoneRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  phoneCol: { flex: 1.45, minWidth: 0 },
   codeCol: { flex: 1, minWidth: 0 },
   emailNote: { fontSize: 12, lineHeight: 16, marginTop: 6, paddingHorizontal: 4 },
-  codeBtn: { borderRadius: 999, height: 32, paddingHorizontal: 9, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
+  codeBtn: { borderRadius: 16, height: 52, minWidth: 72, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
   codeBtnText: { color: '#fff', fontSize: 12.5, lineHeight: 16, fontWeight: '900' },
   consents: { borderRadius: 16, padding: Spacing.three - 2, gap: 2 },
   kvkk: { fontSize: 13, lineHeight: 18, marginBottom: 4 },
