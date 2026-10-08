@@ -50,7 +50,7 @@ export default function RegisterScreen() {
     setError(null);
     setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
-    if (TURNSTILE_ON && !captcha) return setError('Kod istemeden önce “Robot değilim” doğrulamasını tamamla.');
+    if (TURNSTILE_ON && !captcha) return setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
     setSendingOtp(true);
     try {
       const res = await sendOtp(phone.trim(), 'registration', captcha);
