@@ -563,6 +563,17 @@
             },
             "LoginInput": {
                 "properties": {
+                    "app": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "App"
+                    },
                     "password": {
                         "anyOf": [
                             {

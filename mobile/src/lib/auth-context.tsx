@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<{ token?: string; user?: AuthUser }>('/auth/login', {
       phone,
       password,
+      app: 'musteri',
       ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
     });
     if (!res.token || !res.user) {

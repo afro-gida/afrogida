@@ -76,6 +76,22 @@ def test_sorumlu_yeni_cihaz_sms_oncesi_kutu_sart(client, monkeypatch, make_user,
     db.login_lockouts.delete_many({})
 
 
+def test_sorumlu_saha_veya_musteriden_girerse_sms_gitmez(client, monkeypatch, make_user, db):
+    import routers.auth as auth_mod
+    monkeypatch.delenv("TURNSTILE_SECRET_KEY", raising=False)
+    sent = []
+    monkeypatch.setattr(auth_mod, "send_sms_verimor", lambda phone, msg: sent.append(phone) or True)
+    make_user(role="pazar_sorumlusu", phone="05551230096")
+    for app in ("saha", "musteri"):
+        r = _login(client, "05551230096", "test1234", app=app)
+        assert r.status_code == 403 and "Sorumlu" in r.json()["detail"]
+    assert _login(client, "05551230096", "yanlis", app="saha").status_code == 401  # şifre yanlışsa rol belli olmaz
+    assert sent == []
+    assert _login(client, "05551230096", "test1234", app="sorumlu").json().get("requires_device_verification")
+    assert len(sent) == 1
+    db.login_lockouts.delete_many({})
+
+
 def test_turnstile_gecerli_token(client, monkeypatch):
     monkeypatch.setenv("TURNSTILE_SECRET_KEY", "test-secret")
 

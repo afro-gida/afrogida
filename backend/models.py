@@ -36,6 +36,9 @@ class LoginInput(BaseModel):
     password: Optional[str] = None
     # Robot doğrulaması (Cloudflare Turnstile); sunucuda anahtar varsa zorunlu
     turnstile_token: Optional[str] = None
+    # Giriş yapan uygulama ("musteri" | "saha" | "sorumlu"); sorumlu hesabı
+    # başka uygulamadan girerse yeni cihaz SMS'i boşuna gönderilmesin diye
+    app: Optional[str] = None
 
 
 class AdminLoginInput(BaseModel):

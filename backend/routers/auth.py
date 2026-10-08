@@ -498,7 +498,10 @@ async def auth_login(payload: LoginInput, request: Request = None):
             raise HTTPException(status_code=429, detail="Çok fazla hatalı deneme. Hesap 15 dakika kilitlendi.")
         raise HTTPException(status_code=401, detail="Telefon numarası veya şifre hatalı")
     await clear_failures(f"login:{phone}")
-    _sends_sms = _is_admin_role(existing) or (
+    if existing.get("role") in DEVICE_VERIFY_ROLES and payload.app in ("musteri", "saha"):
+        # Bu uygulamalarda SMS kodu adımı yok; kod göndermeden yönlendir
+        raise HTTPException(status_code=403, detail="Pazar sorumlusu hesabı bu uygulamada kullanılmaz. Lütfen Sorumlu uygulamasından giriş yapın: sorumlu.afrogida.com.tr")
+    _sends_sms =_is_admin_role(existing) or (
         existing.get("role") in DEVICE_VERIFY_ROLES and not await _device_trusted(existing, request))
     if _sends_sms and not captcha_ok and turnstile_enabled():
         # SMS gidecek (yönetici / sorumlunun yeni cihazı): robot doğrulaması her zaman şart
