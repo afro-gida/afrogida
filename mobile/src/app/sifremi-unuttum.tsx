@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 
 import { FormCardScreen, PrimaryButton, Steps } from '@/components/form-card';
@@ -20,15 +20,20 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  // Robot doğrulaması: SMS kodu göndermeden önce.
-  const [captcha, setCaptcha] = useState<string | null>(null);
-  const [captchaKey, setCaptchaKey] = useState(0);
+  // Robot doğrulaması: kutu "Kod Gönder"e basınca açılır, geçilince kod kendiliğinden
+  // gönderilir ve kutu kapanır. Token tek kullanımlık.
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const sendAfterCaptcha = useRef(false);
 
-  async function handleSendOtp() {
+  async function handleSendOtp(captcha?: string) {
     setError(null);
     setInfo(null);
     if (phone.trim().length < 10) return setError('Geçerli bir telefon numarası gir.');
-    if (TURNSTILE_ON && !captcha) return setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
+    if (TURNSTILE_ON && !captcha) {
+      sendAfterCaptcha.current = true;
+      setShowCaptcha(true);
+      return setInfo('Robot doğrulaması yapılıyor. Kutu onaylanınca kod kendiliğinden gönderilecek.');
+    }
     setSendingOtp(true);
     try {
       const res = await sendOtp(phone.trim(), 'password_reset', captcha);
@@ -42,7 +47,14 @@ export default function ForgotPasswordScreen() {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
     } finally {
       setSendingOtp(false);
-      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
+      setShowCaptcha(false);
+    }
+  }
+
+  function onCaptcha(token: string | null) {
+    if (token && sendAfterCaptcha.current) {
+      sendAfterCaptcha.current = false;
+      handleSendOtp(token);
     }
   }
 
@@ -87,8 +99,8 @@ export default function ForgotPasswordScreen() {
 
       {!otpSent ? (
         <>
-          <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
-          <PrimaryButton label="Kod Gönder" onPress={handleSendOtp} loading={sendingOtp} />
+          {showCaptcha && <Turnstile onToken={onCaptcha} />}
+          <PrimaryButton label="Kod Gönder" onPress={() => handleSendOtp()} loading={sendingOtp || showCaptcha} />
         </>
       ) : (
         <>
