@@ -26,7 +26,7 @@ export type SupplierContract = {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string, turnstileToken?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   supplierContract: SupplierContract | null;
   refreshSupplierContract: () => Promise<void>;
@@ -72,8 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function login(phone: string, password: string) {
-    const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { phone, password });
+  async function login(phone: string, password: string, turnstileToken?: string | null) {
+    const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', {
+      phone,
+      password,
+      ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+    });
     if (!ALLOWED_ROLES.includes(res.user.role)) {
       // Açılan oturumu sunucuda da kapat
       setAuthToken(res.token);

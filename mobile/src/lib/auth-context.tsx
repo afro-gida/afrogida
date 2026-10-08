@@ -34,7 +34,7 @@ type AuthContextValue = {
     otp_code: string;
     marketing_consent: boolean;
   }) => Promise<void>;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (phone: string, password: string, turnstileToken?: string | null) => Promise<void>;
   resetPassword: (phone: string, otpCode: string, newPassword: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   acceptContract: (documentCode: string, documentVersion: string) => Promise<void>;
@@ -107,8 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await applySession(res.token, res.user);
   }
 
-  async function login(phone: string, password: string) {
-    const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', { phone, password });
+  async function login(phone: string, password: string, turnstileToken?: string | null) {
+    const res = await api.post<{ token: string; user: AuthUser }>('/auth/login', {
+      phone,
+      password,
+      ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+    });
     await applySession(res.token, res.user);
   }
 

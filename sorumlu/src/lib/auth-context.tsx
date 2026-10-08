@@ -31,7 +31,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   logoutReason: string | null;
-  login: (phone: string, password: string) => Promise<LoginResult>;
+  login: (phone: string, password: string, turnstileToken?: string | null) => Promise<LoginResult>;
   verifyDevice: (challengeId: string, code: string, remember: boolean) => Promise<void>;
   logout: (reason?: string) => Promise<void>;
 };
@@ -81,10 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastActive.current = Date.now();
   }
 
-  async function login(phone: string, password: string): Promise<LoginResult> {
+  async function login(phone: string, password: string, turnstileToken?: string | null): Promise<LoginResult> {
     const res = await api.post<{ token?: string; user?: AuthUser; requires_device_verification?: boolean; challenge_id?: string; message?: string }>(
       '/auth/login',
-      { phone, password },
+      { phone, password, ...(turnstileToken ? { turnstile_token: turnstileToken } : {}) },
     );
     if (res.requires_device_verification && res.challenge_id) {
       return { ok: false, challenge: { challenge_id: res.challenge_id, message: res.message } };

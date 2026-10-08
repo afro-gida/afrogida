@@ -446,6 +446,8 @@ async def auth_login(payload: LoginInput, request: Request = None):
         raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası girin")
     _ip = _client_ip(request)
     await rate_limit(f"login_ip:{_ip}", 30, 300)
+    # Robot doğrulaması (anahtar tanımlıysa): şifre denemesi ve yeni cihaz SMS'i öncesi
+    await verify_turnstile(payload.turnstile_token, _ip)
     await check_lockout(f"login:{phone}")
     existing = await db.users.find_one({"phone": phone}, {"_id": 0})
     if not existing:

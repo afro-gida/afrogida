@@ -577,6 +577,17 @@
                     "phone": {
                         "title": "Phone",
                         "type": "string"
+                    },
+                    "turnstile_token": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Turnstile Token"
                     }
                 },
                 "required": [

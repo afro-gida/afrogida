@@ -34,6 +34,8 @@ class RegisterInput(BaseModel):
 class LoginInput(BaseModel):
     phone: str
     password: Optional[str] = None
+    # Robot doğrulaması (Cloudflare Turnstile); sunucuda anahtar varsa zorunlu
+    turnstile_token: Optional[str] = None
 
 
 class AdminLoginInput(BaseModel):

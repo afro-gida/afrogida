@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { surface } from '@/constants/surfaces';
 import { Spacing, withAlpha } from '@/constants/theme';
+import { Turnstile, TURNSTILE_ON } from '@/components/turnstile';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -20,6 +21,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Robot doğrulaması: her giriş denemesinde yeni doğrulama (token tek kullanımlık)
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleLogin() {
     setError(null);
@@ -31,13 +35,18 @@ export default function LoginScreen() {
       setError('Şifreni girmelisin.');
       return;
     }
+    if (TURNSTILE_ON && !captcha) {
+      setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await login(phone.trim(), password);
+      await login(phone.trim(), password, captcha);
       if (router.canGoBack()) router.back();
       else router.replace('/');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. Backend çalışıyor mu?');
+      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
     } finally {
       setSubmitting(false);
     }
@@ -68,6 +77,8 @@ export default function LoginScreen() {
           <ThemedText style={[styles.forgotText, { color: theme.tint }]}>Şifremi unuttum</ThemedText>
         </Pressable>
       </View>
+
+      <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
 
       {error && <Notice text={error} />}
 

@@ -44,6 +44,13 @@ def test_turnstile_reddedilen_token(client, monkeypatch):
     assert r.status_code == 400
 
 
+def test_turnstile_giriste_token_zorunlu(client, monkeypatch):
+    monkeypatch.setenv("TURNSTILE_SECRET_KEY", "test-secret")
+    r = client.post("/api/auth/login", json={"phone": "05551230098", "password": "x"})
+    assert r.status_code == 400
+    assert "robot" in r.json()["detail"].lower()
+
+
 def test_turnstile_gecerli_token(client, monkeypatch):
     monkeypatch.setenv("TURNSTILE_SECRET_KEY", "test-secret")
 

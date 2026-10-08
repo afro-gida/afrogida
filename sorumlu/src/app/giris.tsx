@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth, type DeviceChallenge } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Spacing } from '@/constants/theme';
+import { Turnstile, TURNSTILE_ON } from '@/components/turnstile';
 
 const LOGIN_BANNER = require('@/assets/brand/login-banner.jpg');
 // Koyu temada ayrı bir giriş görseli yok — mobile/ ile aynı siyah + yeşil duvar kağıdı.
@@ -28,6 +29,9 @@ export default function LoginScreen() {
   const [challenge, setChallenge] = useState<DeviceChallenge | null>(null);
   const [code, setCode] = useState('');
   const [remember, setRemember] = useState(true);
+  // Robot doğrulaması: her giriş denemesinde yeni doğrulama (token tek kullanımlık)
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function handleLogin() {
     setError(null);
@@ -39,9 +43,13 @@ export default function LoginScreen() {
       setError('Şifreni girmelisin.');
       return;
     }
+    if (TURNSTILE_ON && !captcha) {
+      setError('Önce “Gerçek kişi olduğunuzu doğrulayın” kutusunu işaretle.');
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await login(phone.trim(), password);
+      const res = await login(phone.trim(), password, captcha);
       if (res.ok) router.replace('/');
       else {
         setChallenge(res.challenge);
@@ -51,6 +59,7 @@ export default function LoginScreen() {
       setError(e instanceof ApiError ? e.message : 'Bağlantı hatası. İnternetini kontrol et.');
     } finally {
       setSubmitting(false);
+      if (TURNSTILE_ON) setCaptchaKey((k) => k + 1);
     }
   }
 
@@ -157,6 +166,10 @@ export default function LoginScreen() {
           <Pressable style={styles.eyeBtn} onPress={() => setShowPassword((v) => !v)}>
             <ThemedText themeColor="tint" type="small">{showPassword ? 'Gizle' : 'Göster'}</ThemedText>
           </Pressable>
+        </View>
+
+        <View style={{ marginTop: Spacing.two }}>
+          <Turnstile onToken={setCaptcha} resetKey={captchaKey} />
         </View>
 
         {!!error && (
