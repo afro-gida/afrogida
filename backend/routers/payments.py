@@ -41,7 +41,7 @@ async def compat_payments_init(data: dict, request: Request, current_user: dict 
         return {"success": True, "tx_id": order["tx_id"], "order": _compat_json_clean(_customer_order_view(order))}
     # app_url: yeni uygulamanın adresi -> ödeme sonrası o siparişin takip
     # ekranına dönülür (services/payments.py::payment_return_urls).
-    paytr = await _init_paytr_token(order, request, current_user.get("email"), app_url=data.get("app_url"))
+    paytr = await _init_paytr_token(order, request, app_url=data.get("app_url"))
     await db.transactions.update_one({"tx_id": order["tx_id"]}, {"$set": {"merchant_oid": paytr.get("merchant_oid"), "paytr_init": paytr, "updated_at": now_utc()}})
     if not paytr.get("success"):
         raise HTTPException(status_code=503 if not paytr.get("configured") else 400, detail=paytr.get("message") or "PayTR ödeme başlatılamadı")
@@ -83,8 +83,7 @@ async def get_paytr_iframe_token(data: dict, request: Request, current_user: dic
         "address": data.get("user_address") or data.get("address") or "Bursa",
         "items": items,
     }
-    email = data.get("email") or data.get("user_email") or user.get("email") or "musteri@afrogida.com.tr"
-    paytr = await _init_paytr_token(order, request, email)
+    paytr = await _init_paytr_token(order, request)
     if paytr.get("success"):
         paytr_merchant_oid = paytr.get("merchant_oid") or merchant_oid
         await db.transactions.update_one(
@@ -182,5 +181,5 @@ async def compat_payment_paytr(data: dict, request: Request, current_user: dict 
         "address": data.get("user_address") or "Bursa",
         "items": [{"name": "Test Sipariş", "line_total": _as_float(data.get("amount"), 0), "qty": 1}],
     }
-    paytr = await _init_paytr_token(order, request, data.get("user_email"))
+    paytr = await _init_paytr_token(order, request)
     return {"success": bool(paytr.get("success")), "configured": True, **paytr}

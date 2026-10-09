@@ -82,7 +82,12 @@ def paytr_callback_expected_hash(merchant_oid: str, status: str, total_amount: s
     ).decode()
 
 
-async def _init_paytr_token(order: dict, request, user_email: str | None = None, app_url: str | None = None) -> dict:
+# Müşterinin e-postası sadece e-Arşiv fatura için kullanılır (kayıt ekranında böyle
+# söz veriyoruz); PayTR'nin zorunlu "email" alanına şirketin sabit adresi gider.
+PAYTR_EMAIL = "musteri@afrogida.com.tr"
+
+
+async def _init_paytr_token(order: dict, request, app_url: str | None = None) -> dict:
     merchant_id = _env("PAYTR_MERCHANT_ID", "merchant_id")
     merchant_key = _env("PAYTR_MERCHANT_KEY", "merchant_key")
     merchant_salt = _env("PAYTR_MERCHANT_SALT", "merchant_salt")
@@ -90,7 +95,7 @@ async def _init_paytr_token(order: dict, request, user_email: str | None = None,
         return {"success": False, "configured": False,
                 "message": "PayTR merchant_id / merchant_key / merchant_salt ayarları eksik"}
 
-    email = user_email or f"{order.get('user_id')}@afrogida.local"
+    email = PAYTR_EMAIL
     user_ip = request.client.host if request and request.client else "127.0.0.1"
     merchant_oid = _clean_paytr_oid(order.get("merchant_oid") or order.get("tx_id") or new_id("tx"))
     order["merchant_oid"] = merchant_oid
